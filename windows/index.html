@@ -86,6 +86,37 @@
             <span class="sr-only">订阅未读 <span data-count="unread">—</span> 篇</span>
             <span class="dashboard-caption">所有站点</span>
           </div>
+          <section id="dashboard-activity" class="dashboard-activity" aria-labelledby="dashboard-activity-title" hidden>
+            <div class="dashboard-section-heading">
+              <h2 id="dashboard-activity-title">写作活动</h2>
+              <div id="dashboard-activity-modes" class="view-switch" role="group" aria-label="热力图粒度">
+                <button type="button" data-activity-mode="day" aria-pressed="true">每日</button>
+                <button type="button" data-activity-mode="week" aria-pressed="false">每周</button>
+                <button type="button" data-activity-mode="cumulative" aria-pressed="false">累计</button>
+              </div>
+            </div>
+            <div class="dashboard-activity-card">
+              <div id="dashboard-activity-heatmap" class="activity-heatmap"></div>
+              <p id="dashboard-activity-summary" class="dashboard-caption" hidden></p>
+            </div>
+            <div id="dashboard-activity-range-heading" class="dashboard-section-heading dashboard-activity-range" hidden>
+              <h3>时间范围</h3>
+              <div id="dashboard-activity-ranges" class="view-switch" role="group" aria-label="趋势图时间范围">
+                <button type="button" data-activity-range="7" aria-pressed="true">近 7 日</button>
+                <button type="button" data-activity-range="30" aria-pressed="false">近 30 日</button>
+              </div>
+            </div>
+            <div id="dashboard-activity-trend-card" class="dashboard-activity-card" hidden>
+              <div class="dashboard-activity-trend-header">
+                <h3>每日写作趋势</h3>
+                <div class="dashboard-activity-legend" aria-hidden="true">
+                  <span class="dashboard-activity-legend-item"><span class="dashboard-activity-dot" data-series="articles"></span>文章</span>
+                  <span class="dashboard-activity-legend-item"><span class="dashboard-activity-dot" data-series="drafts"></span>草稿</span>
+                </div>
+              </div>
+              <div id="dashboard-activity-trend" class="dashboard-activity-trend"></div>
+            </div>
+          </section>
           <section id="dashboard-empty" class="dashboard-empty" hidden aria-labelledby="dashboard-empty-title">
             <div class="dashboard-empty-mark"><img src="./resources/workspace/empty-file.svg" alt="" /></div>
             <h2 id="dashboard-empty-title">为你的想法，留一个地方</h2>

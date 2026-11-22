@@ -16,7 +16,7 @@ async function fixture(overrides: Record<string, unknown> = {}) {
   const root = window.document.querySelector<HTMLElement>("#dashboard")!;
   const calls: unknown[][] = [];
   const controller = createDashboard(root, {
-    load: async () => snapshot, serviceInfo: async () => ({ configured: false }), stats: async () => ({ visitors: 0, pageviews: 0 }),
+    load: async () => snapshot, activity: async () => [], serviceInfo: async () => ({ configured: false }), stats: async () => ({ visitors: 0, pageviews: 0 }),
     openSite: async (id: string) => { calls.push(["site", id]); },
     openEntry: async (kind: string, site: string, id: string) => { calls.push([kind, site, id]); },
     compose: async (id: string) => { calls.push(["compose", id]); },

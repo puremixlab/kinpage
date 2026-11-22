@@ -9,3 +9,11 @@ func (l *Library) Dashboard() (store.DashboardSnapshot, error) {
 	}
 	return s.Dashboard(), nil
 }
+
+func (l *Library) WritingActivity() ([]store.DailyActivity, error) {
+	s, err := l.open()
+	if err != nil {
+		return nil, err
+	}
+	return s.WritingActivity(), nil
+}
