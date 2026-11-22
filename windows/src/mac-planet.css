@@ -441,8 +441,7 @@ body {
   }
 }
 .sidebar-bottom #show-ipfs-status {
-  flex: 1;
-  min-width: 0;
+  flex: none;
   width: auto;
   height: 30px;
   min-height: 30px;
