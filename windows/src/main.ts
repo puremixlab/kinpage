@@ -335,7 +335,7 @@ type PublicationState = { running: boolean; pending: boolean; status: "idle" | "
 const publicationStates = new Map<string, PublicationState>();
 function isDashboard() { return !site && !subscription && !favoritesView && !smartView && !editing; }
 const dashboard = createDashboard($("#dashboard"), {
-  load: Library.dashboard, serviceInfo: Library.serviceInfo, stats: Library.plausibleStatsRange,
+  load: Library.dashboard, activity: Library.writingActivity, serviceInfo: Library.serviceInfo, stats: Library.plausibleStatsRange,
   openSite: id => openDashboardTarget(id),
   openEntry: (kind, id, entryID) => openDashboardTarget(id, kind, entryID),
   compose: id => openDashboardTarget(id, "compose"),

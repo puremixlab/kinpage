@@ -1,7 +1,9 @@
-import type { DashboardEntry, DashboardSnapshot } from "./mygo";
+import type { DailyActivity, DashboardEntry, DashboardSnapshot } from "./mygo";
+import { createWritingActivity } from "./writing-activity";
 
 interface DashboardActions {
   load(): Promise<DashboardSnapshot>;
+  activity(): Promise<DailyActivity[]>;
   serviceInfo(siteID: string, kind: string): Promise<{ configured: boolean }>;
   stats(siteID: string, period: string): Promise<{ visitors: number; pageviews: number }>;
   openSite(id: string): Promise<void>;
@@ -42,6 +44,7 @@ export function createDashboard(root: HTMLElement, actions: DashboardActions) {
   const composeSite = $<HTMLSelectElement>("#dashboard-compose-site");
   const composeButton = $<HTMLButtonElement>("#dashboard-compose"), composeConfirm = $<HTMLButtonElement>("#dashboard-compose-confirm");
   const composeDialog = $<HTMLDialogElement>("#dashboard-compose-dialog");
+  const activityView = createWritingActivity($("#dashboard-activity"), () => actions.activity());
   const number = new Intl.NumberFormat("zh-CN");
   const date = (value: string) => {
     const parsed = new Date(value);
@@ -127,6 +130,7 @@ export function createDashboard(root: HTMLElement, actions: DashboardActions) {
       $(`[data-count='${key}']`).textContent = number.format(value);
     }
     $("#dashboard-empty").hidden = data.siteCount !== 0;
+    $("#dashboard-activity").hidden = data.siteCount === 0;
     $("#dashboard-columns").hidden = data.siteCount === 0;
     $("#dashboard-compose-controls").hidden = data.siteCount === 0;
     $("#dashboard-first-site").hidden = data.siteCount !== 0;
@@ -158,6 +162,7 @@ export function createDashboard(root: HTMLElement, actions: DashboardActions) {
   async function refresh() {
     if (!active) return;
     const current = ++revision; resetAnalytics();
+    void activityView.refresh();
     closeCompose(); composeButton.disabled = composeConfirm.disabled = true;
     refreshButton.disabled = true; root.setAttribute("aria-busy", "true"); message("正在读取写作台…");
     try {

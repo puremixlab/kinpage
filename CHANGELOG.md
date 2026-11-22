@@ -4,6 +4,10 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ## [Unreleased]
 
+### Added
+
+- Added a writing activity overview to the dashboard: a GitHub-style contribution heatmap of daily writing actions (create/edit an article or draft) with day/week/cumulative granularity switches, an inline summary of the past year's actions and the current writing streak, and a daily trend chart for the last 7 or 30 days with separate article and draft series.
+
 ### Changed
 
 - Swapped the sidebar bottom bar order so the settings menu sits on the left and the IPFS node status button is pinned to the right edge, with the tools popup opening rightward within the sidebar.

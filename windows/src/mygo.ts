@@ -56,6 +56,12 @@ export interface Config {
   highestSHA256?: string;
 }
 
+export interface DailyActivity {
+  date: string;
+  articles: number;
+  drafts: number;
+}
+
 export interface DashboardEntry {
   id: string;
   siteId: string;
@@ -616,5 +622,6 @@ export const Library = {
   updateSiteWeb3: bind<[string, string], Site>("Library.UpdateSiteWeb3", (siteID: string, web3JSON: string) => [siteID, web3JSON]),
   /** UpdateSubscription edits an existing subscription's display name and/or address. */
   updateSubscription: bind<[string, string, string], Subscription>("Library.UpdateSubscription", (oldAddress: string, newAddress: string, customTitle: string) => [oldAddress, newAddress, customTitle]),
+  writingActivity: bind<[], DailyActivity[]>("Library.WritingActivity", () => []),
   xSyncInfo: bind<[string], XSyncInfo>("Library.XSyncInfo", (siteID: string) => [siteID]),
 } as const;
