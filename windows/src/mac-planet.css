@@ -495,8 +495,8 @@ body {
 }
 
 .sidebar .sidebar-tools-content {
-  left: auto;
-  right: 0;
+  left: 0;
+  right: auto;
   bottom: calc(100% + 10px);
   width: 208px;
   padding: 6px;

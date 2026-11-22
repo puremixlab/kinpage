@@ -4,6 +4,10 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ## [Unreleased]
 
+### Changed
+
+- Swapped the sidebar bottom bar order so the settings menu sits on the left and the IPFS node status button expands to the right, with the tools popup opening rightward within the sidebar.
+
 ## [0.0.1-alpha.6] - 2026-11-21
 
 ### Removed
