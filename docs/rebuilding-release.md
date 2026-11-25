@@ -2,7 +2,7 @@
 
 发行源码包包含指定 Git 提交的应用源码、`go.mod`、`go.sum`、`bun.lock`、Go vendor 源码和 go-ethereum 的源码及许可文本。`SOURCE-PROVENANCE.json` 记录提交、版本、锁文件摘要和 go-ethereum 模块版本及 h1；包外的 `source-manifest.json` 还记录 ZIP 的 SHA-256 和字节数。这些材料用于重建和修改静态链接的 Go 库，不是完整许可合规结论，也不能单独证明某个二进制由该源码构建。
 
-源码包不包含 Git 历史、本机环境文件、发布者密钥、`node_modules`、已生成的前端或应用构建结果，以及 Kubo、WebView2、Go、Bun 等运行时或工具安装包。Go 模块按锁文件收集；Bun 依赖在重建时按 `bun.lock` 下载。go-ethereum 源码保留库、测试及构建说明，省略与链接库无关的上游可执行文件，具体路径列在清单的 `omittedUpstreamBinaries` 中。
+源码包不包含 Git 历史、本机环境文件、发布者密钥、`node_modules`、已生成的应用构建结果，以及 Kubo、WebView2、Go、Bun 等运行时或工具安装包。Go 模块按锁文件收集；Bun 依赖在重建时按 `bun.lock` 下载。go-ethereum 源码保留库、测试及构建说明，省略与链接库无关的上游可执行文件，具体路径列在清单的 `omittedUpstreamBinaries` 中。
 
 ## 准备发行源码包
 

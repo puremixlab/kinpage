@@ -34,7 +34,7 @@ Pop-Location
 
 - `README.md`、`README_zh.md`、`windows/README.md`、`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md`、`SECURITY.md`。
 - `docs/`、`windows/docs/` 下的 `.md` 文档，但不包括 `AGENTS.md`。
-- `docs/screenshots/`、`docs/uiux/` 下的 `.png` 图片。
+- `docs/screenshots/` 下的 `.png` 图片。
 - `.github/PULL_REQUEST_TEMPLATE.md`。
 
 在 `windows/` 运行 `bun run check:docs`，或在仓库根目录运行 `bun scripts/check-docs.ts`。只需 Git 和 Bun，无需 Go、前端依赖或构建。检查器读取所有已跟踪的人类文档的当前工作树内容，检查 UTF-8（无 BOM）、LF、结尾换行、冲突标记、代码围栏，以及文档中内联链接/图片指向的本地文件和标题锚点。代码示例中的链接会忽略，外部 URL 不联网验证。删除或改名后也会检查其他文档的入链；新文档需先暂存才能纳入手动检查。
@@ -85,7 +85,7 @@ GitHub ruleset 要求 `main` 通过 PR 合并、解决审查讨论并禁止非�
 
 程序版本来源是 `windows/release.json`，Go 程序、MyGo 配置与前端共享该文件。发布记录由不可移动的 `v<版本>` 标签确定，标签必须与该提交中的完整版本和 Changelog 标题一致，包括 `-alpha.1` 等预发布后缀。版本主体为三个无前导零的 uint32 数字，可带 SemVer 预发布标识，不支持 `+` 构建元数据。配置中出现版本号不等于已经发布，不给历史快照补造标签或日期。
 
-`v0.0.1-alpha.1` 已公开；当前按维护者基于最新 `main` 重新打包并发布新 Logo 的请求，准备 `v0.0.1-alpha.2`。旧标签、附件与[alpha.1 历史验收记录](acceptance-0.0.1-alpha.1.md)保持原样；本次未签名预发布的执行假设及有限范围见[alpha.2 验收记录](acceptance-0.0.1-alpha.2.md)，最终包必须取得新证据。此前 `0.3.0` 等编号属于未打发行标签的开发快照，不提供降级到本 alpha 的迁移；alpha 先在隔离的新 Windows 用户环境测试。所选签名策略、许可或适用原生验收尚未满足发行要求时，变更继续保留在 `Unreleased`，不新增已发布条目。
+已公开的各 alpha 版本（如 `v0.0.1-alpha.1` 及后续版本）的标签、附件与对应[验收记录](acceptance-0.0.1-alpha.1.md)均为历史记录，保持原样不改写。每次新发布递增 `windows/release.json` 版本号并取得最终包的新证据。此前 `0.3.0` 等编号属于未打发行标签的开发快照，不提供降级到 alpha 的迁移；alpha 先在隔离的新 Windows 用户环境测试。所选签名策略、许可或适用原生验收尚未满足发行要求时，变更继续保留在 `Unreleased`，不新增已发布条目。
 
 采用语义化版本：修复通常递增 PATCH，兼容的新功能递增 MINOR，破坏已有兼容承诺的改动递增 MAJOR。当前仍为 `0.x` 开发阶段；任何不兼容变化都应在记录中突出说明，并提供迁移说明，不把它隐藏在补丁版本中。
 
