@@ -23,6 +23,7 @@ type siteSettingsState struct {
 	open           bool
 	tab            int
 	siteID         string
+	scroll         ui.ScrollState
 	name           string
 	about          string
 	slug           string
@@ -105,8 +106,8 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 						icon  *ui.SVG
 						tint  ui.Color
 					}{
-						{siteSettingsTabBasic, "基本", lucide.SlidersHorizontal(), ui.Hex("#2563eb")},
-						{siteSettingsTabProfile, "资料与头像", lucide.User(), ui.Hex("#4f46e5")},
+						{siteSettingsTabBasic, "基本资料", lucide.SlidersHorizontal(), ui.Hex("#2563eb")},
+						{siteSettingsTabProfile, "社交", lucide.Globe(), ui.Hex("#4f46e5")},
 						{siteSettingsTabCustomCode, "自定义代码", lucide.Code(), ui.Hex("#475569")},
 						{siteSettingsTabPodcast, "播客", lucide.Podcast(), ui.Hex("#7c3aed")},
 					}
@@ -114,6 +115,7 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 						tIdx, tLbl := tab.idx, tab.label
 						if prefsNavRow(c, fmt.Sprintf("ss-nav-%d", tIdx), tLbl, st.tab == tIdx, tab.icon, tab.tint, pal) {
 							st.tab = tIdx
+							st.scroll.Y = 0
 							st.err = ""
 						}
 					}
@@ -143,10 +145,10 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 
 			// Right pane: soft canvas + elevated white inset cards + cool-tinted footer bar.
 			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
-				pageTitle, pageDesc := "基本设置", "配置站点名称、简介、路径别名与搜索引擎收录偏好。"
+				pageTitle, pageDesc := "基本资料", "配置站点头像、名称、简介、路径别名与搜索引擎收录偏好。"
 				switch st.tab {
 				case siteSettingsTabProfile:
-					pageTitle, pageDesc = "公开资料与头像", "设置站点头像、自定义域名与公开社交账号链接。"
+					pageTitle, pageDesc = "社交与域名", "设置自定义域名与公开社交账号链接。"
 				case siteSettingsTabCustomCode:
 					pageTitle, pageDesc = "自定义代码与发布", "向生成的静态页面注入自定义 HTML，并控制 IPNS 与网关预热行为。"
 				case siteSettingsTabPodcast:
@@ -163,10 +165,75 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 					}
 				})
 
-				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
+				ui.Scroll(c).TrackScroll(&st.scroll).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Column(c).Padding(4, 28, 24, 28).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 						switch st.tab {
 						case siteSettingsTabBasic:
+							macInsetCard(c, pal, func() {
+								ui.Row(c).Gap(14).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
+									if site := a.findSiteByID(st.siteID); site != nil {
+										a.siteAvatar(c, *site, 0, 52)
+									}
+									ui.Column(c).Gap(6).Grow(1).MinWidth(0).Children(func() {
+										ui.Text(c, "站点头像").Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
+										ui.Row(c).Gap(8).AlignItems(ui.Center).Wrap().Children(func() {
+											if macSecondaryButton(c, "ss-avatar-pick", "选择本地图片", pal) {
+												if _, err := a.backend.SelectSiteAvatar(context.Background(), st.siteID); err != nil {
+													st.err = err.Error()
+												} else {
+													st.err = ""
+													a.Reload()
+													a.setStatus("已更新站点头像")
+												}
+											}
+											if macSecondaryButton(c, "ss-avatar-rm", "移除头像", pal) {
+												if _, err := a.backend.RemoveSiteAvatar(st.siteID); err != nil {
+													st.err = err.Error()
+												} else {
+													st.err = ""
+													a.Reload()
+													a.setStatus("已移除站点头像")
+												}
+											}
+											prevRound := st.roundAvatar
+											ui.Checkbox(c.Key("ss-avatar-round"), &st.roundAvatar, "圆形裁切")
+											if st.roundAvatar != prevRound {
+												if _, err := a.backend.SetSaveRoundAvatar(st.siteID, st.roundAvatar); err != nil {
+													st.err = err.Error()
+												} else {
+													a.Reload()
+												}
+											}
+										})
+									})
+								})
+								if presets := a.backend.PresetAvatars(); len(presets) > 0 {
+									prefsHairlineH(c, pal)
+									ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {
+										ui.Text(c, "快速选择内置头像").Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
+										ui.Row(c).Gap(6).Wrap().Children(func() {
+											for i, p := range presets {
+												if i >= 8 {
+													break
+												}
+												key, title := p.Key, p.Title
+												if title == "" {
+													title = key
+												}
+												if macSecondaryButton(c, "ss-preset-"+key, title, pal) {
+													if _, err := a.backend.ApplyPresetAvatar(st.siteID, key); err != nil {
+														st.err = err.Error()
+													} else {
+														st.err = ""
+														a.Reload()
+														a.setStatus("已应用预设头像：" + title)
+													}
+												}
+											}
+										})
+									})
+								}
+							})
 							macInsetCard(c, pal, func() {
 								macField(c, "站点名称", "", pal, func() {
 									ui.TextInput(c.Key("ss-name"), &st.name).Label("站点名称").AlignSelf(ui.Stretch)
@@ -221,72 +288,6 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 							})
 
 						case siteSettingsTabProfile:
-							macInsetCard(c, pal, func() {
-								ui.Row(c).Gap(14).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-									if site := a.findSiteByID(st.siteID); site != nil {
-										a.siteAvatar(c, *site, 0, 52)
-									}
-									ui.Column(c).Gap(6).Grow(1).MinWidth(0).Children(func() {
-										ui.Text(c, "站点头像").Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink)
-										ui.Row(c).Gap(8).AlignItems(ui.Center).Wrap().Children(func() {
-											if macSecondaryButton(c, "ss-avatar-pick", "选择本地图片", pal) {
-												if _, err := a.backend.SelectSiteAvatar(context.Background(), st.siteID); err != nil {
-													st.err = err.Error()
-												} else {
-													st.err = ""
-													a.Reload()
-													a.setStatus("已更新站点头像")
-												}
-											}
-											if macSecondaryButton(c, "ss-avatar-rm", "移除头像", pal) {
-												if _, err := a.backend.RemoveSiteAvatar(st.siteID); err != nil {
-													st.err = err.Error()
-												} else {
-													st.err = ""
-													a.Reload()
-													a.setStatus("已移除站点头像")
-												}
-											}
-											prevRound := st.roundAvatar
-											ui.Checkbox(c.Key("ss-avatar-round"), &st.roundAvatar, "圆形裁切")
-											if st.roundAvatar != prevRound {
-												if _, err := a.backend.SetSaveRoundAvatar(st.siteID, st.roundAvatar); err != nil {
-													st.err = err.Error()
-												} else {
-													a.Reload()
-												}
-											}
-										})
-									})
-								})
-								if presets := a.backend.PresetAvatars(); len(presets) > 0 {
-									hairlineH(c, pal)
-									ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {
-										ui.Text(c, "快速选择内置头像").Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
-										ui.Row(c).Gap(6).Wrap().Children(func() {
-											for i, p := range presets {
-												if i >= 8 {
-													break
-												}
-												key, title := p.Key, p.Title
-												if title == "" {
-													title = key
-												}
-												if macSecondaryButton(c, "ss-preset-"+key, title, pal) {
-													if _, err := a.backend.ApplyPresetAvatar(st.siteID, key); err != nil {
-														st.err = err.Error()
-													} else {
-														st.err = ""
-														a.Reload()
-														a.setStatus("已应用预设头像：" + title)
-													}
-												}
-											}
-										})
-									})
-								}
-							})
-
 							macInsetCard(c, pal, func() {
 								macField(c, "自定义域名", "", pal, func() {
 									ui.TextInput(c.Key("ss-domain"), &st.domain).Placeholder("example.com").Label("自定义域名").AlignSelf(ui.Stretch)

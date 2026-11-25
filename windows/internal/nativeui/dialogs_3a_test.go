@@ -48,18 +48,18 @@ func TestNativeUISiteSettingsAndPublishModal(t *testing.T) {
 		t.Fatalf("expected updated site details, got %+v", backend.sites[0])
 	}
 
-	// Site settings: profile + preset avatar.
+	// Site settings: preset avatar in 基本资料, then switch to 社交 tab for domain.
 	if err := tt.Click("站点设置"); err != nil {
 		t.Fatalf("failed to reopen site settings: %v", err)
-	}
-	if err := tt.Click("资料与头像"); err != nil {
-		t.Fatalf("failed to switch to profile tab: %v", err)
 	}
 	if err := tt.Click("地球"); err != nil {
 		t.Fatalf("failed to apply preset avatar: %v", err)
 	}
 	if backend.sites[0].AvatarPNG != "preset-earth" {
 		t.Fatalf("expected preset avatar applied, got %q", backend.sites[0].AvatarPNG)
+	}
+	if err := tt.Click("社交"); err != nil {
+		t.Fatalf("failed to switch to social tab: %v", err)
 	}
 	app.siteSettings.domain = "blog.example.com"
 	tt.Frame()
@@ -70,10 +70,12 @@ func TestNativeUISiteSettingsAndPublishModal(t *testing.T) {
 		t.Fatalf("expected updated domain, got %q", backend.sites[0].Domain)
 	}
 
-	// Remove site -> restore from trash.
+	// Remove site -> restore from trash (Danger Zone sits at bottom of 基本资料).
 	if err := tt.Click("站点设置"); err != nil {
 		t.Fatalf("failed to open site settings for remove: %v", err)
 	}
+	app.siteSettings.scroll.Y = 400
+	tt.Frame()
 	if err := tt.Click("移入回收站"); err != nil {
 		t.Fatalf("failed to click remove site: %v", err)
 	}
