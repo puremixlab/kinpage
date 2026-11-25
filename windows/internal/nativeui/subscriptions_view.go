@@ -392,7 +392,7 @@ func (a *App) viewEditSubscriptionModal(c *ui.Context) {
 			macField(c, "订阅地址", "", pal, func() {
 				ui.TextInput(c.Key("edit-sub-url"), &a.editSubNewURL).Label("订阅地址").AlignSelf(ui.Stretch)
 			})
-			macField(c, "自定义名称", "留空使用源标题", pal, func() {
+			macField(c, "自定义名称", "", pal, func() {
 				ui.TextInput(c.Key("edit-sub-title"), &a.editSubTitle).Placeholder("留空使用源标题").Label("自定义名称").AlignSelf(ui.Stretch)
 			})
 		})

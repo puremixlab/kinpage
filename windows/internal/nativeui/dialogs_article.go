@@ -67,13 +67,13 @@ func (a *App) viewArticleSettingsModal(c *ui.Context) {
 		CancelText:  "取消",
 	}, pal, func() {
 		macInsetCard(c, pal, func() {
-			macField(c, "自定义路径 (Slug)", "留空使用默认路径", pal, func() {
+			macField(c, "自定义路径 (Slug)", "", pal, func() {
 				ui.TextInput(c.Key("art-set-slug"), &a.articleSettingsSlug).Placeholder("留空使用默认路径").Label("自定义路径").AlignSelf(ui.Stretch)
 			})
 			macField(c, "类型", "", pal, func() {
 				macSegmented(c, "art-set-type", &a.articleSettingsType, []string{"博客文章", "独立页面"}, pal)
 			})
-			macField(c, "外部链接", "可选", pal, func() {
+			macField(c, "外部链接", "", pal, func() {
 				ui.TextInput(c.Key("art-set-ext"), &a.articleSettingsExtLink).Placeholder("https://…（可选）").Label("外部链接").AlignSelf(ui.Stretch)
 			})
 		})

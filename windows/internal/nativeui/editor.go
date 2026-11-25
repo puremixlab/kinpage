@@ -80,7 +80,7 @@ func (a *App) viewEditor(c *ui.Context) {
 		pos := a.editorState.CursorPos()
 		chars := utf8.RuneCountInString(a.editorBuffer.String())
 		ui.Row(c).MinHeight(36).PaddingX(32).Gap(16).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.canvas).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, "草稿仅保存在本地；保存并发布后会公开整个站点及其附件。").Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
+			ui.Text(c, "草稿仅保存本地").Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
 			ui.Text(c, fmt.Sprintf("行 %d, 列 %d  ·  %d 字", pos.Line+1, pos.Col+1, chars)).Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
 		})
 	})

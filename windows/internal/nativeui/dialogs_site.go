@@ -173,26 +173,22 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 
 			// Right pane: soft canvas + elevated white inset cards + cool-tinted footer bar.
 			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
-				tabMeta := map[int][2]string{
-					siteSettingsTabBasic:      {"基本资料", "配置站点头像、名称、简介、路径别名与搜索引擎收录偏好。"},
-					siteSettingsTabProfile:    {"社交与域名", "设置自定义域名与公开社交账号链接。"},
-					siteSettingsTabTemplates:  {"模板选择与设置", "选择内置模板或导入本地目录，并微调模板参数。"},
-					siteSettingsTabCustomCode: {"自定义代码与发布", "向生成的静态页面注入自定义 HTML，并控制 IPNS 与网关预热行为。"},
-					siteSettingsTabPodcast:    {"播客设置", "配置 RSS 播客频道语言、分类与内容分级标记。"},
-					siteSettingsTabDeploy:     {"SSH / Cloudflare 部署", "配置静态站点的自动化外部部署目标。"},
-					siteSettingsTabServices:   {"固定服务与统计", "配置 Plausible 访问统计与 Filebase / Pinnable 持久化固定。"},
-					siteSettingsTabX:          {"X (Twitter) 同步", "绑定 X API 凭据并在发布文章时自动同步。"},
-					siteSettingsTabTelegram:   {"Telegram 频道同步", "通过 Bot 将新发布的文章推送到指定频道。"},
-					siteSettingsTabAggregate:  {"跨源内容聚合", "订阅外部 RSS / Atom / IPNS 源并聚合到当前站点。"},
-					siteSettingsTabWeb3:       {"Web3 与捐赠", "配置以太坊打赏地址与 Juicebox 项目支持。"},
+				tabTitles := map[int]string{
+					siteSettingsTabBasic:      "基本资料",
+					siteSettingsTabProfile:    "社交与域名",
+					siteSettingsTabTemplates:  "模板",
+					siteSettingsTabCustomCode: "自定义代码",
+					siteSettingsTabPodcast:    "播客",
+					siteSettingsTabDeploy:     "部署",
+					siteSettingsTabServices:   "固定服务与统计",
+					siteSettingsTabX:          "X 同步",
+					siteSettingsTabTelegram:   "Telegram 同步",
+					siteSettingsTabAggregate:  "跨源内容聚合",
+					siteSettingsTabWeb3:       "Web3 与捐赠",
 				}
-				meta := tabMeta[st.tab]
 
-				ui.Row(c).Padding(22, 20, 14, 28).AlignItems(ui.Start).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-					ui.Column(c).Gap(4).Grow(1).MinWidth(0).Children(func() {
-						ui.Text(c, meta[0]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
-						ui.Text(c, meta[1]).Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
-					})
+				ui.Row(c).Padding(20, 20, 12, 28).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+					ui.Text(c, tabTitles[st.tab]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
 					if toolbarIconBtn(c, "ss-close-x", lucide.X(), "关闭").Clicked() {
 						st.open = false
 					}
@@ -271,7 +267,7 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 								macField(c, "站点名称", "", pal, func() {
 									ui.TextInput(c.Key("ss-name"), &st.name).Label("站点名称").AlignSelf(ui.Stretch)
 								})
-								macField(c, "简介", "会显示在站点首页与 RSS 描述中", pal, func() {
+								macField(c, "简介", "", pal, func() {
 									ui.TextArea(c.Key("ss-about"), &st.about).Lines(3, 5).Label("站点简介").AlignSelf(ui.Stretch)
 								})
 								ui.Row(c).Gap(16).AlignSelf(ui.Stretch).Children(func() {
@@ -289,16 +285,15 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 							})
 							macInsetCard(c, pal, func() {
 								ui.Checkbox(c.Key("ss-noindex"), &st.doNotIndex, "禁止搜索引擎收录 (noindex)")
-								ui.Text(c, "开启后会在页面头部输出 noindex 元标签，提示搜索引擎不要索引此站点。").Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
 							})
 							// Danger Zone card at the bottom of Basic settings.
 							ui.Column(c).Padding(14, 18, 14, 18).Gap(6).AlignSelf(ui.Stretch).
 								Background(pal.prefsCard).Border(0.5, pal.danger.Alpha(0.32)).Radius(10).
 								Shadow(0, 1, 3, 0, pal.prefsCardShadow).Children(func() {
 								ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).AlignSelf(ui.Stretch).Children(func() {
-									ui.Column(c).Gap(3).Grow(1).MinWidth(0).Children(func() {
+									ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
 										ui.Text(c, "移除此站点").Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.danger)
-										ui.Text(c, "移入回收站后站点会从侧栏隐藏，可随时在「更多工具 → 回收站」中恢复。").Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
+										ui.Text(c, "移入后可在回收站恢复").Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
 									})
 									dangerBg := pal.danger.Alpha(0.10)
 									if pal.dark {

@@ -127,18 +127,14 @@ func (a *App) viewToolsModal(c *ui.Context) {
 
 			// Right form pane + header + footer.
 			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
-				tabMeta := map[int][2]string{
-					toolsTabAI:   {"AI 助手与模型配置", "连接本地 Ollama / LM Studio 或 OpenAI 兼容端点，结合当前文章上下文问答。"},
-					toolsTabAPI:  {"本地 REST API 服务", "在本机回环地址提供 HTTP 接口，供 pn 命令行与外部脚本调用。"},
-					toolsTabKeys: {"IPNS 密钥管理", "查看、导入或导出当前 IPFS 节点的 IPNS 发布密钥。"},
-					toolsTabLogs: {"应用运行日志", "按模块筛选查看 Planet、IPFS 与本地 API 的运行记录。"},
+				tabTitles := map[int]string{
+					toolsTabAI:   "AI 助手",
+					toolsTabAPI:  "本地 API",
+					toolsTabKeys: "密钥管理",
+					toolsTabLogs: "应用日志",
 				}
-				meta := tabMeta[m.tab]
-				ui.Row(c).Padding(22, 20, 14, 28).AlignItems(ui.Start).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-					ui.Column(c).Gap(4).Grow(1).MinWidth(0).Children(func() {
-						ui.Text(c, meta[0]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
-						ui.Text(c, meta[1]).Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
-					})
+				ui.Row(c).Padding(20, 20, 12, 28).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+					ui.Text(c, tabTitles[m.tab]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
 					if toolbarIconBtn(c, "tools-close-x", lucide.X(), "关闭").Clicked() {
 						m.open = false
 					}
@@ -189,7 +185,7 @@ func (a *App) viewToolsAI(c *ui.Context) {
 				})
 			})
 		})
-		macField(c, "API Key", "本地模型可留空", pal, func() {
+		macField(c, "API Key", "", pal, func() {
 			ui.TextInput(c.Key("ai-tok"), &m.aiToken).Password().Placeholder("本地模型可留空").AlignSelf(ui.Stretch)
 		})
 		ui.Row(c).Gap(8).Wrap().Children(func() {
