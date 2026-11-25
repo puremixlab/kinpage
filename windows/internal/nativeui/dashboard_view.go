@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/chart"
 	"github.com/lobehub/lobe-mygo/pkg/display"
 	"github.com/lobehub/lobe-mygo/pkg/lucide"
 	"windows/internal/store"
@@ -15,12 +14,6 @@ const (
 	activityModeDaily      = 0
 	activityModeWeekly     = 1
 	activityModeCumulative = 2
-)
-
-const (
-	trendRange30d = 0
-	trendRange90d = 1
-	trendRange1y  = 2
 )
 
 var featuredPlanetAddresses = []string{
@@ -158,9 +151,6 @@ func (a *App) viewDashboard(c *ui.Context) {
 
 				// 3. Site bookmark shelf (unified filter + status dots) + tactile paper-sheet article cards.
 				a.viewDashboardArticles(c)
-
-				// 4. Compact monochrome writing trend chart at the bottom.
-				a.viewDashboardTrendCard(c)
 
 				// Minimal quiet footer.
 				ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).PaddingY(2).Children(func() {
@@ -408,24 +398,6 @@ func (a *App) siteBookmarkChip(c *ui.Context, key, label string, site *store.Sit
 	}
 }
 
-func (a *App) viewDashboardTrendCard(c *ui.Context) {
-	pal := a.pal
-	_, paperBg, _, paperEdge, paperShadow := paperDeskColors(pal)
-	counts := make(map[string]int, len(a.activity))
-	for _, item := range a.activity {
-		counts[item.Date] = item.Articles + item.Drafts
-	}
-
-	ui.Column(c).AlignSelf(ui.Stretch).Padding(14, 16, 14, 16).Gap(10).
-		Background(paperBg).Radius(7).Border(0.5, paperEdge).Shadow(0, 1, 4, 0, paperShadow).Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, "写作趋势").Font(macPlanetFont).FontSize(12.5).FontWeight(600).TextColor(pal.ink)
-			macSegmented(c, "trend-range", &a.trendRange, []string{"30 天", "90 天", "1 年"}, pal)
-		})
-		a.viewActivityTrendChart(c, counts)
-	})
-}
-
 func (a *App) viewHeatmapGrid(c *ui.Context, counts map[string]int) {
 	pal := a.pal
 	const weeks = 36
@@ -493,76 +465,6 @@ func (a *App) viewHeatmapGrid(c *ui.Context, counts map[string]int) {
 			}
 		})
 	}
-}
-
-func (a *App) viewActivityTrendChart(c *ui.Context, counts map[string]int) {
-	pal := a.pal
-	_, paperBg, _, paperEdge, _ := paperDeskColors(pal)
-	days := 30
-	switch a.trendRange {
-	case trendRange90d:
-		days = 90
-	case trendRange1y:
-		days = 365
-	}
-
-	today := time.Now()
-	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.Local)
-	start := today.AddDate(0, 0, -(days - 1))
-
-	dates := make([]time.Time, days)
-	values := make([]float64, days)
-	maxVal := 1.0
-	for i := range days {
-		d := start.AddDate(0, 0, i)
-		dates[i] = d
-		v := float64(counts[d.Format("2006-01-02")])
-		values[i] = v
-		if v > maxVal {
-			maxVal = v
-		}
-	}
-
-	x := chart.NewTime(start, today)
-	y := chart.NewLinear(0, maxVal).Nice(4)
-	yTicks := y.Ticks(4)
-	xs := make([]float32, days)
-	ys := make([]float32, days)
-	for i := range days {
-		xs[i] = x.At(dates[i])
-		ys[i] = y.At(values[i])
-	}
-
-	labelFn := func(_ chart.Side, tick chart.Tick) {
-		ui.Text(c, tick.Label).NoWrap().FontSize(10.5).TextColor(pal.muted)
-	}
-
-	lineCol := pal.ink.Alpha(0.75)
-	areaCol := pal.ink.Alpha(0.08)
-
-	ui.Column(c).AlignSelf(ui.Stretch).Height(132).Children(func() {
-		chart.Plot(c.Key("trend-plot"), chart.Axes{Left: yTicks, Bottom: x.Ticks(5), Label: labelFn}, func(area ui.Element) {
-			area.Draw(func(p *ui.Painter, r ui.Rect) {
-				for _, tick := range yTicks {
-					py := chart.Y(r, tick.At)
-					p.Line(r.X, py, r.X+r.W, py, 0.5, paperEdge)
-				}
-				p.FillPath(chart.Area(r, xs, nil, ys, chart.CurveMonotone), areaCol)
-				p.StrokePath(chart.Line(r, xs, ys, chart.CurveMonotone), 1.8, lineCol)
-			})
-			describe := func(i int) string {
-				if i < 0 || i >= len(dates) {
-					return ""
-				}
-				return fmt.Sprintf("%s：%.0f 次", dates[i].Format("2006-01-02"), values[i])
-			}
-			chart.Select(c, area, &a.trendHoverPoint, xs, describe)
-			if i := a.trendHoverPoint; i >= 0 && i < len(xs) {
-				chart.RuleX(c, xs[i], 0.5).Background(pal.muted)
-				chart.Point(c, xs[i], ys[i], 7, 7).Radius(3.5).Background(pal.ink).Border(1.5, paperBg)
-			}
-		}).Label("写作趋势图").Fill().GapX(8).GapY(6)
-	})
 }
 
 func (a *App) viewComposePickerModal(c *ui.Context) {

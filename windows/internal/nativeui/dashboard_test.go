@@ -35,20 +35,6 @@ func TestNativeUIDashboardActivityModesAndTrendRanges(t *testing.T) {
 	if app.activityMode != activityModeCumulative {
 		t.Fatalf("expected cumulative mode, got %d", app.activityMode)
 	}
-
-	if err := tt.Click("90 天"); err != nil {
-		t.Fatalf("failed to switch trend range to 90d: %v", err)
-	}
-	if app.trendRange != trendRange90d {
-		t.Fatalf("expected 90d trend range, got %d", app.trendRange)
-	}
-
-	if err := tt.Click("1 年"); err != nil {
-		t.Fatalf("failed to switch trend range to 1y: %v", err)
-	}
-	if app.trendRange != trendRange1y {
-		t.Fatalf("expected 1y trend range, got %d", app.trendRange)
-	}
 }
 
 func TestNativeUIDashboardSiteFilterAndMultiSiteCompose(t *testing.T) {
