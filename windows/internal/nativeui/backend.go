@@ -96,7 +96,9 @@ type Backend interface {
 	AddDraftAttachment(ctx context.Context, siteID, draftID string) (store.Draft, error)
 	RemoveDraftAttachment(siteID, draftID, name string) (store.Draft, error)
 	SetDraftHeroImage(siteID, draftID, name string) (store.Draft, error)
+	CompressDraftVideo(siteID, draftID, name, preset string) (store.Draft, error)
 	SetArticlePinned(siteID, articleID string, pinned bool) (store.Article, error)
+	ToggleArticleTodo(siteID, articleID string, lineIndex int) (store.Article, error)
 	UpdateArticleSettings(siteID, articleID, slug string, articleType int, externalLink string, inNavigation bool, weight int) (store.Article, error)
 	UpdateArticleDate(siteID, articleID string, created time.Time) (store.Article, error)
 	SetArticleStar(siteID, articleID string, starred bool, starType int) (store.Article, error)
@@ -105,6 +107,7 @@ type Backend interface {
 	ImportArticle(ctx context.Context, siteID string) (store.Article, error)
 	DeleteArticle(siteID, articleID string) error
 	QuickPost(siteID, title, content, attachmentName, attachmentBase64 string) (store.Article, error)
+	PickQuickPostAttachment(ctx context.Context) (string, string, error)
 	Subscriptions() ([]store.Subscription, error)
 	Follow(address string) (store.Subscription, error)
 	RefreshSubscription(address string) (store.Subscription, error)

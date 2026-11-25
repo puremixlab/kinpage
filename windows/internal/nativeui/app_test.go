@@ -697,6 +697,33 @@ func (f *fakeBackend) QuickPost(siteID, title, content, _, _ string) (store.Arti
 	return art, nil
 }
 
+func (f *fakeBackend) PickQuickPostAttachment(_ context.Context) (string, string, error) {
+	return "clip.png", "aGVsbG8=", nil
+}
+
+func (f *fakeBackend) ToggleArticleTodo(siteID, articleID string, lineIndex int) (store.Article, error) {
+	for i := range f.articles {
+		if f.articles[i].SiteID == siteID && f.articles[i].ID == articleID {
+			updated, ok := store.ToggleMarkdownTodo(f.articles[i].Content, lineIndex)
+			if !ok {
+				return store.Article{}, fmt.Errorf("todo not found")
+			}
+			f.articles[i].Content = updated
+			return f.articles[i], nil
+		}
+	}
+	return store.Article{}, fmt.Errorf("article not found")
+}
+
+func (f *fakeBackend) CompressDraftVideo(siteID, draftID, _, _ string) (store.Draft, error) {
+	for _, d := range f.drafts {
+		if d.SiteID == siteID && d.ID == draftID {
+			return d, nil
+		}
+	}
+	return store.Draft{}, fmt.Errorf("draft not found")
+}
+
 func (f *fakeBackend) Subscriptions() ([]store.Subscription, error) {
 	out := make([]store.Subscription, len(f.subscriptions))
 	for i, s := range f.subscriptions {

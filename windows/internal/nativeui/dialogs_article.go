@@ -1,6 +1,7 @@
 package nativeui
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -271,35 +272,73 @@ func (a *App) viewDeleteArticleDialog(c *ui.Context) {
 }
 
 func (a *App) openQuickPost() {
-	if len(a.sites) == 0 {
+	var activeSites []store.Site
+	for _, s := range a.sites {
+		if !s.Archived {
+			activeSites = append(activeSites, s)
+		}
+	}
+	if len(activeSites) == 0 {
 		a.createSiteOpen = true
 		return
 	}
-	if a.quickPostSiteID == "" {
-		if a.selectedSiteID != "" {
-			a.quickPostSiteID = a.selectedSiteID
-		} else {
-			a.quickPostSiteID = a.sites[0].ID
+	validSelected := false
+	for _, s := range activeSites {
+		if s.ID == a.quickPostSiteID {
+			validSelected = true
+			break
+		}
+	}
+	if !validSelected {
+		a.quickPostSiteID = activeSites[0].ID
+		for _, s := range activeSites {
+			if s.ID == a.selectedSiteID {
+				a.quickPostSiteID = s.ID
+				break
+			}
 		}
 	}
 	a.quickPostTitle = ""
 	a.quickPostContent = ""
+	a.quickPostAttachmentName = ""
+	a.quickPostAttachmentB64 = ""
+	a.quickPostDiscardConfirm = false
 	a.quickPostErr = ""
 	a.quickPostOpen = true
 }
 
 func (a *App) viewQuickPostModal(c *ui.Context) {
 	pal := a.pal
+	if a.quickPostDiscardConfirm {
+		if macConfirmSheet(c, &a.quickPostDiscardConfirm,
+			"放弃未发布的快捷发文？",
+			"已输入的内容与附件将被清空。",
+			"继续编辑", "放弃", true, pal) {
+			a.quickPostOpen = false
+			a.quickPostTitle = ""
+			a.quickPostContent = ""
+			a.quickPostAttachmentName = ""
+			a.quickPostAttachmentB64 = ""
+		}
+		return
+	}
+	wasOpen := a.quickPostOpen
+	var activeSites []store.Site
+	for _, s := range a.sites {
+		if !s.Archived {
+			activeSites = append(activeSites, s)
+		}
+	}
 	if macSheet(c, &a.quickPostOpen, macSheetProps{
 		Title:       "快捷发文",
-		Width:       480,
+		Width:       500,
 		PrimaryText: "立即发布",
 		CancelText:  "取消",
 	}, pal, func() {
-		if len(a.sites) > 1 {
+		if len(activeSites) > 1 {
 			ui.Row(c).Gap(6).Wrap().AlignItems(ui.Center).Children(func() {
 				ui.Text(c, "发布到：").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
-				for _, s := range a.sites {
+				for _, s := range activeSites {
 					active := a.quickPostSiteID == s.ID
 					bg, fg := pal.subtle, pal.ink
 					if active {
@@ -321,24 +360,55 @@ func (a *App) viewQuickPostModal(c *ui.Context) {
 			})
 		}
 		ui.TextInput(c.Key("qp-title"), &a.quickPostTitle).Placeholder("标题（可选）").Label("快捷发文标题").AutoFocus().AlignSelf(ui.Stretch)
-		ui.TextArea(c.Key("qp-content"), &a.quickPostContent).Placeholder("输入 Markdown 内容…").Label("快捷发文正文").Lines(5, 10).AlignSelf(ui.Stretch)
+		ui.TextArea(c.Key("qp-content"), &a.quickPostContent).Placeholder("输入 Markdown 内容…").Label("快捷发文正文").Lines(5, 12).AlignSelf(ui.Stretch)
+		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(8).AlignSelf(ui.Stretch).Children(func() {
+			if macSecondaryButton(c, "qp-pick-att", "+ 添加媒体附件", pal) {
+				if a.backend != nil {
+					name, b64, err := a.backend.PickQuickPostAttachment(context.Background())
+					if err != nil {
+						a.quickPostErr = err.Error()
+					} else if name != "" {
+						a.quickPostAttachmentName = name
+						a.quickPostAttachmentB64 = b64
+						a.quickPostErr = ""
+					}
+				}
+			}
+			if a.quickPostAttachmentName != "" {
+				ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+					ui.Text(c, a.quickPostAttachmentName).Font(macPlanetFont).FontSize(12).TextColor(pal.secondary).MaxLines(1).Ellipsis("…")
+					if macSecondaryButton(c, "qp-rm-att", "移除", pal) {
+						a.quickPostAttachmentName = ""
+						a.quickPostAttachmentB64 = ""
+					}
+				})
+			}
+		})
 		if a.quickPostErr != "" {
 			ui.Text(c, a.quickPostErr).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
 		}
 	}) {
-		if strings.TrimSpace(a.quickPostTitle) == "" && strings.TrimSpace(a.quickPostContent) == "" {
-			a.quickPostErr = "请输入标题或正文内容"
+		if strings.TrimSpace(a.quickPostTitle) == "" && strings.TrimSpace(a.quickPostContent) == "" && a.quickPostAttachmentName == "" {
+			a.quickPostErr = "请输入标题、正文或添加附件"
 			return
 		}
-		art, err := a.backend.QuickPost(a.quickPostSiteID, strings.TrimSpace(a.quickPostTitle), a.quickPostContent, "", "")
+		art, err := a.backend.QuickPost(a.quickPostSiteID, strings.TrimSpace(a.quickPostTitle), a.quickPostContent, a.quickPostAttachmentName, a.quickPostAttachmentB64)
 		if err != nil {
 			a.quickPostErr = err.Error()
 			return
 		}
 		a.quickPostOpen = false
+		a.quickPostAttachmentName = ""
+		a.quickPostAttachmentB64 = ""
 		a.Reload()
 		a.openArticleForRead(a.quickPostSiteID, art.ID)
 		a.setStatus("快捷发文已发布：" + fallbackTitle(art.Title))
+	} else if wasOpen && !a.quickPostOpen {
+		hasDraft := strings.TrimSpace(a.quickPostTitle) != "" || strings.TrimSpace(a.quickPostContent) != "" || a.quickPostAttachmentName != ""
+		if hasDraft {
+			a.quickPostOpen = true
+			a.quickPostDiscardConfirm = true
+		}
 	}
 }
 

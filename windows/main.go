@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -916,6 +917,41 @@ func (l *Library) UpdateArticleSettings(siteID, articleID, slug string, articleT
 		return store.Article{}, err
 	}
 	return s.UpdateArticleSettings(siteID, articleID, slug, articleType, externalLink, inNavigation, weight)
+}
+
+func (l *Library) ToggleArticleTodo(siteID, articleID string, lineIndex int) (store.Article, error) {
+	s, err := l.open()
+	if err != nil {
+		return store.Article{}, err
+	}
+	return s.ToggleArticleTodo(siteID, articleID, lineIndex)
+}
+
+func (l *Library) CompressDraftVideo(siteID, draftID, name, preset string) (store.Draft, error) {
+	s, err := l.open()
+	if err != nil {
+		return store.Draft{}, err
+	}
+	root, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return store.Draft{}, err
+	}
+	return attachments.CompressDraftVideo(root, s, siteID, draftID, name, preset)
+}
+
+func (l *Library) PickQuickPostAttachment(ctx context.Context) (string, string, error) {
+	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "选择快捷发文附件（图片、视频或音频）"})
+	if err != nil || len(paths) == 0 {
+		return "", "", err
+	}
+	raw, err := os.ReadFile(paths[0])
+	if err != nil {
+		return "", "", err
+	}
+	if len(raw) > 100<<20 {
+		return "", "", errors.New("附件大小不能超过 100 MB")
+	}
+	return filepath.Base(paths[0]), base64.StdEncoding.EncodeToString(raw), nil
 }
 
 func (l *Library) SetArticlePinned(siteID, articleID string, pinned bool) (store.Article, error) {
@@ -3386,6 +3422,9 @@ func (l *Library) ExportWebsite(ctx context.Context, siteID string) (string, err
 		if err == nil {
 			for _, article := range articles {
 				if err = attachments.GenerateVideoThumbnail(root, *selected, article, dir); err != nil {
+					break
+				}
+				if err = attachments.GenerateGridThumbnails(root, *selected, article, dir); err != nil {
 					break
 				}
 			}

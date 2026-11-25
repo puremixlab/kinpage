@@ -121,11 +121,14 @@ type App struct {
 	deleteArticleTitle string
 
 	// Quick post modal state.
-	quickPostOpen    bool
-	quickPostSiteID  string
-	quickPostTitle   string
-	quickPostContent string
-	quickPostErr     string
+	quickPostOpen           bool
+	quickPostSiteID         string
+	quickPostTitle          string
+	quickPostContent        string
+	quickPostAttachmentName string
+	quickPostAttachmentB64  string
+	quickPostDiscardConfirm bool
+	quickPostErr            string
 
 	// Dashboard interaction state.
 	activityMode        int
