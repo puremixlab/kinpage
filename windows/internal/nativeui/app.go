@@ -146,6 +146,10 @@ type App struct {
 	integrations integrationsModalState
 	toolsModal   toolsModalState
 
+	// Native platform hooks (TTS & external browser preview).
+	speaker      Speaker
+	openExternal func(string) error
+
 	// Feedback status.
 	statusText  string
 	statusIsErr bool
@@ -166,9 +170,38 @@ func New(backend Backend) *App {
 		postsPanelWidth:  260,
 		editorSplitRatio: 50,
 		trendHoverPoint:  -1,
+		speaker:          newDefaultSpeaker(),
+		openExternal:     openBrowserFile,
 	}
 	a.Reload()
 	return a
+}
+
+// Close stops any active native background playback such as TTS.
+func (a *App) Close() {
+	if a.speaker != nil {
+		a.speaker.Stop()
+	}
+}
+
+func (a *App) toggleSpeak(title, body string) {
+	if a.speaker == nil {
+		return
+	}
+	if a.speaker.Speaking() {
+		a.speaker.Stop()
+		a.setStatus("已停止朗读")
+		return
+	}
+	text := strings.TrimSpace(title + "\n\n" + body)
+	if text == "" {
+		return
+	}
+	if err := a.speaker.Speak(text); err != nil {
+		a.setError("语音朗读失败：" + err.Error())
+		return
+	}
+	a.setStatus("正在使用系统语音朗读…")
 }
 
 // Reload refreshes the dashboard snapshot, writing activity, site list, and
@@ -878,6 +911,13 @@ func (a *App) viewArticleReader(c *ui.Context) {
 				pinLabel := "置顶"
 				if art.Pinned != nil {
 					pinLabel = "取消置顶"
+				}
+				speakLabel := "朗读"
+				if a.speaker != nil && a.speaker.Speaking() {
+					speakLabel = "停止朗读"
+				}
+				if ui.Button(c.Key("reader-speak"), speakLabel).Clicked() {
+					a.toggleSpeak(art.Title, art.Content)
 				}
 				if ui.Button(c.Key("reader-related"), "相关文章").Clicked() {
 					a.openRelatedArticles(art.SiteID, art.ID, "", "", art.Title)

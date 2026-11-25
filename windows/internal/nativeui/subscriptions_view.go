@@ -293,6 +293,13 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 						a.Reload()
 					}
 				}
+				speakLabel := "朗读"
+				if a.speaker != nil && a.speaker.Speaking() {
+					speakLabel = "停止朗读"
+				}
+				if ui.Button(c.Key("sub-speak"), speakLabel).Clicked() {
+					a.toggleSpeak(cur.item.Title, mdBody)
+				}
 				if ui.Button(c.Key("sub-related"), "相关文章").Clicked() {
 					a.openRelatedArticles("", "", subURL, key, cur.item.Title)
 				}

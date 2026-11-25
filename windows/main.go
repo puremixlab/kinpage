@@ -3276,9 +3276,10 @@ func main() {
 			Title: "Planet", Width: 1280, Height: 820, MinWidth: 860, MinHeight: 600,
 			BackgroundColor: "#f7f7f5", StateKey: "main",
 		}
+		var nativeApp *nativeui.App
 		if useNativeUI(os.Args[1:]) {
-			opts.Title = "Planet (Native)"
-			opts.Content = ui.View(nativeui.New(library).View)
+			nativeApp = nativeui.New(library)
+			opts.Content = ui.View(nativeApp.View)
 		} else {
 			opts.URL = "/"
 		}
@@ -3293,6 +3294,9 @@ func main() {
 				defer closing.Store(false)
 				result, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: win, Type: mygo.MessageQuestion, Title: "关闭 Planet", Message: "确定关闭窗口？", Detail: "尚未保存的文章更改将会丢失。", Buttons: []string{"取消", "关闭"}, DefaultButton: 0, CancelButton: 0})
 				if err == nil && result.Button == 1 {
+					if nativeApp != nil {
+						nativeApp.Close()
+					}
 					win.Destroy()
 				}
 			}()
@@ -3304,13 +3308,13 @@ func main() {
 }
 
 func useNativeUI(args []string) bool {
-	if os.Getenv("PLANET_NATIVE_UI") == "1" {
-		return true
+	if os.Getenv("PLANET_LEGACY_WEBVIEW") == "1" {
+		return false
 	}
 	for _, arg := range args {
-		if arg == "--native" {
-			return true
+		if arg == "--legacy-webview" {
+			return false
 		}
 	}
-	return false
+	return true
 }

@@ -304,6 +304,10 @@ func (f *fakeBackend) BuiltinTemplates() []templateinstall.Builtin {
 	return []templateinstall.Builtin{{ID: "plain", Name: "Plain", Description: "简洁文字博客"}}
 }
 
+func (f *fakeBackend) BuiltinTemplatePreview(id string) (string, error) {
+	return "<!doctype html><html><body><h1>" + id + "</h1></body></html>", nil
+}
+
 func (f *fakeBackend) ApplyBuiltinTemplate(siteID, id string) (store.Site, error) {
 	for i := range f.sites {
 		if f.sites[i].ID == siteID {

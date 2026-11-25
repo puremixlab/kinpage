@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -168,19 +170,24 @@ func (a *App) viewIntTemplates(c *ui.Context) {
 				ui.Text(c, tpl.Name).Bold().FontSize(13)
 				ui.Text(c, tpl.Description).FontSize(11).TextColor(t.TextMuted)
 			})
-			if ui.PrimaryButton(c.Key("tpl-apply-"+tpl.ID), "应用").Clicked() {
-				if site, err := a.backend.ApplyBuiltinTemplate(m.siteID, tpl.ID); err != nil {
-					m.err = err.Error()
-				} else {
-					m.templateName = site.TemplateName
-					m.err = ""
-					m.msg = "已应用模板：" + tpl.Name
-					if loaded, err := a.backend.TemplateSettings(m.siteID); err == nil && loaded != nil {
-						m.templateValues = loaded
-					}
-					a.Reload()
+			ui.Row(c).Gap(6).Shrink(0).Children(func() {
+				if ui.Button(c.Key("tpl-preview-"+tpl.ID), "预览").Clicked() {
+					a.previewBuiltinTemplate(tpl.ID, tpl.Name)
 				}
-			}
+				if ui.PrimaryButton(c.Key("tpl-apply-"+tpl.ID), "应用").Clicked() {
+					if site, err := a.backend.ApplyBuiltinTemplate(m.siteID, tpl.ID); err != nil {
+						m.err = err.Error()
+					} else {
+						m.templateName = site.TemplateName
+						m.err = ""
+						m.msg = "已应用模板：" + tpl.Name
+						if loaded, err := a.backend.TemplateSettings(m.siteID); err == nil && loaded != nil {
+							m.templateValues = loaded
+						}
+						a.Reload()
+					}
+				}
+			})
 		})
 	}
 
@@ -213,6 +220,35 @@ func (a *App) viewIntTemplates(c *ui.Context) {
 			}
 		}
 	}
+}
+
+func (a *App) previewBuiltinTemplate(id, name string) {
+	m := &a.integrations
+	htmlDoc, err := a.backend.BuiltinTemplatePreview(id)
+	if err != nil {
+		m.err = "生成模板预览失败：" + err.Error()
+		return
+	}
+	dir := filepath.Join(os.TempDir(), "planet-template-preview")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		m.err = err.Error()
+		return
+	}
+	target := filepath.Join(dir, id+".html")
+	if err := os.WriteFile(target, []byte(htmlDoc), 0o600); err != nil {
+		m.err = err.Error()
+		return
+	}
+	opener := a.openExternal
+	if opener == nil {
+		opener = openBrowserFile
+	}
+	if err := opener(target); err != nil {
+		m.err = "打开浏览器预览失败：" + err.Error()
+		return
+	}
+	m.err = ""
+	m.msg = "已在系统浏览器中打开模板预览：" + name
 }
 
 func (a *App) viewIntDeploy(c *ui.Context) {

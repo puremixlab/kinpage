@@ -47,6 +47,7 @@ type Backend interface {
 	PublishFolder(folderID string) (store.PublishedFolder, error)
 	RemovePublishedFolder(folderID string) error
 	BuiltinTemplates() []templateinstall.Builtin
+	BuiltinTemplatePreview(id string) (string, error)
 	ApplyBuiltinTemplate(siteID, id string) (store.Site, error)
 	SelectTemplate(ctx context.Context, siteID string) (store.Site, error)
 	TemplateSettings(siteID string) (map[string]string, error)
