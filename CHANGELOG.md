@@ -10,6 +10,7 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ### Changed
 
+- Refactored the Native UI (`windows/internal/nativeui`) to match the macOS Planet three-column layout: streamlined the sidebar header (toggle, AI assistant, and `⋯` tools menu without brand text), unified Smart Feeds with solid color icons, swapped the sidebar bottom bar to IPFS status popover on the left and a `+` New/Follow menu on the right, replaced the permanent list search bar with a filter menu and `Ctrl+F` toggleable search, unified article/draft/subscription rows with relative dates and outlined badges, converted detail and dashboard toolbars to icon-only macOS actions, removed the duplicate reader header action row, added native right-click context menus, top-attached macOS sheets, keyboard shortcuts (`Ctrl+N`, `Ctrl+D`, `Ctrl+E`, `Ctrl+F`), and persisted resizable sidebar/list widths.
 - Swapped the sidebar bottom bar order so the settings menu sits on the left and the IPFS node status button is pinned to the right edge, with the tools popup opening rightward within the sidebar.
 
 ## [0.0.1-alpha.6] - 2026-11-21

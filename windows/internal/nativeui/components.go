@@ -1,0 +1,439 @@
+package nativeui
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/action"
+	"github.com/lobehub/lobe-mygo/pkg/lucide"
+)
+
+// smartFeedIcon renders a macOS-style 18px solid colored icon inside a 22px slot.
+func smartFeedIcon(c *ui.Context, icon *ui.SVG, color ui.Color) {
+	ui.Box(c).Size(22, 22).Center().Shrink(0).Children(func() {
+		ui.Icon(c, icon).Size(17, 17).TextColor(color)
+	})
+}
+
+// toolbarIconBtn renders a 28px borderless icon button with a native tooltip.
+func toolbarIconBtn(c *ui.Context, key string, icon *ui.SVG, tooltip string) ui.Element {
+	return action.ActionIcon(c.Key(key), icon, action.ActionIconProps{
+		Variant:   action.ActionIconBorderless,
+		BlockSize: 28,
+		GlyphSize: 15,
+		Title:     tooltip,
+	}).Tooltip(tooltip)
+}
+
+// toolbarIconBtnColored renders a 28px borderless icon button with an explicit icon tint.
+func toolbarIconBtnColored(c *ui.Context, key string, icon *ui.SVG, color ui.Color, tooltip string, pal macPalette) ui.Element {
+	b := ui.ButtonBase(c.Key(key)).Label(tooltip).Size(28, 28).Radius(6).
+		Center().Cursor(ui.CursorPointer).Tooltip(tooltip).Transition(rowHoverTransition)
+	if b.Pressed() {
+		b.Background(pal.active)
+	} else if b.Hovered() {
+		b.Background(pal.hover)
+	}
+	b.Children(func() {
+		ui.Icon(c, icon).Size(15, 15).TextColor(color)
+	})
+	return b
+}
+
+type articleRowProps struct {
+	key         string
+	ariaLabel   string
+	title       string
+	summary     string
+	dateText    string
+	sourceLabel string
+	selected    bool
+	starred     bool
+	unread      bool
+	pinned      bool
+	isDraft     bool
+	isPage      bool
+	navWeight   int // >0 when included in navigation
+	attachments int
+}
+
+// articleRow renders a unified macOS Planet-style article list row (90px rhythm):
+// - Left 20px indicator gutter (star > unread dot > empty)
+// - Row 1: optional pin icon + single-line title + right-aligned date
+// - Row 2: 2-line summary excerpt
+// - Row 3: compact outlined badges / media indicators / source label
+func articleRow(c *ui.Context, p articleRowProps, pal macPalette) ui.Element {
+	restBg, hoverBg := ui.Transparent, pal.hover
+	titleColor := pal.ink
+	excerptColor := pal.secondary
+	metaColor := pal.muted
+	badgeBorder := pal.line
+	if p.selected {
+		restBg, hoverBg = pal.listSelected, pal.listSelected
+		titleColor = ui.Hex("#ffffff")
+		excerptColor = pal.listSelMuted
+		metaColor = pal.listSelMuted
+		badgeBorder = ui.RGBA(255, 255, 255, 0.35)
+	}
+
+	aria := p.ariaLabel
+	if aria == "" {
+		aria = p.title
+	}
+
+	row := interactiveRow(c, p.key, aria, restBg, hoverBg, pal.active).
+		MinHeight(84).Radius(7).Padding(9, 12, 9, 4).
+		Children(func() {
+			ui.Row(c).AlignItems(ui.Start).Gap(2).Grow(1).MinWidth(0).Children(func() {
+				// Left 18px gutter for star / unread dot so all titles stay vertically aligned.
+				ui.Box(c).Width(18).PaddingY(3).Center().Shrink(0).Children(func() {
+					switch {
+					case p.starred:
+						starCol := pal.yellow
+						if p.selected {
+							starCol = ui.Hex("#ffffff")
+						}
+						ui.Icon(c, iconStarSolid).Size(12, 12).TextColor(starCol)
+					case p.unread:
+						dotCol := pal.accent
+						if p.selected {
+							dotCol = ui.Hex("#ffffff")
+						}
+						ui.Box(c).Size(7, 7).Radius(3.5).Background(dotCol)
+					}
+				})
+
+				ui.Column(c).Gap(4).Grow(1).MinWidth(0).Children(func() {
+					// Row 1: Pin icon + single-line Title + right-aligned Date.
+					ui.Row(c).AlignItems(ui.Center).Gap(6).AlignSelf(ui.Stretch).Children(func() {
+						if p.pinned {
+							pinCol := pal.accent
+							if p.selected {
+								pinCol = ui.Hex("#ffffff")
+							}
+							ui.Icon(c, lucide.Pin()).Size(12, 12).TextColor(pinCol).Shrink(0)
+						}
+						ui.Text(c, p.title).Font(macPlanetFont).FontSize(13).FontWeight(600).
+							TextColor(titleColor).MaxLines(1).Ellipsis("…").Grow(1)
+						if p.dateText != "" {
+							ui.Text(c, p.dateText).Font(macPlanetFont).FontSize(12).
+								TextColor(metaColor).NoWrap().Shrink(0)
+						}
+					})
+
+					// Row 2: Summary excerpt (up to 2 lines).
+					if p.summary != "" {
+						ui.Text(c, p.summary).Font(macPlanetFont).FontSize(12.5).
+							TextColor(excerptColor).MaxLines(2).Ellipsis("…")
+					}
+
+					// Row 3: Compact metadata / media / source tags.
+					hasFooter := p.isDraft || p.isPage || p.navWeight > 0 || p.attachments > 0 || p.sourceLabel != ""
+					if hasFooter {
+						ui.Row(c).AlignItems(ui.Center).Gap(6).AlignSelf(ui.Stretch).Children(func() {
+							outlinedPill := func(text string) {
+								ui.Box(c).Padding(1, 5, 1, 5).Radius(4).Border(0.5, badgeBorder).Shrink(0).Children(func() {
+									ui.Text(c, text).Font(macPlanetFont).FontSize(10.5).TextColor(metaColor).NoWrap()
+								})
+							}
+							if p.isDraft {
+								outlinedPill("草稿")
+							}
+							if p.isPage {
+								outlinedPill("页面")
+							}
+							if p.navWeight > 0 {
+								outlinedPill(fmt.Sprintf("导航 %d", p.navWeight))
+							}
+							if p.attachments > 0 {
+								ui.Row(c).AlignItems(ui.Center).Gap(2).Shrink(0).Children(func() {
+									ui.Icon(c, lucide.Paperclip()).Size(11, 11).TextColor(metaColor)
+									ui.Text(c, fmt.Sprintf("%d", p.attachments)).Font(macPlanetFont).FontSize(11).TextColor(metaColor).NoWrap()
+								})
+							}
+							if p.sourceLabel != "" {
+								ui.Text(c, p.sourceLabel).Font(macPlanetFont).FontSize(11).
+									TextColor(metaColor).MaxLines(1).Ellipsis("…").Grow(1)
+							}
+						})
+					}
+				})
+			})
+		})
+
+	return row
+}
+
+// formatRelativeDate formats a timestamp in concise macOS Planet list style.
+func formatRelativeDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	now := time.Now().Local()
+	lt := t.Local()
+	ny, nm, nd := now.Date()
+	ly, lm, ld := lt.Date()
+	if ny == ly && nm == lm && nd == ld {
+		return lt.Format("15:04")
+	}
+	yesterday := now.AddDate(0, 0, -1)
+	yy, ym, yd := yesterday.Date()
+	if yy == ly && ym == lm && yd == ld {
+		return "昨天"
+	}
+	if ny == ly {
+		return fmt.Sprintf("%d月%d日", int(lm), ld)
+	}
+	return lt.Format("2006/01/02")
+}
+
+// formatReaderDate formats a full date/time string for the article reader header.
+func formatReaderDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Local().Format("2006年1月2日 15:04")
+}
+
+// formatFeedDate converts a feed Published string to a short date when possible.
+func formatFeedDate(raw string) string {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return ""
+	}
+	for _, layout := range []string{
+		time.RFC3339,
+		time.RFC1123Z,
+		time.RFC1123,
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+		"2006/01/02",
+	} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return formatRelativeDate(t)
+		}
+	}
+	return s
+}
+
+type macSheetProps struct {
+	Title       string
+	Width       float32
+	PrimaryText string
+	CancelText  string
+	HideFooter  bool
+	Danger      bool
+}
+
+// macPreferencesWindow renders a spacious, viewport-responsive macOS Sequoia
+// Preferences window (centered, up to 960x680, adapting cleanly to smaller viewports).
+func macPreferencesWindow(c *ui.Context, open *bool, maxWidth, maxHeight float32, pal macPalette, content func()) {
+	if open == nil || !*open {
+		return
+	}
+	if maxWidth <= 0 {
+		maxWidth = 960
+	}
+	if maxHeight <= 0 {
+		maxHeight = 680
+	}
+	dim := ui.RGBA(15, 23, 42, 0.28)
+	if pal.dark {
+		dim = ui.RGBA(0, 0, 0, 0.56)
+	}
+	ui.DialogBase(c, open, func(backdrop, panel ui.Element) {
+		backdrop.Center().Padding(28).Background(dim)
+		panel.WidthPercent(100).MaxWidth(maxWidth).HeightPercent(100).MaxHeight(maxHeight).
+			Radius(14).Background(pal.prefsCanvas).Border(0.5, pal.prefsCardBorder).
+			Shadow(0, 18, 44, 0, pal.shadowColor).Clip()
+		content()
+	})
+}
+
+// macInsetCard renders an elevated macOS Sequoia Inset Grouped settings card
+// (#ffffff floating on #f7f8fa canvas in light mode, #23252a on #18191c in dark mode).
+func macInsetCard(c *ui.Context, pal macPalette, content func()) {
+	ui.Column(c).Padding(16, 18, 16, 18).Gap(12).AlignSelf(ui.Stretch).
+		Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).Radius(10).
+		Shadow(0, 1, 3, 0, pal.prefsCardShadow).Children(content)
+}
+
+// macField renders a top-aligned settings field with clear label and optional hint.
+func macField(c *ui.Context, label, hint string, pal macPalette, input func()) {
+	ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(8).AlignSelf(ui.Stretch).Children(func() {
+			ui.Text(c, label).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsInk)
+			if hint != "" {
+				ui.Text(c, hint).Font(macPlanetFont).FontSize(11).TextColor(pal.prefsMuted)
+			}
+		})
+		input()
+	})
+}
+
+// prefsNavRow renders a macOS System Settings sidebar item with a soft-tinted
+// 20x20 rounded-square badge icon and an elevated active pill.
+func prefsNavRow(c *ui.Context, key, label string, selected bool, icon *ui.SVG, tint ui.Color, pal macPalette) bool {
+	rest := ui.Transparent
+	hover := pal.hover
+	active := pal.active
+	if selected {
+		rest = pal.prefsNavActiveBg
+		hover = pal.prefsNavActiveBg
+	}
+	badgeAlpha := float32(0.13)
+	if pal.dark {
+		badgeAlpha = 0.22
+	}
+	b := interactiveRow(c, key, label, rest, hover, active).
+		MinHeight(32).Radius(7).Padding(5, 8, 5, 8)
+	if selected {
+		b.Border(0.5, pal.prefsCardBorder).Shadow(0, 1, 2, 0, pal.prefsNavActiveShadow)
+	}
+	b.Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(9).Grow(1).MinWidth(0).Children(func() {
+			if icon != nil {
+				ui.Box(c).Size(20, 20).Radius(5).Background(tint.Alpha(badgeAlpha)).Center().Shrink(0).Children(func() {
+					ui.Icon(c, icon).Size(12, 12).TextColor(tint)
+				})
+			}
+			txt := ui.Text(c, label).Font(macPlanetFont).FontSize(13).TextColor(pal.prefsInk).Grow(1).NoWrap()
+			if selected {
+				txt.FontWeight(600)
+			}
+		})
+	})
+	return b.Clicked()
+}
+
+// prefsHairlineH renders a subtle 0.5px separator matching the Preferences palette.
+func prefsHairlineH(c *ui.Context, pal macPalette) {
+	ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
+}
+
+// macSheetFrame renders a bare macOS-style top-attached sheet frame (no inner
+// padding or footer), ideal for two-column Preferences sheets.
+func macSheetFrame(c *ui.Context, open *bool, width float32, pal macPalette, content func()) {
+	if open == nil || !*open {
+		return
+	}
+	if width <= 0 {
+		width = 520
+	}
+	dim := ui.RGBA(0, 0, 0, 0.24)
+	if pal.dark {
+		dim = ui.RGBA(0, 0, 0, 0.50)
+	}
+	ui.DialogBase(c, open, func(backdrop, panel ui.Element) {
+		backdrop.Justify(ui.Start).AlignItems(ui.Center).Padding(44, 16, 24, 16).Background(dim)
+		panel.Width(width).MaxWidthPercent(100).MaxHeightPercent(100).
+			Radius(10).Background(pal.canvas).Border(0.5, pal.line).
+			Shadow(0, 12, 32, 0, pal.shadowColor).Clip()
+		content()
+	})
+}
+
+// macConfirmSheet renders a compact macOS-style confirmation sheet.
+// Returns true on the frame the confirm button is clicked (and closes *open).
+func macConfirmSheet(c *ui.Context, open *bool, title, message, cancelText, confirmText string, danger bool, pal macPalette) bool {
+	confirmed := macSheet(c, open, macSheetProps{
+		Title:       title,
+		Width:       380,
+		PrimaryText: confirmText,
+		CancelText:  cancelText,
+		Danger:      danger,
+	}, pal, func() {
+		if message != "" {
+			ui.Text(c, message).Font(macPlanetFont).FontSize(13).TextColor(pal.secondary)
+		}
+	})
+	if confirmed {
+		*open = false
+	}
+	return confirmed
+}
+
+// macThreeActionSheet renders a macOS-style 3-action sheet (cancel, secondary, primary).
+// Returns 0 (none/cancelled), 1 (secondary), or 2 (primary).
+func macThreeActionSheet(c *ui.Context, open *bool, title, message, cancelText, secondaryText, primaryText string, pal macPalette) int {
+	result := 0
+	macSheet(c, open, macSheetProps{
+		Title:      title,
+		Width:      420,
+		HideFooter: true,
+	}, pal, func() {
+		if message != "" {
+			ui.Text(c, message).Font(macPlanetFont).FontSize(13).TextColor(pal.secondary)
+		}
+		ui.Row(c).Padding(8, 0, 0, 0).Gap(8).AlignItems(ui.Center).Justify(ui.End).AlignSelf(ui.Stretch).Children(func() {
+			if macSecondaryButton(c, "sheet3-cancel-"+title, cancelText, pal) {
+				*open = false
+				result = 0
+			}
+			if macSecondaryButton(c, "sheet3-sec-"+title, secondaryText, pal) {
+				*open = false
+				result = 1
+			}
+			if macPrimaryButtonSized(c, "sheet3-pri-"+title, primaryText, 30, 14, 13, pal) {
+				*open = false
+				result = 2
+			}
+		})
+	})
+	return result
+}
+
+// macSheet renders a macOS-style top-attached sheet hanging directly beneath
+// the 44px unified titlebar. Returns true on the frame the primary button is clicked.
+func macSheet(c *ui.Context, open *bool, p macSheetProps, pal macPalette, body func()) bool {
+	if open == nil || !*open {
+		return false
+	}
+	width := p.Width
+	if width <= 0 {
+		width = 480
+	}
+	submitted := false
+	macSheetFrame(c, open, width, pal, func() {
+		ui.Column(c).AlignSelf(ui.Stretch).Children(func() {
+			if p.Title != "" {
+				ui.Row(c).MinHeight(44).Padding(10, 16, 10, 16).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
+					ui.Text(c, p.Title).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink)
+					if toolbarIconBtn(c, "sheet-close-"+p.Title, lucide.X(), "关闭").Clicked() {
+						*open = false
+					}
+				})
+				hairlineH(c, pal)
+			}
+			ui.Scroll(c).Shrink(1).AlignSelf(ui.Stretch).Children(func() {
+				ui.Column(c).Padding(16).Gap(12).AlignSelf(ui.Stretch).Children(body)
+			})
+			if !p.HideFooter {
+				hairlineH(c, pal)
+				ui.Row(c).Padding(12, 16, 12, 16).Gap(8).AlignItems(ui.Center).Justify(ui.End).Background(pal.footer).AlignSelf(ui.Stretch).Children(func() {
+					if p.CancelText != "" {
+						if macSecondaryButton(c, "sheet-cancel-"+p.Title, p.CancelText, pal) {
+							*open = false
+						}
+					}
+					if p.PrimaryText != "" {
+						if p.Danger {
+							b := ui.ButtonBase(c.Key("sheet-ok-" + p.Title)).Label(p.PrimaryText).Height(30).PaddingX(14).Radius(6).
+								Center().Cursor(ui.CursorPointer).Background(pal.danger).Children(func() {
+								ui.Text(c, p.PrimaryText).Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(ui.Hex("#ffffff")).NoWrap()
+							})
+							if b.Clicked() {
+								submitted = true
+							}
+						} else if macPrimaryButtonSized(c, "sheet-ok-"+p.Title, p.PrimaryText, 30, 14, 13, pal) {
+							submitted = true
+						}
+					}
+				})
+			}
+		})
+	})
+	return submitted
+}

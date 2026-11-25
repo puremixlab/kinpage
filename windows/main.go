@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/ui"
 	"windows/internal/applog"
 	"windows/internal/attachments"
 	"windows/internal/audiostream"
@@ -25,6 +26,7 @@ import (
 	"windows/internal/ipfs"
 	"windows/internal/localapi"
 	"windows/internal/migration"
+	"windows/internal/nativeui"
 	"windows/internal/offline"
 	"windows/internal/pinnable"
 	"windows/internal/preview"
@@ -3270,10 +3272,33 @@ func main() {
 		}
 		maintenance.Add(1)
 		go func() { defer maintenance.Done(); library.maintainPublished(maintenanceCtx) }()
-		win := mygo.NewWindow(mygo.WindowOptions{
+		opts := mygo.WindowOptions{
 			Title: "Planet", Width: 1280, Height: 820, MinWidth: 860, MinHeight: 600,
-			BackgroundColor: "#f7f7f5", StateKey: "main", URL: "/",
-		})
+			BackgroundColor: "#f7f7f5", StateKey: "main",
+		}
+		var nativeApp *nativeui.App
+		if useNativeUI(os.Args[1:]) {
+			nativeApp = nativeui.New(library)
+			if root, err := mygo.App.Path(mygo.PathUserData); err == nil {
+				nativeApp.EnablePrefsPersistence(filepath.Join(root, "nativeui-layout.json"))
+			}
+			opts.TitleBarStyle = mygo.TitleBarHidden
+			opts.Content = ui.View(nativeApp.View)
+		} else {
+			opts.URL = "/"
+		}
+		win := mygo.NewWindow(opts)
+		if nativeApp != nil {
+			nativeApp.SetWebViewFactory(func() (nativeui.WebViewHost, error) {
+				wv, err := win.NewWebView(mygo.WebViewOptions{
+					Page: mygo.PageOptions{Untrusted: true},
+				})
+				if err != nil {
+					return nil, err
+				}
+				return &mygoWebViewHost{wv: wv}, nil
+			})
+		}
 		var closing atomic.Bool
 		win.OnClose(func(event *mygo.CloseEvent) {
 			event.PreventDefault()
@@ -3284,6 +3309,9 @@ func main() {
 				defer closing.Store(false)
 				result, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: win, Type: mygo.MessageQuestion, Title: "关闭 Planet", Message: "确定关闭窗口？", Detail: "尚未保存的文章更改将会丢失。", Buttons: []string{"取消", "关闭"}, DefaultButton: 0, CancelButton: 0})
 				if err == nil && result.Button == 1 {
+					if nativeApp != nil {
+						nativeApp.Close()
+					}
 					win.Destroy()
 				}
 			}()
@@ -3291,5 +3319,47 @@ func main() {
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func useNativeUI(args []string) bool {
+	if os.Getenv("PLANET_LEGACY_WEBVIEW") == "1" {
+		return false
+	}
+	for _, arg := range args {
+		if arg == "--legacy-webview" {
+			return false
+		}
+	}
+	return true
+}
+
+type mygoWebViewHost struct {
+	wv *mygo.WebView
+}
+
+func (h *mygoWebViewHost) Native() ui.NativeWebView {
+	if h == nil || h.wv == nil {
+		return nil
+	}
+	return h.wv
+}
+
+func (h *mygoWebViewHost) LoadHTML(html, baseURL string) {
+	if h != nil && h.wv != nil && !h.wv.IsDestroyed() {
+		h.wv.Page().LoadHTML(html, baseURL)
+	}
+}
+
+func (h *mygoWebViewHost) LoadURL(rawURL string) error {
+	if h == nil || h.wv == nil || h.wv.IsDestroyed() {
+		return nil
+	}
+	return h.wv.Page().LoadURL(rawURL)
+}
+
+func (h *mygoWebViewHost) Destroy() {
+	if h != nil && h.wv != nil && !h.wv.IsDestroyed() {
+		h.wv.Destroy()
 	}
 }
