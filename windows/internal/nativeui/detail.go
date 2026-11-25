@@ -75,6 +75,7 @@ func (a *App) viewArticleReader(c *ui.Context) {
 						HeaderMultiple:        0.65,
 						MarginMultiple:        1.2,
 						FullFeaturedCodeBlock: true,
+						LoadImage:             a.markdownImageLoader("", ""),
 					})
 				})
 			})

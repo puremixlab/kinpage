@@ -95,7 +95,14 @@ func (a *App) View(c *ui.Context) {
 	a.viewFoldersModal(c)
 	a.viewRemovedSitesModal(c)
 	a.viewToolsModal(c)
+	a.viewTemplatePreviewSheet(c)
 	a.viewUnsavedDialog(c)
+
+	// Release embedded subscription WebView when leaving subscription mode or returning to Reader View.
+	inSubMode := a.mode == viewToday || a.mode == viewUnread || a.mode == viewStarred || a.mode == viewSubscription
+	if (!inSubMode || !a.subShowWebView) && a.subWebView != nil {
+		a.destroySubWebView()
+	}
 
 	// macOS-style non-blocking floating toast notifications at bottom-right
 	// (never pushes article/dashboard content down).

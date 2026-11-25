@@ -3288,6 +3288,17 @@ func main() {
 			opts.URL = "/"
 		}
 		win := mygo.NewWindow(opts)
+		if nativeApp != nil {
+			nativeApp.SetWebViewFactory(func() (nativeui.WebViewHost, error) {
+				wv, err := win.NewWebView(mygo.WebViewOptions{
+					Page: mygo.PageOptions{Untrusted: true},
+				})
+				if err != nil {
+					return nil, err
+				}
+				return &mygoWebViewHost{wv: wv}, nil
+			})
+		}
 		var closing atomic.Bool
 		win.OnClose(func(event *mygo.CloseEvent) {
 			event.PreventDefault()
@@ -3321,4 +3332,34 @@ func useNativeUI(args []string) bool {
 		}
 	}
 	return true
+}
+
+type mygoWebViewHost struct {
+	wv *mygo.WebView
+}
+
+func (h *mygoWebViewHost) Native() ui.NativeWebView {
+	if h == nil || h.wv == nil {
+		return nil
+	}
+	return h.wv
+}
+
+func (h *mygoWebViewHost) LoadHTML(html, baseURL string) {
+	if h != nil && h.wv != nil && !h.wv.IsDestroyed() {
+		h.wv.Page().LoadHTML(html, baseURL)
+	}
+}
+
+func (h *mygoWebViewHost) LoadURL(rawURL string) error {
+	if h == nil || h.wv == nil || h.wv.IsDestroyed() {
+		return nil
+	}
+	return h.wv.Page().LoadURL(rawURL)
+}
+
+func (h *mygoWebViewHost) Destroy() {
+	if h != nil && h.wv != nil && !h.wv.IsDestroyed() {
+		h.wv.Destroy()
+	}
 }

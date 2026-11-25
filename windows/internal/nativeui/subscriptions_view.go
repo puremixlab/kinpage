@@ -300,11 +300,44 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 			return
 		}
 
+		baseURL := strings.TrimSpace(cur.item.Link)
+		if baseURL == "" {
+			baseURL = cur.subURL
+		}
+
+		// Optional embedded WebView original webpage mode (matching macOS Planet).
+		if a.subShowWebView && a.newWebView != nil && strings.TrimSpace(cur.item.Link) != "" {
+			if a.subWebView == nil {
+				if wv, err := a.newWebView(); err == nil && wv != nil {
+					a.subWebView = wv
+				} else {
+					a.subShowWebView = false
+				}
+			}
+			if a.subWebView != nil {
+				targetURL := strings.TrimSpace(cur.item.Link)
+				if a.subWebViewURL != targetURL {
+					a.subWebViewURL = targetURL
+					_ = a.subWebView.LoadURL(targetURL)
+				}
+				ui.Box(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+					if a.subWebView.Native() != nil {
+						ui.WebView(c, a.subWebView.Native()).Fill()
+					} else {
+						ui.Column(c).Fill().Center().Children(func() {
+							ui.Text(c, "原网页预览："+targetURL).Font(macPlanetFont).FontSize(13).TextColor(pal.muted)
+						})
+					}
+				})
+				return
+			}
+		}
+
 		body := cur.item.Content
 		if strings.TrimSpace(body) == "" {
 			body = cur.item.Description
 		}
-		mdBody := htmlToReadableMarkdown(body)
+		mdBody := htmlToReadableMarkdownWithBase(body, baseURL)
 
 		ui.Scroll(c).TrackScroll(&a.subReaderScroll).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
 			ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(36).PaddingY(28).Children(func() {
@@ -331,6 +364,7 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 							HeaderMultiple:        0.65,
 							MarginMultiple:        1.2,
 							FullFeaturedCodeBlock: true,
+							LoadImage:             a.markdownImageLoader(baseURL, ""),
 						})
 					}
 				})
@@ -569,6 +603,10 @@ func (a *App) jumpToSearchResult(res store.SearchResult) {
 // htmlToReadableMarkdown converts simple RSS/Atom HTML fragments into clean
 // Markdown suitable for native ui/markdown.View rendering without a WebView.
 func htmlToReadableMarkdown(raw string) string {
+	return htmlToReadableMarkdownWithBase(raw, "")
+}
+
+func htmlToReadableMarkdownWithBase(raw, baseURL string) string {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" || !strings.Contains(trimmed, "<") {
 		return trimmed
@@ -590,6 +628,54 @@ func htmlToReadableMarkdown(raw string) string {
 				return
 			case "br":
 				out.WriteString("\n")
+				return
+			case "img":
+				src := ""
+				alt := ""
+				for _, attr := range n.Attr {
+					key := strings.ToLower(attr.Key)
+					val := strings.TrimSpace(attr.Val)
+					switch key {
+					case "src":
+						if val != "" && !strings.HasPrefix(strings.ToLower(val), "data:image/svg+xml") {
+							src = val
+						}
+					case "data-src", "data-original", "data-lazy-src":
+						if src == "" && val != "" {
+							src = val
+						}
+					case "alt":
+						alt = val
+					}
+				}
+				if src != "" {
+					resolved := resolveRelativeURL(src, baseURL)
+					alt = strings.ReplaceAll(alt, "]", "\\]")
+					out.WriteString("\n\n![" + alt + "](" + resolved + ")\n\n")
+				}
+				return
+			case "figure":
+				out.WriteString("\n")
+				for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
+					walk(ch)
+				}
+				out.WriteString("\n")
+				return
+			case "figcaption":
+				var capText strings.Builder
+				var collectCap func(*html.Node)
+				collectCap = func(c *html.Node) {
+					if c.Type == html.TextNode {
+						capText.WriteString(c.Data)
+					}
+					for ch := c.FirstChild; ch != nil; ch = ch.NextSibling {
+						collectCap(ch)
+					}
+				}
+				collectCap(n)
+				if s := strings.TrimSpace(capText.String()); s != "" {
+					out.WriteString("\n*" + s + "*\n\n")
+				}
 				return
 			case "h1", "h2", "h3", "h4":
 				level := int(tag[1] - '0')

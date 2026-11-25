@@ -1,6 +1,8 @@
 package nativeui
 
 import (
+	"strings"
+
 	"github.com/egoist/mygo/ui"
 	"github.com/lobehub/lobe-mygo/pkg/lucide"
 )
@@ -367,6 +369,29 @@ func (a *App) viewDetailToolbarActions(c *ui.Context) {
 
 			if toolbarIconBtn(c, "sub-related", lucide.FileText(), "相关文章").Clicked() {
 				a.openRelatedArticles("", "", subURL, key, cur.item.Title)
+			}
+
+			if link := strings.TrimSpace(cur.item.Link); link != "" {
+				webIcon := lucide.Globe()
+				webLabel := "查看原网页"
+				webColor := pal.secondary
+				if a.subShowWebView {
+					webIcon = lucide.FileText()
+					webLabel = "切换阅读模式"
+					webColor = pal.accent
+				}
+				if toolbarIconBtnColored(c, "sub-toggle-web", webIcon, webColor, webLabel, pal).Clicked() {
+					if a.newWebView != nil {
+						a.subShowWebView = !a.subShowWebView
+						if !a.subShowWebView {
+							a.destroySubWebView()
+						}
+					} else if a.openExternal != nil {
+						if err := a.openExternal(link); err != nil {
+							a.setError("打开原网页失败：" + err.Error())
+						}
+					}
+				}
 			}
 		}
 		return

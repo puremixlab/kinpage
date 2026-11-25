@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/lucide"
 	"windows/internal/store"
 )
 
@@ -75,6 +76,14 @@ type integrationsModalState struct {
 	web3ETH        string
 	web3Juicebox   bool
 	web3JuiceboxID string
+}
+
+type templatePreviewState struct {
+	open     bool
+	name     string
+	htmlPath string
+	htmlDoc  string
+	wv       WebViewHost
 }
 
 func (a *App) loadIntegrationsState(site store.Site) {
@@ -212,6 +221,32 @@ func (a *App) previewBuiltinTemplate(id, name string) {
 		m.err = err.Error()
 		return
 	}
+
+	// Prefer in-app sandboxed WebView preview when host window supports it.
+	if a.newWebView != nil {
+		wv := a.templatePreview.wv
+		if wv == nil {
+			created, wvErr := a.newWebView()
+			if wvErr == nil && created != nil {
+				wv = created
+			}
+		}
+		if wv != nil {
+			wv.LoadHTML(htmlDoc, "")
+			a.templatePreview = templatePreviewState{
+				open:     true,
+				name:     name,
+				htmlPath: target,
+				htmlDoc:  htmlDoc,
+				wv:       wv,
+			}
+			m.err = ""
+			m.msg = ""
+			return
+		}
+	}
+
+	// Fallback to external browser in headless/unsupported environments.
 	opener := a.openExternal
 	if opener == nil {
 		opener = openBrowserFile
@@ -222,6 +257,58 @@ func (a *App) previewBuiltinTemplate(id, name string) {
 	}
 	m.err = ""
 	m.msg = "已在系统浏览器中打开模板预览：" + name
+}
+
+func (a *App) viewTemplatePreviewSheet(c *ui.Context) {
+	pal := a.pal
+	tp := &a.templatePreview
+	if !tp.open {
+		if tp.wv != nil {
+			a.destroyTemplatePreviewWV()
+		}
+		return
+	}
+	macPreferencesWindow(c, &tp.open, 1020, 720, pal, func() {
+		ui.Column(c).Fill().Background(pal.canvas).Children(func() {
+			ui.Row(c).Height(48).Padding(0, 14, 0, 20).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.prefsSidebar).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+					ui.Text(c, fallbackTitle(tp.name)).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.prefsInk)
+					ui.Box(c).Padding(2, 7, 2, 7).Radius(5).Background(pal.accent.Alpha(0.12)).Children(func() {
+						ui.Text(c, "模板预览").Font(macPlanetFont).FontSize(11).FontWeight(500).TextColor(pal.accent)
+					})
+				})
+				ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
+					if tp.htmlPath != "" {
+						if toolbarIconBtn(c, "tpl-preview-ext", lucide.ExternalLink(), "在浏览器中打开").Clicked() {
+							opener := a.openExternal
+							if opener == nil {
+								opener = openBrowserFile
+							}
+							if err := opener(tp.htmlPath); err != nil {
+								a.setError("打开外部浏览器失败：" + err.Error())
+							}
+						}
+					}
+					if toolbarIconBtn(c, "tpl-preview-close", lucide.X(), "关闭预览").Clicked() {
+						tp.open = false
+					}
+				})
+			})
+			prefsHairlineH(c, pal)
+			ui.Box(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+				if tp.wv != nil && tp.wv.Native() != nil {
+					ui.WebView(c, tp.wv.Native()).Fill()
+				} else {
+					ui.Column(c).Fill().Center().Children(func() {
+						ui.Text(c, "正在加载模板预览…").Font(macPlanetFont).FontSize(13).TextColor(pal.muted)
+					})
+				}
+			})
+		})
+	})
+	if !tp.open && tp.wv != nil {
+		a.destroyTemplatePreviewWV()
+	}
 }
 
 func (a *App) viewIntDeploy(c *ui.Context) {

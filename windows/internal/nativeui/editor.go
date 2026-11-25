@@ -106,6 +106,7 @@ func (a *App) viewMarkdownPreview(c *ui.Context, title, content string, scroll *
 					HeaderMultiple:        0.65,
 					MarginMultiple:        1.2,
 					FullFeaturedCodeBlock: true,
+					LoadImage:             a.markdownImageLoader("", ""),
 				})
 			}
 		})

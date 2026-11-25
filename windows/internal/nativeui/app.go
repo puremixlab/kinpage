@@ -156,12 +156,18 @@ type App struct {
 	removedSites removedSitesState
 
 	// Batch 3B & 3C modals state.
-	integrations integrationsModalState
-	toolsModal   toolsModalState
+	integrations    integrationsModalState
+	toolsModal      toolsModalState
+	templatePreview templatePreviewState
 
-	// Native platform hooks (TTS & external browser preview).
+	// Native platform hooks (TTS, external browser preview, embedded WebView, image loader).
 	speaker          Speaker
 	openExternal     func(string) error
+	newWebView       WebViewFactory
+	imgLoader        *imageLoader
+	subShowWebView   bool
+	subWebView       WebViewHost
+	subWebViewURL    string
 	pal              macPalette
 	bitmapCache      map[string]*ui.Bitmap
 	settingsMenuOpen bool
@@ -206,16 +212,19 @@ func New(backend Backend) *App {
 		trendHoverPoint:  -1,
 		speaker:          newDefaultSpeaker(),
 		openExternal:     openBrowserFile,
+		imgLoader:        newImageLoader(),
 	}
 	a.Reload()
 	return a
 }
 
-// Close stops any active native background playback such as TTS.
+// Close stops any active native background playback and releases embedded WebViews.
 func (a *App) Close() {
 	if a.speaker != nil {
 		a.speaker.Stop()
 	}
+	a.destroyTemplatePreviewWV()
+	a.destroySubWebView()
 }
 
 func (a *App) toggleSpeak(title, body string) {
@@ -535,7 +544,7 @@ func (a *App) anyModalOpen() bool {
 		a.siteSettings.open || a.siteSettings.removeConfirm ||
 		a.publishModal.open || a.ipfsModal.open || a.offlineModal.open ||
 		a.foldersModal.open || a.removedSites.open ||
-		a.toolsModal.open
+		a.toolsModal.open || a.templatePreview.open
 }
 
 func fallbackTitle(s string) string {
