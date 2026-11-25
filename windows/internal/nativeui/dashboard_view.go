@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/chart"
+	"github.com/lobehub/lobe-mygo/pkg/feedback"
 	"windows/internal/store"
 )
 
@@ -44,8 +45,8 @@ func (a *App) viewDashboard(c *ui.Context) {
 						ui.Text(c, "继续上次的思路，也开始新的记录。").Font(macPlanetFont).FontSize(12).TextColor(pal.secondary)
 					})
 					ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-						if ui.Button(c.Key("dash-search"), "").Label("搜索文章").Width(212).MinHeight(34).
-							Background(pal.canvas).Border(0.5, pal.controlLine).Radius(6).PaddingX(14).PaddingY(6).
+						if interactiveRow(c, "dash-search", "搜索文章", pal.canvas, pal.hover, pal.active).Width(212).MinHeight(34).
+							Border(0.5, pal.controlLine).Radius(6).PaddingX(14).PaddingY(6).
 							Children(func() {
 								ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
 									ui.Text(c, "搜索文章").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
@@ -124,8 +125,8 @@ func (a *App) viewDashboardDrafts(c *ui.Context) {
 			title := fallbackTitle(d.Title)
 			siteName := fallbackTitle(d.SiteName)
 			label := fmt.Sprintf("%s  ·  %s", title, siteName)
-			if ui.Button(c.Key("dash-draft-"+draftID), "").Label(label).AlignSelf(ui.Stretch).MinHeight(58).
-				Background(ui.Color{}).Border(0, ui.Color{}).Radius(6).PaddingX(12).PaddingY(10).
+			if interactiveRow(c, "dash-draft-"+draftID, label, ui.Transparent, pal.hover, pal.active).MinHeight(58).
+				Radius(6).PaddingX(12).PaddingY(10).
 				Children(func() {
 					ui.Row(c).AlignItems(ui.Center).Gap(12).AlignSelf(ui.Stretch).Children(func() {
 						ui.Icon(c, iconEdit).Size(17, 17).TextColor(pal.secondary).Shrink(0)
@@ -189,8 +190,8 @@ func (a *App) viewDashboardArticles(c *ui.Context) {
 			title := fallbackTitle(art.Title)
 			siteName := fallbackTitle(art.SiteName)
 			label := fmt.Sprintf("%s  ·  %s", title, siteName)
-			if ui.Button(c.Key("dash-art-"+artID), "").Label(label).AlignSelf(ui.Stretch).MinHeight(54).
-				Background(ui.Color{}).Border(0, ui.Color{}).Radius(6).PaddingX(12).PaddingY(10).
+			if interactiveRow(c, "dash-art-"+artID, label, ui.Transparent, pal.hover, pal.active).MinHeight(54).
+				Radius(6).PaddingX(12).PaddingY(10).
 				Children(func() {
 					ui.Row(c).AlignItems(ui.Center).Gap(12).AlignSelf(ui.Stretch).Children(func() {
 						ui.Icon(c, iconFile).Size(17, 17).TextColor(pal.muted).Shrink(0)
@@ -216,17 +217,21 @@ func (a *App) dashboardFilterTab(c *ui.Context, key, label string, active bool, 
 		color = pal.accent
 	}
 	ui.Column(c.Key(key)).Children(func() {
-		if ui.Button(c.Key(key+"-btn"), "").Label(label).
-			Background(ui.Color{}).Border(0, ui.Color{}).Radius(4).PaddingX(10).PaddingY(6).
-			Children(func() {
-				txt := ui.Text(c, label).FontSize(12).TextColor(color).NoWrap()
-				if active {
-					txt.Bold()
-				}
-			}).Clicked() {
+		tabBtn := ui.ButtonBase(c.Key(key + "-btn")).Label(label).
+			Radius(4).PaddingX(10).PaddingY(6).Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+		if tabBtn.Hovered() {
+			tabBtn.Background(pal.hover)
+		}
+		tabBtn.Children(func() {
+			txt := ui.Text(c, label).Font(macPlanetFont).FontSize(12).TextColor(color).NoWrap()
+			if active {
+				txt.FontWeight(500)
+			}
+		})
+		if tabBtn.Clicked() {
 			onClick()
 		}
-		barColor := ui.Color{}
+		barColor := ui.Transparent
 		if active {
 			barColor = pal.accent
 		}
@@ -265,8 +270,8 @@ func (a *App) viewDashboardSites(c *ui.Context) {
 					break
 				}
 			}
-			if ui.Button(c.Key("dash-site-row-"+site.ID), "").Label(fallbackTitle(site.Name)).AlignSelf(ui.Stretch).
-				Background(ui.Color{}).Border(0, ui.Color{}).Radius(6).PaddingX(8).PaddingY(10).
+			if interactiveRow(c, "dash-site-row-"+site.ID, fallbackTitle(site.Name), ui.Transparent, pal.hover, pal.active).
+				Radius(6).PaddingX(8).PaddingY(10).
 				Children(func() {
 					ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {
 						ui.Row(c).AlignItems(ui.Center).Gap(8).AlignSelf(ui.Stretch).Children(func() {
@@ -465,22 +470,28 @@ func (a *App) viewActivityTrendChart(c *ui.Context, counts map[string]int) {
 
 func (a *App) viewComposePickerModal(c *ui.Context) {
 	pal := a.pal
-	ui.Modal(c, &a.composePickerOpen, func() {
-		ui.Column(c).Width(360).Gap(12).Children(func() {
-			ui.Text(c, "选择要写作的站点").Bold().FontSize(16).TextColor(pal.ink)
-			ui.Text(c, "当前有多个站点，请选择新文章所属的站点：").FontSize(12).TextColor(pal.secondary)
-			ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {
-				for _, s := range a.sites {
-					siteID := s.ID
-					if ui.Button(c.Key("compose-pick-"+siteID), fallbackTitle(s.Name)).AlignSelf(ui.Stretch).Clicked() {
+	feedback.Modal(c, &a.composePickerOpen, feedback.ModalProps{
+		Title:    "选择要写作的站点",
+		Width:    380,
+		NoFooter: true,
+	}, func() {
+		ui.Column(c).Gap(10).AlignSelf(ui.Stretch).Children(func() {
+			ui.Text(c, "当前有多个站点，请选择新文章所属的站点：").Font(macPlanetFont).FontSize(12).TextColor(pal.secondary)
+			ui.Column(c).Gap(4).AlignSelf(ui.Stretch).Children(func() {
+				for i, s := range a.sites {
+					idx, site := i, s
+					siteID, siteName := site.ID, fallbackTitle(site.Name)
+					if interactiveRow(c, "compose-pick-"+siteID, siteName, pal.subtle, pal.hover, pal.active).
+						Radius(6).PaddingX(12).PaddingY(8).
+						Children(func() {
+							ui.Row(c).AlignItems(ui.Center).Gap(8).AlignSelf(ui.Stretch).Children(func() {
+								a.siteAvatar(c, site, idx, 22)
+								ui.Text(c, siteName).Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(pal.ink)
+							})
+						}).Clicked() {
 						a.composePickerOpen = false
 						a.startNewDraft(siteID)
 					}
-				}
-			})
-			ui.Row(c).Justify(ui.End).Children(func() {
-				if ui.Button(c.Key("compose-pick-cancel"), "取消").Clicked() {
-					a.composePickerOpen = false
 				}
 			})
 		})

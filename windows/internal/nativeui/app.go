@@ -10,6 +10,8 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
+	"github.com/lobehub/lobe-mygo/pkg/feedback"
+	"github.com/lobehub/lobe-mygo/pkg/overlay"
 	"windows/internal/store"
 )
 
@@ -594,8 +596,8 @@ func (a *App) viewSidebar(c *ui.Context) {
 				})
 			}
 			// Compact macOS search field with bordered <kbd> hint.
-			if ui.Button(c.Key("nav-search"), "").Label("搜索文章").AlignSelf(ui.Stretch).MinHeight(30).
-				Background(pal.searchBg).Border(0.5, pal.line).Radius(6).PaddingX(8).PaddingY(4).
+			if interactiveRow(c, "nav-search", "搜索文章", pal.searchBg, pal.hover, pal.active).
+				MinHeight(30).Border(0.5, pal.line).Radius(6).PaddingX(8).PaddingY(4).
 				Children(func() {
 					ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
 						ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
@@ -695,34 +697,39 @@ func (a *App) viewSidebar(c *ui.Context) {
 			if a.ipfsModal.status.Disabled {
 				dotColor = pal.muted
 			}
-			if ui.Button(c.Key("sys-ipfs"), "").Label("IPFS 节点").MinHeight(30).
-				Background(ui.Color{}).Border(0, ui.Color{}).Radius(6).PaddingX(6).
-				Children(func() {
-					ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
-						ui.Box(c).Size(9, 9).Radius(4.5).Background(dotColor)
-						ui.Text(c, "IPFS 节点").Font(macPlanetFont).FontSize(13).TextColor(pal.ink).NoWrap()
-					})
-				}).Clicked() {
+			ipfsBtn := ui.ButtonBase(c.Key("sys-ipfs")).Label("IPFS 节点").MinHeight(30).
+				Radius(6).PaddingX(6).Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+			if ipfsBtn.Hovered() {
+				ipfsBtn.Background(pal.hover)
+			}
+			ipfsBtn.Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+					ui.Box(c).Size(9, 9).Radius(4.5).Background(dotColor)
+					ui.Text(c, "IPFS 节点").Font(macPlanetFont).FontSize(13).TextColor(pal.ink).NoWrap()
+				})
+			})
+			if ipfsBtn.Clicked() {
 				a.openIPFSModal()
 			}
 
-			settingsAnchor := ui.Button(c.Key("sys-settings-menu"), "").Label("设置").MinHeight(30).
-				Background(ui.Color{}).Border(0, ui.Color{}).Radius(6).PaddingX(8).
-				Children(func() {
-					ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
-						ui.Text(c, "设置").Font(macPlanetFont).FontSize(12).TextColor(pal.secondary).NoWrap()
-						ui.Icon(c, iconSettings).Size(15, 15).TextColor(pal.secondary)
-					})
-				})
-			if settingsAnchor.Clicked() {
-				a.settingsMenuOpen = !a.settingsMenuOpen
+			settingsAnchor := ui.ButtonBase(c.Key("sys-settings-menu")).Label("设置").MinHeight(30).
+				Radius(6).PaddingX(8).Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+			if a.settingsMenuOpen {
+				settingsAnchor.Background(pal.active)
+			} else if settingsAnchor.Hovered() {
+				settingsAnchor.Background(pal.hover)
 			}
-			ui.Popover(c, settingsAnchor, &a.settingsMenuOpen, func() {
-				ui.Column(c).Width(208).Gap(2).Padding(6).Background(pal.canvas).Border(0.5, pal.line).Radius(10).
-					Shadow(0, 8, 24, 0, pal.popoverShadow).Children(func() {
+			settingsAnchor.Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
+					ui.Text(c, "设置").Font(macPlanetFont).FontSize(12).TextColor(pal.secondary).NoWrap()
+					ui.Icon(c, iconSettings).Size(15, 15).TextColor(pal.secondary)
+				})
+			})
+			overlay.Popover(c, settingsAnchor, &a.settingsMenuOpen, overlay.PopoverProps{Placement: overlay.Top}, func() {
+				ui.Column(c).Width(200).Gap(2).Children(func() {
 					menuItem := func(key, label string, onClick func()) {
-						if ui.Button(c.Key(key), "").Label(label).AlignSelf(ui.Stretch).MinHeight(30).
-							Background(ui.Color{}).Border(0, ui.Color{}).Radius(6).PaddingX(8).PaddingY(5).
+						if interactiveRow(c, key, label, ui.Transparent, pal.hover, pal.active).
+							MinHeight(30).Radius(6).PaddingX(8).PaddingY(5).
 							Children(func() {
 								ui.Row(c).AlignSelf(ui.Stretch).Children(func() {
 									ui.Text(c, label).Font(macPlanetFont).FontSize(13).TextColor(pal.ink).NoWrap()
@@ -819,19 +826,19 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 							continue
 						}
 						selected := a.editing && a.activeDraftID == draft.ID
-						cardBg := ui.Color{}
+						restBg, hoverBg := ui.Transparent, pal.hover
 						titleColor := pal.ink
 						excerptColor := pal.secondary
 						metaColor := pal.muted
 						if selected {
-							cardBg = pal.listSelected
+							restBg, hoverBg = pal.listSelected, pal.listSelected
 							titleColor = ui.Hex("#ffffff")
 							excerptColor = pal.listSelMuted
 							metaColor = pal.listSelMuted
 						}
 						snippet := excerptText(draft.Content, 56)
-						if ui.Button(c.Key("draft-"+draft.ID), "").Label("✎ "+title).AlignSelf(ui.Stretch).
-							Background(cardBg).Border(0, ui.Color{}).Radius(7).Padding(10, 12, 10, 22).
+						if interactiveRow(c, "draft-"+draft.ID, "✎ "+title, restBg, hoverBg, pal.active).
+							Radius(7).Padding(10, 12, 10, 22).
 							Children(func() {
 								ui.Column(c).Gap(3).AlignSelf(ui.Stretch).Children(func() {
 									ui.Text(c, "✎ "+title).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(titleColor).MaxLines(2).Ellipsis("…")
@@ -862,12 +869,12 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 						continue
 					}
 					selected := !a.editing && a.selectedReadID == artID
-					cardBg := ui.Color{}
+					restBg, hoverBg := ui.Transparent, pal.hover
 					titleColor := pal.ink
 					excerptColor := pal.secondary
 					metaColor := pal.muted
 					if selected {
-						cardBg = pal.listSelected
+						restBg, hoverBg = pal.listSelected, pal.listSelected
 						titleColor = ui.Hex("#ffffff")
 						excerptColor = pal.listSelMuted
 						metaColor = pal.listSelMuted
@@ -877,8 +884,8 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 						displayTitle = "📌 " + displayTitle
 					}
 					snippet := excerptText(art.Content, 56)
-					if ui.Button(c.Key("article-"+artID), "").Label(displayTitle).AlignSelf(ui.Stretch).
-						Background(cardBg).Border(0, ui.Color{}).Radius(7).Padding(10, 12, 10, 22).
+					if interactiveRow(c, "article-"+artID, displayTitle, restBg, hoverBg, pal.active).
+						Radius(7).Padding(10, 12, 10, 22).
 						Children(func() {
 							ui.Column(c).Gap(3).AlignSelf(ui.Stretch).Children(func() {
 								ui.Text(c, displayTitle).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(titleColor).MaxLines(2).Ellipsis("…")
@@ -948,34 +955,34 @@ func (a *App) viewEditor(c *ui.Context) {
 				maxW = 1440
 			}
 			ui.Column(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).MaxWidth(maxW).PaddingX(32).PaddingY(24).Gap(12).Children(func() {
-				// 26px SemiBold borderless title input directly on the white canvas.
-				ui.TextInput(c.Key("editor-title"), &a.editorTitle).
+				// 26px SemiBold truly borderless paper title input (ui.TextInputBase).
+				ui.TextInputBase(c.Key("editor-title"), &a.editorTitle).
 					Placeholder("输入文章标题…").Label("文章标题").
-					Font(macPlanetFont).FontSize(26).FontWeight(600).
-					Background(ui.Color{}).Border(0, ui.Color{}).Padding(0).
+					Font(macPlanetFont).FontSize(26).FontWeight(600).TextColor(pal.ink).
+					Background(ui.Transparent).Border(0, ui.Transparent).Padding(0).FocusRing(false).
 					AlignSelf(ui.Stretch)
 
-				// Metadata floating popover trigger + Mac Planet segmented view switch.
+				// Metadata floating popover trigger + lobe-mygo animated Segmented switch.
 				ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Shrink(0).Children(func() {
 					metaSummary := fmt.Sprintf("标签与附件   %d 个标签 / %d 个附件", len(a.editorTags), len(a.editorAttachments))
 					metaBg := pal.subtle
 					if a.editorMetaOpen {
 						metaBg = pal.selection
 					}
-					metaAnchor := ui.Button(c.Key("editor-meta-toggle"), "").Label("元数据").
-						Background(metaBg).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(4).
-						Children(func() {
-							ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
-								ui.Text(c, metaSummary).Font(macPlanetFont).FontSize(12).TextColor(pal.secondary).NoWrap()
-								ui.Icon(c, iconChevronDown).Size(12, 12).TextColor(pal.muted)
-							})
-						})
-					if metaAnchor.Clicked() {
-						a.editorMetaOpen = !a.editorMetaOpen
+					metaAnchor := ui.ButtonBase(c.Key("editor-meta-toggle")).Label("元数据").
+						Background(metaBg).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(5).
+						Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+					if !a.editorMetaOpen && metaAnchor.Hovered() {
+						metaAnchor.Background(pal.hover)
 					}
-					ui.Popover(c, metaAnchor, &a.editorMetaOpen, func() {
-						ui.Column(c).Width(380).Background(pal.canvas).Border(0.5, pal.line).Radius(10).
-							Shadow(0, 8, 24, 0, pal.popoverShadow).Children(func() {
+					metaAnchor.Children(func() {
+						ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+							ui.Text(c, metaSummary).Font(macPlanetFont).FontSize(12).TextColor(pal.secondary).NoWrap()
+							ui.Icon(c, iconChevronDown).Size(12, 12).TextColor(pal.muted)
+						})
+					})
+					overlay.Popover(c, metaAnchor, &a.editorMetaOpen, overlay.PopoverProps{Placement: overlay.Bottom}, func() {
+						ui.Column(c).Width(360).Children(func() {
 							a.viewEditorMetadata(c)
 						})
 					})
@@ -1115,39 +1122,37 @@ func (a *App) viewArticleReader(c *ui.Context) {
 }
 
 func (a *App) viewCreateSiteModal(c *ui.Context) {
-	t := c.Theme()
-	ui.Modal(c, &a.createSiteOpen, func() {
-		ui.Column(c).Width(360).Gap(12).Children(func() {
-			ui.Text(c, "新建站点").Bold().FontSize(16)
+	pal := a.pal
+	if feedback.Modal(c, &a.createSiteOpen, feedback.ModalProps{
+		Title:      "新建站点",
+		Width:      440,
+		OkText:     "创建",
+		CancelText: "取消",
+	}, func() {
+		ui.Column(c).Gap(12).AlignSelf(ui.Stretch).Children(func() {
 			ui.TextInput(c.Key("modal-site-name"), &a.newSiteName).Placeholder("站点名称").Label("站点名称").AutoFocus().AlignSelf(ui.Stretch)
 			ui.TextArea(c.Key("modal-site-about"), &a.newSiteAbout).Placeholder("站点简介（可选）").Label("站点简介").Lines(2, 4).AlignSelf(ui.Stretch)
 			if a.createSiteError != "" {
-				ui.Text(c, a.createSiteError).FontSize(12).TextColor(t.Danger)
+				ui.Text(c, a.createSiteError).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
 			}
-			ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
-				if ui.Button(c.Key("modal-site-cancel"), "取消").Clicked() {
-					a.createSiteOpen = false
-				}
-				if ui.PrimaryButton(c.Key("modal-site-submit"), "创建").Clicked() {
-					name := strings.TrimSpace(a.newSiteName)
-					if name == "" {
-						a.createSiteError = "请输入站点名称"
-						return
-					}
-					site, err := a.backend.CreateSite(name, strings.TrimSpace(a.newSiteAbout))
-					if err != nil {
-						a.createSiteError = err.Error()
-						return
-					}
-					a.createSiteOpen = false
-					a.createSiteError = ""
-					a.Reload()
-					a.selectSite(site.ID)
-					a.setStatus("已创建站点：" + site.Name)
-				}
-			})
 		})
-	})
+	}) {
+		name := strings.TrimSpace(a.newSiteName)
+		if name == "" {
+			a.createSiteError = "请输入站点名称"
+			return
+		}
+		site, err := a.backend.CreateSite(name, strings.TrimSpace(a.newSiteAbout))
+		if err != nil {
+			a.createSiteError = err.Error()
+			return
+		}
+		a.createSiteOpen = false
+		a.createSiteError = ""
+		a.Reload()
+		a.selectSite(site.ID)
+		a.setStatus("已创建站点：" + site.Name)
+	}
 }
 
 func fallbackTitle(s string) string {

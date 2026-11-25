@@ -7,10 +7,18 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
+	"github.com/lobehub/lobe-mygo/pkg/action"
+	"github.com/lobehub/lobe-mygo/pkg/theme"
 	"windows/internal/store"
 )
 
 const macPlanetFont = "Segoe UI"
+
+var rowHoverTransition = ui.ElementTransition{
+	Duration: 120 * time.Millisecond,
+	Ease:     ui.CubicBezier(0.2, 0, 0, 1),
+	Colors:   true,
+}
 
 type macPalette struct {
 	dark            bool
@@ -111,26 +119,63 @@ func paletteFor(dark bool) macPalette {
 	}
 }
 
+func buildLobeTokens(pal macPalette) theme.Tokens {
+	var tk theme.Tokens
+	if pal.dark {
+		tk = *theme.Dark()
+	} else {
+		tk = *theme.Light()
+	}
+	// Map Planet Windows Mac-Planet WebView palette directly onto lobe-mygo tokens.
+	tk.BgBase = pal.canvas
+	tk.BgLayout = pal.subtle
+	tk.BgContainer = pal.canvas
+	tk.BgContainerSecondary = pal.subtle
+	tk.BgElevated = pal.canvas
+	tk.Border = pal.controlLine
+	tk.BorderSecondary = pal.line
+	tk.Fill = pal.active
+	tk.FillSecondary = pal.hover
+	tk.FillTertiary = pal.subtle
+	tk.FillQuaternary = pal.line
+	tk.Text = pal.ink
+	tk.TextSecondary = pal.secondary
+	tk.TextTertiary = pal.muted
+	tk.TextQuaternary = pal.muted
+	tk.TextPlaceholder = pal.muted
+	tk.Icon = pal.secondary
+	tk.IconHover = pal.ink
+	tk.Primary = pal.accent
+	tk.PrimaryHover = pal.accentHover
+	tk.PrimaryActive = pal.accentActive
+	tk.PrimaryForeground = ui.Hex("#ffffff")
+	tk.PrimaryBg = pal.selection
+	tk.PrimaryBorder = pal.accent
+	tk.Info = pal.accent
+	tk.Success = pal.green
+	tk.Warning = pal.amber
+	tk.Error = pal.danger
+	tk.BorderRadius = 6
+	tk.BorderRadiusSM = 6
+	tk.BorderRadiusLG = 8
+	tk.FontSize = 13
+	return tk
+}
+
+var planetLobeTheme = theme.NewConfig(buildLobeTokens(paletteFor(false)), buildLobeTokens(paletteFor(true)))
+
 func applyMacPlanetTheme(c *ui.Context) macPalette {
-	base := c.Theme()
-	pal := paletteFor(base.Dark)
-	t := *base
+	planetLobeTheme.Apply(c)
+	pal := paletteFor(c.Theme().Dark)
+	// Keep ui.Theme's background/surface pure canvas so scroll areas and inputs stay crisp.
+	t := *c.Theme()
 	t.Background = pal.canvas
 	t.Surface = pal.canvas
 	t.SurfaceHover = pal.subtle
 	t.SurfacePressed = pal.sidebarSelected
 	t.Border = pal.line
-	t.Text = pal.ink
-	t.TextMuted = pal.muted
-	t.Accent = pal.accent
-	t.AccentHover = pal.accentHover
-	t.AccentPressed = pal.accentActive
-	t.AccentText = ui.Hex("#ffffff")
 	t.Selection = pal.selection
 	t.Focus = pal.accent
-	t.Success = pal.green
-	t.Warning = pal.amber
-	t.Danger = pal.danger
 	t.Radius = 6
 	c.SetTheme(&t)
 	return pal
@@ -200,13 +245,32 @@ func (a *App) subAvatar(c *ui.Context, sub store.Subscription, size float32, pal
 	})
 }
 
-func sidebarNavRow(c *ui.Context, key, label string, selected bool, badge int, leading func(), pal macPalette) bool {
-	bg := ui.Color{}
-	if selected {
-		bg = pal.sidebarSelected
+// interactiveRow creates a truly borderless clickable row using ui.ButtonBase
+// with smooth Mac Planet hover/pressed transitions (zero unwanted default chrome).
+func interactiveRow(c *ui.Context, key, ariaLabel string, restBg, hoverBg, activeBg ui.Color) ui.Element {
+	b := ui.ButtonBase(c.Key(key)).Label(ariaLabel).AlignSelf(ui.Stretch).
+		Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+	bg := restBg
+	switch {
+	case b.Pressed():
+		bg = activeBg
+	case b.Hovered():
+		bg = hoverBg
 	}
-	btn := ui.Button(c.Key(key), "").Label(label).AlignSelf(ui.Stretch).MinHeight(30).
-		Background(bg).Border(0, ui.Color{}).Radius(6).PaddingX(8).PaddingY(5).
+	b.Background(bg)
+	return b
+}
+
+func sidebarNavRow(c *ui.Context, key, label string, selected bool, badge int, leading func(), pal macPalette) bool {
+	rest := ui.Transparent
+	hover := pal.hover
+	active := pal.active
+	if selected {
+		rest = pal.sidebarSelected
+		hover = pal.sidebarSelected
+	}
+	b := interactiveRow(c, key, label, rest, hover, active).
+		MinHeight(30).Radius(6).PaddingX(8).PaddingY(5).
 		Children(func() {
 			ui.Row(c).AlignItems(ui.Center).Gap(8).AlignSelf(ui.Stretch).Children(func() {
 				if leading != nil {
@@ -223,67 +287,43 @@ func sidebarNavRow(c *ui.Context, key, label string, selected bool, badge int, l
 				}
 			})
 		})
-	return btn.Clicked()
+	return b.Clicked()
 }
 
-func macIconButton(c *ui.Context, key string, icon *ui.SVG, boxSize, iconSize float32, tint ui.Color, ariaLabel string) bool {
-	return ui.Button(c.Key(key), "").Label(ariaLabel).Size(boxSize, boxSize).
-		Background(ui.Color{}).Border(0, ui.Color{}).Radius(6).Center().
-		Children(func() {
-			ui.Icon(c, icon).Size(iconSize, iconSize).TextColor(tint)
-		}).Clicked()
+// macIconButton wraps lobe-mygo's action.ActionIcon for crisp hover/press transitions.
+func macIconButton(c *ui.Context, key string, icon *ui.SVG, boxSize, iconSize float32, _ ui.Color, ariaLabel string) bool {
+	return action.ActionIcon(c.Key(key), icon, action.ActionIconProps{
+		Variant:   action.ActionIconBorderless,
+		BlockSize: boxSize,
+		GlyphSize: iconSize,
+		Title:     ariaLabel,
+	}).Clicked()
 }
 
-func ghostIconButton(c *ui.Context, key, text, ariaLabel string, pal macPalette) bool {
-	return ui.Button(c.Key(key), "").Label(ariaLabel).MinHeight(28).
-		Background(ui.Color{}).Border(0, ui.Color{}).Radius(6).PaddingX(8).PaddingY(4).
-		Children(func() {
-			ui.Text(c, text).Font(macPlanetFont).FontSize(12).TextColor(pal.secondary).NoWrap()
-		}).Clicked()
+func ghostIconButton(c *ui.Context, key, text, ariaLabel string, _ macPalette) bool {
+	return action.Button(c.Key(key), text, action.ButtonProps{
+		Variant: action.Text,
+		Size:    theme.Small,
+	}).Label(ariaLabel).Clicked()
 }
 
-func macPrimaryButton(c *ui.Context, key, label string, pal macPalette) bool {
-	return ui.Button(c.Key(key), "").Label(label).MinHeight(30).
-		Background(pal.accent).Border(0, ui.Color{}).Radius(6).PaddingX(14).PaddingY(5).
-		Shadow(0, 0.5, 1, 0, ui.RGBA(0, 122, 255, 0.25)).
-		Children(func() {
-			ui.Text(c, label).Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(ui.Hex("#ffffff")).NoWrap()
-		}).Clicked()
+func macPrimaryButton(c *ui.Context, key, label string, _ macPalette) bool {
+	return action.Button(c.Key(key), label, action.ButtonProps{
+		Variant: action.Primary,
+	}).Clicked()
 }
 
-func macSecondaryButton(c *ui.Context, key, label string, pal macPalette) bool {
-	return ui.Button(c.Key(key), "").Label(label).MinHeight(30).
-		Background(pal.canvas).Border(0.5, pal.controlLine).Radius(6).PaddingX(12).PaddingY(5).
-		Shadow(0, 0.5, 1, 0, ui.RGBA(0, 0, 0, 0.05)).
-		Children(func() {
-			ui.Text(c, label).Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(pal.ink).NoWrap()
-		}).Clicked()
+func macSecondaryButton(c *ui.Context, key, label string, _ macPalette) bool {
+	return action.Button(c.Key(key), label, action.ButtonProps{
+		Variant: action.Default,
+	}).Clicked()
 }
 
-// macSegmented mirrors .view-switch in mac-planet.css:870-886:
-// subtle track, 0.5px border, 7px radius, pure white shadowed active pill.
-func macSegmented(c *ui.Context, key string, selected *int, labels []string, pal macPalette) {
-	ui.Row(c.Key(key)).Padding(2).Gap(2).Background(pal.subtle).Border(0.5, pal.line).Radius(7).Shrink(0).Children(func() {
-		for i, lbl := range labels {
-			idx := i
-			active := *selected == idx
-			bg := ui.Color{}
-			fg := pal.muted
-			btn := ui.Button(c.Key(fmt.Sprintf("%s-%d", key, idx)), "").Label(lbl).
-				Border(0, ui.Color{}).Radius(5).PaddingX(10).PaddingY(4)
-			if active {
-				bg = pal.canvas
-				fg = pal.ink
-				btn.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.10))
-			}
-			btn.Background(bg).Children(func() {
-				txt := ui.Text(c, lbl).Font(macPlanetFont).FontSize(12).FontWeight(500).TextColor(fg).NoWrap()
-				_ = txt
-			})
-			if btn.Clicked() {
-				*selected = idx
-			}
-		}
+// macSegmented uses lobe-mygo's animated sliding-pill Segmented component.
+func macSegmented(c *ui.Context, key string, selected *int, options []string, _ macPalette) {
+	action.Segmented(c.Key(key), selected, options, action.SegmentedProps{
+		Variant: action.SegmentedFilled,
+		Size:    theme.Small,
 	})
 }
 

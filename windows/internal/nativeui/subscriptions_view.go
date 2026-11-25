@@ -252,12 +252,12 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 					subURL, key := entry.subURL, entry.effective
 					title := fallbackTitle(entry.item.Title)
 					selected := a.selectedSubItemSubURL == subURL && a.selectedSubItemKey == key
-					cardBg := ui.Color{}
+					restBg, hoverBg := ui.Transparent, pal.hover
 					titleColor := pal.ink
 					excerptColor := pal.secondary
 					metaColor := pal.muted
 					if selected {
-						cardBg = pal.listSelected
+						restBg, hoverBg = pal.listSelected, pal.listSelected
 						titleColor = ui.Hex("#ffffff")
 						excerptColor = pal.listSelMuted
 						metaColor = pal.listSelMuted
@@ -268,8 +268,8 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 					}
 					snippet := excerptText(htmlToReadableMarkdown(rawBody), 56)
 					// Dedicated 22px left unread gutter so all titles align vertically.
-					if ui.Button(c.Key("subitem-"+subURL+"-"+key), "").Label(title).AlignSelf(ui.Stretch).
-						Background(cardBg).Border(0, ui.Color{}).Radius(7).Padding(10, 12, 10, 6).
+					if interactiveRow(c, "subitem-"+subURL+"-"+key, title, restBg, hoverBg, pal.active).
+						Radius(7).Padding(10, 12, 10, 6).
 						Children(func() {
 							ui.Row(c).AlignItems(ui.Start).Gap(0).AlignSelf(ui.Stretch).Children(func() {
 								ui.Box(c).Width(16).PaddingY(5).Center().Shrink(0).Children(func() {
