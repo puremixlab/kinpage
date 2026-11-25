@@ -170,10 +170,12 @@ type App struct {
 	prefsPath        string
 	lastSavedPrefs   layoutPrefs
 
-	// Feedback status.
-	statusText  string
-	statusIsErr bool
-	loaded      bool
+	// Feedback status (dispatched as non-blocking macOS bottom-right toasts).
+	statusText     string
+	statusIsErr    bool
+	statusSeq      int
+	shownStatusSeq int
+	loaded         bool
 }
 
 // New creates a native UI application bound to backend and loads initial data.
@@ -297,16 +299,19 @@ func (a *App) loadSiteItems(siteID string) {
 func (a *App) setStatus(msg string) {
 	a.statusText = msg
 	a.statusIsErr = false
+	a.statusSeq++
 }
 
 func (a *App) setError(msg string) {
 	a.statusText = msg
 	a.statusIsErr = true
+	a.statusSeq++
 }
 
 func (a *App) clearStatus() {
 	a.statusText = ""
 	a.statusIsErr = false
+	a.shownStatusSeq = a.statusSeq
 }
 
 func (a *App) isEditorDirty() bool {

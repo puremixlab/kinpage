@@ -288,9 +288,6 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 	pal := a.pal
 	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
 		a.viewDetailToolbar(c, true)
-		if a.statusText != "" {
-			a.viewStatusBar(c)
-		}
 		cur, ok := a.currentSubItem()
 		if !ok {
 			ui.Column(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Center().Children(func() {

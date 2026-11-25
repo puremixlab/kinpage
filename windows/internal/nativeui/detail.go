@@ -13,9 +13,6 @@ import (
 func (a *App) viewDetailPane(c *ui.Context) {
 	ui.Column(c).Fill().Background(a.pal.canvas).Children(func() {
 		a.viewDetailToolbar(c, true)
-		if a.statusText != "" {
-			a.viewStatusBar(c)
-		}
 		ui.Column(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
 			if a.editing {
 				a.viewEditor(c)

@@ -2,6 +2,7 @@ package nativeui
 
 import (
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/lobehub/lobe-mygo/pkg/feedback"
@@ -95,32 +96,30 @@ func (a *App) View(c *ui.Context) {
 	a.viewRemovedSitesModal(c)
 	a.viewToolsModal(c)
 	a.viewUnsavedDialog(c)
-	a.maybeSaveLayoutPrefs()
-}
 
-func (a *App) viewStatusBar(c *ui.Context) {
-	alertType := feedback.Info
-	if a.statusIsErr {
-		alertType = feedback.Error
-	}
-	closed := false
-	ui.Box(c).AlignSelf(ui.Stretch).Padding(8, 16, 0, 16).Shrink(0).Children(func() {
-		feedback.Alert(c.Key("status-alert"), a.statusText, feedback.AlertProps{
-			Type:    alertType,
-			Variant: feedback.Soft,
-			Closed:  &closed,
+	// macOS-style non-blocking floating toast notifications at bottom-right
+	// (never pushes article/dashboard content down).
+	if a.statusSeq != a.shownStatusSeq && a.statusText != "" {
+		a.shownStatusSeq = a.statusSeq
+		typ := feedback.ToastSuccess
+		timeout := 3 * time.Second
+		if a.statusIsErr {
+			typ = feedback.ToastError
+			timeout = 6 * time.Second
+		}
+		feedback.ShowToast(c, feedback.ToastProps{
+			Title:   a.statusText,
+			Type:    typ,
+			Timeout: timeout,
 		})
-	})
-	if closed {
-		a.clearStatus()
 	}
+	feedback.ToastHost(c, feedback.ToastHostProps{Placement: feedback.ToastBottomRight})
+
+	a.maybeSaveLayoutPrefs()
 }
 
 func (a *App) viewDashboardPane(c *ui.Context) {
 	a.viewDetailToolbar(c, true)
-	if a.statusText != "" {
-		a.viewStatusBar(c)
-	}
 	a.viewDashboard(c)
 }
 
