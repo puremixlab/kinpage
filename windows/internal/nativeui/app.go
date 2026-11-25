@@ -10,8 +10,13 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
+	"github.com/lobehub/lobe-mygo/pkg/display"
 	"github.com/lobehub/lobe-mygo/pkg/feedback"
+	"github.com/lobehub/lobe-mygo/pkg/field"
+	"github.com/lobehub/lobe-mygo/pkg/lucide"
+	lobemd "github.com/lobehub/lobe-mygo/pkg/markdown"
 	"github.com/lobehub/lobe-mygo/pkg/overlay"
+	"github.com/lobehub/lobe-mygo/pkg/theme"
 	"windows/internal/store"
 )
 
@@ -566,20 +571,21 @@ func (a *App) anyModalOpen() bool {
 }
 
 func (a *App) viewStatusBar(c *ui.Context) {
-	t := c.Theme()
-	bg := t.Surface
-	fg := t.TextMuted
+	alertType := feedback.Info
 	if a.statusIsErr {
-		bg = ui.RGBA(220, 38, 38, 0.12)
-		fg = t.Danger
+		alertType = feedback.Error
 	}
-	ui.Row(c).AlignSelf(ui.Stretch).PaddingX(14).PaddingY(6).Gap(8).AlignItems(ui.Center).Background(bg).Children(func() {
-		ui.Text(c, a.statusText).FontSize(12).TextColor(fg).Grow(1)
-		if ui.Button(c.Key("dismiss-status"), "关闭").Clicked() {
-			a.clearStatus()
-		}
+	closed := false
+	ui.Box(c).AlignSelf(ui.Stretch).Padding(8, 16, 0, 16).Shrink(0).Children(func() {
+		feedback.Alert(c.Key("status-alert"), a.statusText, feedback.AlertProps{
+			Type:    alertType,
+			Variant: feedback.Soft,
+			Closed:  &closed,
+		})
 	})
-	ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
+	if closed {
+		a.clearStatus()
+	}
 }
 
 func (a *App) viewSidebar(c *ui.Context) {
@@ -797,6 +803,15 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 		})
 		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
 
+		// Live filter SearchBar using lobe-mygo pkg/field.
+		ui.Box(c).Padding(8, 10, 4, 10).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+			field.SearchBar(c.Key("posts-filter"), &a.postSearchQuery, field.SearchBarProps{
+				Placeholder: "筛选本站文章…",
+				Variant:     field.InputFilled,
+				Size:        theme.Small,
+			})
+		})
+
 		ui.Scroll(c).TrackScroll(&a.postsListScroll).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).PaddingX(8).PaddingY(6).Gap(0).Children(func() {
 				if len(a.drafts) > 0 {
@@ -819,15 +834,19 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 						}
 						snippet := excerptText(draft.Content, 56)
 						if interactiveRow(c, "draft-"+draft.ID, "✎ "+title, restBg, hoverBg, pal.active).
-							Radius(7).Padding(10, 12, 10, 22).
+							Radius(7).Padding(10, 12, 10, 14).
 							Children(func() {
 								ui.Column(c).Gap(3).AlignSelf(ui.Stretch).Children(func() {
-									ui.Text(c, "✎ "+title).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(titleColor).MaxLines(2).Ellipsis("…")
+									ui.Text(c, title).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(titleColor).MaxLines(2).Ellipsis("…")
 									if snippet != "" {
 										ui.Text(c, snippet).Font(macPlanetFont).FontSize(12).TextColor(excerptColor).MaxLines(2).Ellipsis("…")
 									}
 									ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-										ui.Text(c, "草稿").Font(macPlanetFont).FontSize(11).TextColor(metaColor)
+										if selected {
+											ui.Text(c, "草稿").Font(macPlanetFont).FontSize(11).TextColor(metaColor)
+										} else {
+											display.Tag(c, "草稿", display.TagProps{Color: display.TagInfo, Size: theme.Small})
+										}
 										ui.Text(c, formatSlashDate(draft.Modified)).Font(macPlanetFont).FontSize(11).TextColor(metaColor)
 									})
 								})
@@ -835,13 +854,19 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 							a.guardUnsaved(func() { a.openDraft(draft) })
 						}
 						if !selected {
-							ui.Box(c).Padding(0, 12, 0, 22).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
+							ui.Box(c).Padding(0, 12, 0, 14).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
 						}
 					}
 				}
 
 				if len(a.articles) == 0 && len(a.drafts) == 0 {
-					ui.Text(c, "暂无文章").Font(macPlanetFont).FontSize(12).TextColor(pal.muted).PaddingX(14).PaddingY(12)
+					ui.Box(c).PaddingY(32).AlignSelf(ui.Stretch).Children(func() {
+						display.Empty(c, display.EmptyProps{
+							Icon:        lucide.FileText(),
+							Title:       "暂无文章",
+							Description: "点击上方编辑图标开始创作",
+						})
+					})
 				}
 				for _, art := range a.articles {
 					artID := art.ID
@@ -978,9 +1003,19 @@ func (a *App) viewMarkdownPreview(c *ui.Context, title, content string, scroll *
 				ui.Text(c, title).Font(macPlanetFont).FontSize(28).FontWeight(700).LetterSpacing(-0.02).TextColor(pal.ink)
 			}
 			if strings.TrimSpace(content) == "" {
-				ui.Text(c, "预览区域为空，输入 Markdown 内容后将实时渲染。").Font(macPlanetFont).FontSize(13).TextColor(pal.muted)
+				display.Empty(c, display.EmptyProps{
+					Icon:        lucide.Eye(),
+					Title:       "预览区域为空",
+					Description: "输入 Markdown 内容后将实时渲染",
+				})
 			} else {
-				markdown.View(c, content, &a.markdownOpts)
+				lobemd.Markdown(c, content, lobemd.MarkdownProps{
+					FontSize:              15,
+					LineHeight:            1.8,
+					HeaderMultiple:        0.65,
+					MarginMultiple:        1.2,
+					FullFeaturedCodeBlock: true,
+				})
 			}
 		})
 	})
@@ -990,13 +1025,19 @@ func (a *App) viewArticleReader(c *ui.Context) {
 	pal := a.pal
 	art := a.currentArticle()
 	if art == nil {
-		ui.Column(c).Fill().Background(pal.canvas).Center().Gap(12).Children(func() {
-			ui.Text(c, "选择一篇文章阅读，或点击左侧编辑图标开始创作").Font(macPlanetFont).FontSize(13).TextColor(pal.muted)
-			if site := a.currentSite(); site != nil {
-				if macPrimaryButton(c, "empty-compose", "写新文章", pal) {
-					a.startNewDraft(site.ID)
-				}
-			}
+		ui.Column(c).Fill().Background(pal.canvas).Center().Children(func() {
+			display.Empty(c, display.EmptyProps{
+				Icon:        lucide.BookOpen(),
+				Title:       "选择一篇文章开始阅读",
+				Description: "或创建一篇新文章，草稿会先安全保存在本地",
+				Action: func() {
+					if site := a.currentSite(); site != nil {
+						if macPrimaryButton(c, "empty-compose", "写新文章", pal) {
+							a.startNewDraft(site.ID)
+						}
+					}
+				},
+			})
 		})
 		return
 	}
@@ -1055,7 +1096,13 @@ func (a *App) viewArticleReader(c *ui.Context) {
 						})
 					})
 					hairlineH(c, pal)
-					markdown.View(c, art.Content, &a.markdownOpts)
+					lobemd.Markdown(c, art.Content, lobemd.MarkdownProps{
+						FontSize:              15,
+						LineHeight:            1.8,
+						HeaderMultiple:        0.65,
+						MarginMultiple:        1.2,
+						FullFeaturedCodeBlock: true,
+					})
 				})
 			})
 		})

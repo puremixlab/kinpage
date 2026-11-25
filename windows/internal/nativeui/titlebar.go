@@ -3,11 +3,12 @@ package nativeui
 import (
 	"github.com/egoist/mygo/ui"
 	"github.com/lobehub/lobe-mygo/pkg/action"
+	"github.com/lobehub/lobe-mygo/pkg/display"
 	"github.com/lobehub/lobe-mygo/pkg/lucide"
 	"github.com/lobehub/lobe-mygo/pkg/theme"
 )
 
-const defaultTitleBarHeight float32 = 42
+const defaultTitleBarHeight float32 = 44
 
 func (a *App) viewTitleBar(c *ui.Context) {
 	pal := a.pal
@@ -27,22 +28,23 @@ func (a *App) viewTitleBar(c *ui.Context) {
 
 	ui.Row(c).Height(height).Shrink(0).AlignSelf(ui.Stretch).AlignItems(ui.Stretch).
 		Background(pal.canvas).DragWindow().Children(func() {
-		// Left zone: matches 228px sidebar surface (#ececec) seamlessly down into the sidebar.
+		// Left zone: macOS PlanetSidebarView top bar (228px #ececec seamlessly flowing into sidebar).
 		leftBg := pal.canvas
 		if !a.sidebarCollapsed {
 			leftBg = pal.sidebar
 		}
-		leftZone := ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(6).
-			Background(leftBg).Padding(0, 10, 0, leftPad).Shrink(0)
+		leftZone := ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(4).
+			Background(leftBg).Padding(0, 8, 0, leftPad).Shrink(0)
 		if !a.sidebarCollapsed && bar.Left == 0 {
 			leftZone.Width(228)
 		}
 		leftZone.Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(7).Children(func() {
 				ui.Icon(c, iconPlanet).Size(20, 20).TextColor(pal.ink)
-				ui.Text(c, "Planet").Font(macPlanetFont).FontSize(15).FontWeight(600).TextColor(pal.ink).NoWrap()
+				ui.Text(c, "Planet").Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).NoWrap()
 			})
 			ui.Row(c).AlignItems(ui.Center).Gap(2).Children(func() {
+				// macOS PlanetSidebarView toolbar: Sidebar toggle + Sparkles AI Chat button.
 				sbIcon := lucide.PanelLeftClose()
 				sbTitle := "收起侧边栏"
 				if a.sidebarCollapsed {
@@ -54,10 +56,10 @@ func (a *App) viewTitleBar(c *ui.Context) {
 				}).Clicked() {
 					a.sidebarCollapsed = !a.sidebarCollapsed
 				}
-				if a.mode != viewOverview {
-					if macIconButton(c, "tb-toggle-posts", iconSidebar, 24, 14, pal.secondary, "切换文章列表") {
-						a.postsCollapsed = !a.postsCollapsed
-					}
+				if action.ActionIcon(c.Key("tb-ai-sparkles"), lucide.Sparkles(), action.ActionIconProps{
+					Variant: action.ActionIconBorderless, Size: theme.Small, Title: "AI 助手",
+				}).Clicked() {
+					a.openToolsModal(toolsTabAI)
 				}
 			})
 		})
@@ -66,21 +68,34 @@ func (a *App) viewTitleBar(c *ui.Context) {
 			ui.Box(c).Width(1).AlignSelf(ui.Stretch).Background(pal.line)
 		}
 
-		// Right main top bar: pure white canvas (#ffffff) matching main WebView workspace.
-		ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Justify(ui.SpaceBetween).
-			Background(pal.canvas).Padding(0, rightPad, 0, 16).DragWindow().Children(func() {
-			// Center-left compact search pill (Ctrl K).
-			ui.Row(c).Grow(1).MinWidth(0).Justify(ui.Center).AlignItems(ui.Center).PaddingX(8).Children(func() {
+		// Right main workspace top bar: pure white canvas (#ffffff) matching macOS ArticleView toolbar.
+		ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(10).
+			Background(pal.canvas).Padding(0, rightPad, 0, 12).DragWindow().Children(func() {
+			// Leading: list-pane toggle + current workspace context label.
+			ui.Row(c).AlignItems(ui.Center).Gap(8).Shrink(0).Children(func() {
+				if a.mode != viewOverview {
+					if macIconButton(c, "tb-toggle-posts", iconSidebar, 26, 15, pal.secondary, "切换文章列表") {
+						a.postsCollapsed = !a.postsCollapsed
+					}
+					if ctxTitle := a.titleBarContextTitle(); ctxTitle != "" {
+						ui.Text(c, ctxTitle).Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(pal.secondary).NoWrap()
+					}
+				}
+			})
+
+			// Center: compact global search pill using lobe-mygo display.Hotkey.
+			ui.Row(c).Grow(1).MinWidth(0).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
 				if interactiveRow(c, "tb-search", "搜索文章", pal.subtle, pal.hover, pal.active).
-					Width(220).MinHeight(28).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(3).
+					Width(224).MinHeight(28).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(3).
 					Children(func() {
 						ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
 							ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
 								ui.Icon(c, iconSearch).Size(13, 13).TextColor(pal.muted)
 								ui.Text(c, "搜索文章").Font(macPlanetFont).FontSize(12).TextColor(pal.muted).NoWrap()
 							})
-							ui.Box(c).PaddingX(4).PaddingY(1).Border(0.5, pal.line).Radius(4).Children(func() {
-								ui.Text(c, "Ctrl K").Font(macPlanetFont).FontSize(10).FontWeight(500).TextColor(pal.muted).NoWrap()
+							display.Hotkey(c, "mod+k", display.HotkeyProps{
+								Variant: display.HotkeyOutlined,
+								Size:    theme.Small,
 							})
 						})
 					}).Clicked() {
@@ -88,13 +103,14 @@ func (a *App) viewTitleBar(c *ui.Context) {
 				}
 			})
 
-			// Right zone: restrained context-aware primary actions (padded safely left of bar.Right).
+			// Trailing: context-aware primary actions (padded safely left of bar.Right).
 			ui.Row(c).AlignItems(ui.Center).Gap(6).Shrink(0).Children(func() {
 				a.viewTitleBarActions(c)
 			})
 		})
 	})
-	// Only draw divider under the right canvas side when sidebar is open, so sidebar flows seamlessly.
+
+	// Seamless divider: sidebar flows uninterrupted; workspace gets a crisp 1px hairline when not on Overview.
 	ui.Row(c).Height(1).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 		if !a.sidebarCollapsed {
 			ui.Box(c).Width(228).Height(1).Background(pal.sidebar)
@@ -106,6 +122,29 @@ func (a *App) viewTitleBar(c *ui.Context) {
 			ui.Box(c).Grow(1).Height(1).Background(pal.canvas)
 		}
 	})
+}
+
+func (a *App) titleBarContextTitle() string {
+	switch a.mode {
+	case viewSite:
+		if a.editing {
+			return "撰写文章"
+		}
+		if site := a.currentSite(); site != nil {
+			return fallbackTitle(site.Name)
+		}
+	case viewToday:
+		return "今天"
+	case viewUnread:
+		return "未读"
+	case viewStarred:
+		return "收藏"
+	case viewSubscription:
+		if sub := a.currentSubscription(); sub != nil {
+			return subscriptionTitle(*sub)
+		}
+	}
+	return ""
 }
 
 func (a *App) viewTitleBarActions(c *ui.Context) {
@@ -130,11 +169,11 @@ func (a *App) viewTitleBarActions(c *ui.Context) {
 		}
 
 		if a.editing {
-			saveStateText := "草稿已保存（未发布）"
 			if a.isEditorDirty() {
-				saveStateText = "有未保存更改"
+				display.Tag(c, "未保存", display.TagProps{Color: display.TagWarning, Size: theme.Small})
+			} else {
+				display.Tag(c, "已保存本地", display.TagProps{Size: theme.Small})
 			}
-			ui.Text(c, saveStateText).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
 			if action.Button(c.Key("editor-save"), "保存草稿", action.ButtonProps{Variant: action.Default, Size: theme.Small}).Clicked() {
 				a.saveCurrentDraft()
 			}

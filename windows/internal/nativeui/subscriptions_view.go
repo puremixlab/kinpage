@@ -6,7 +6,11 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/markdown"
+	"github.com/lobehub/lobe-mygo/pkg/display"
+	"github.com/lobehub/lobe-mygo/pkg/field"
+	"github.com/lobehub/lobe-mygo/pkg/lucide"
+	lobemd "github.com/lobehub/lobe-mygo/pkg/markdown"
+	"github.com/lobehub/lobe-mygo/pkg/theme"
 	"golang.org/x/net/html"
 	"windows/internal/feeds"
 	"windows/internal/store"
@@ -201,10 +205,24 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 		})
 		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
 
+		ui.Box(c).Padding(8, 10, 4, 10).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+			field.SearchBar(c.Key("sub-filter"), &a.subSearchQuery, field.SearchBarProps{
+				Placeholder: "筛选订阅条目…",
+				Variant:     field.InputFilled,
+				Size:        theme.Small,
+			})
+		})
+
 		ui.Scroll(c).TrackScroll(&a.postsListScroll).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).PaddingX(8).PaddingY(6).Gap(0).Children(func() {
 				if len(items) == 0 {
-					ui.Text(c, "暂无符合条件的订阅内容").Font(macPlanetFont).FontSize(12).TextColor(pal.muted).PaddingX(14).PaddingY(12)
+					ui.Box(c).PaddingY(32).AlignSelf(ui.Stretch).Children(func() {
+						display.Empty(c, display.EmptyProps{
+							Icon:        lucide.Inbox(),
+							Title:       "暂无订阅内容",
+							Description: "尝试切换分类或刷新订阅源",
+						})
+					})
 				}
 				for _, entry := range items {
 					subURL, key := entry.subURL, entry.effective
@@ -273,8 +291,12 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 	pal := a.pal
 	cur, ok := a.currentSubItem()
 	if !ok {
-		ui.Column(c).Fill().Background(pal.canvas).Center().Gap(8).Children(func() {
-			ui.Text(c, "从左侧选择一篇订阅文章开始阅读").FontSize(13).TextColor(pal.muted)
+		ui.Column(c).Fill().Background(pal.canvas).Center().Children(func() {
+			display.Empty(c, display.EmptyProps{
+				Icon:        lucide.BookOpen(),
+				Title:       "选择一篇订阅文章",
+				Description: "从左侧列表点击任意条目即可开始阅读",
+			})
 		})
 		return
 	}
@@ -326,9 +348,18 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 					}
 					hairlineH(c, pal)
 					if strings.TrimSpace(mdBody) == "" {
-						ui.Text(c, "该订阅条目没有正文内容。").Font(macPlanetFont).FontSize(13).TextColor(pal.muted)
+						display.Empty(c, display.EmptyProps{
+							Icon:  lucide.FileText(),
+							Title: "该订阅条目没有正文内容",
+						})
 					} else {
-						markdown.View(c, mdBody, &a.markdownOpts)
+						lobemd.Markdown(c, mdBody, lobemd.MarkdownProps{
+							FontSize:              15,
+							LineHeight:            1.8,
+							HeaderMultiple:        0.65,
+							MarginMultiple:        1.2,
+							FullFeaturedCodeBlock: true,
+						})
 					}
 				})
 			})

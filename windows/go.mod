@@ -9,6 +9,7 @@ require (
 	github.com/ethereum/go-ethereum v1.17.10
 	github.com/flosch/pongo2/v6 v6.1.0
 	github.com/ipfs/go-cid v0.6.2
+	github.com/lobehub/lobe-mygo v0.0.0-20261116124832-d88b4ad7f238
 	github.com/mmcdole/gofeed v1.5.0
 	github.com/yuin/goldmark v1.8.7
 	golang.org/x/net v0.62.0
@@ -37,7 +38,6 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
-	github.com/lobehub/lobe-mygo v0.0.0-20261116124832-d88b4ad7f238 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mmcdole/goxpp/v2 v2.0.0 // indirect
 	github.com/mr-tron/base58 v1.3.0 // indirect
@@ -63,4 +63,5 @@ require (
 	golang.org/x/image v0.46.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
+	rsc.io/qr v0.2.0 // indirect
 )
