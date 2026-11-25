@@ -676,28 +676,10 @@ func (a *App) viewSidebar(c *ui.Context) {
 			})
 		})
 
-		// Single-row 44px macOS bottom status bar (mac-planet.css:427-506).
+		// Single-row 44px bottom status bar matching main windows/index.html:
+		// Settings menu on the left, IPFS node status on the right.
 		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
 		ui.Row(c).Height(44).PaddingX(10).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.bottomBg).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-			dotColor := pal.green
-			if a.ipfsModal.status.Disabled {
-				dotColor = pal.muted
-			}
-			ipfsBtn := ui.ButtonBase(c.Key("sys-ipfs")).Label("IPFS 节点").MinHeight(30).
-				Radius(6).PaddingX(6).Cursor(ui.CursorPointer).Transition(rowHoverTransition)
-			if ipfsBtn.Hovered() {
-				ipfsBtn.Background(pal.hover)
-			}
-			ipfsBtn.Children(func() {
-				ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
-					ui.Box(c).Size(9, 9).Radius(4.5).Background(dotColor)
-					ui.Text(c, "IPFS 节点").Font(macPlanetFont).FontSize(13).TextColor(pal.ink).NoWrap()
-				})
-			})
-			if ipfsBtn.Clicked() {
-				a.openIPFSModal()
-			}
-
 			settingsAnchor := ui.ButtonBase(c.Key("sys-settings-menu")).Label("设置").MinHeight(30).
 				Radius(6).PaddingX(8).Cursor(ui.CursorPointer).Transition(rowHoverTransition)
 			if a.settingsMenuOpen {
@@ -740,6 +722,25 @@ func (a *App) viewSidebar(c *ui.Context) {
 					})
 				})
 			})
+
+			dotColor := pal.green
+			if a.ipfsModal.status.Disabled {
+				dotColor = pal.muted
+			}
+			ipfsBtn := ui.ButtonBase(c.Key("sys-ipfs")).Label("IPFS 节点").MinHeight(30).
+				Radius(6).PaddingX(6).Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+			if ipfsBtn.Hovered() {
+				ipfsBtn.Background(pal.hover)
+			}
+			ipfsBtn.Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+					ui.Box(c).Size(9, 9).Radius(4.5).Background(dotColor)
+					ui.Text(c, "IPFS 节点").Font(macPlanetFont).FontSize(13).TextColor(pal.ink).NoWrap()
+				})
+			})
+			if ipfsBtn.Clicked() {
+				a.openIPFSModal()
+			}
 		})
 	})
 }

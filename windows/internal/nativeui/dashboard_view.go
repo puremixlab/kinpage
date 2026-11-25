@@ -44,18 +44,12 @@ func (a *App) viewDashboard(c *ui.Context) {
 					ui.Text(c, "继续上次的思路，也开始新的记录。").Font(macPlanetFont).FontSize(12).TextColor(pal.secondary)
 				})
 
-				// Lightweight horizontal metrics bar (0.5px hairline).
+				// Lightweight horizontal metrics bar matching main mac-planet.css:903-908.
 				ui.Column(c).AlignSelf(ui.Stretch).Gap(10).Children(func() {
-					ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-						ui.Row(c).Gap(24).AlignItems(ui.Center).Children(func() {
-							metricInline(c, fmt.Sprintf("%d", a.dashboard.SiteCount), "个站点", pal)
-							metricInline(c, fmt.Sprintf("%d", a.dashboard.ArticleCount), "篇文章", pal)
-							metricInline(c, fmt.Sprintf("%d", a.dashboard.DraftCount), "篇草稿", pal)
-							if a.dashboard.UnreadCount > 0 {
-								metricInline(c, fmt.Sprintf("%d", a.dashboard.UnreadCount), "条未读", pal)
-							}
-						})
-						ui.Text(c, "所有站点").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+					ui.Row(c).Gap(24).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
+						metricInline(c, fmt.Sprintf("%d", a.dashboard.SiteCount), "个站点", pal)
+						metricInline(c, fmt.Sprintf("%d", a.dashboard.ArticleCount), "篇文章", pal)
+						metricInline(c, fmt.Sprintf("%d", a.dashboard.DraftCount), "篇草稿", pal)
 					})
 					hairlineH(c, pal)
 				})
@@ -82,6 +76,15 @@ func (a *App) viewDashboard(c *ui.Context) {
 						a.viewDashboardSites(c)
 						a.viewDashboardNoteCard(c)
 					})
+				})
+
+				// Lightweight dashboard footer matching main dashboard.css:129-130.
+				ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).PaddingY(8).Children(func() {
+					ui.Text(c, "内容保存在这台电脑上").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+					if ghostIconButton(c, "dash-refresh", "刷新数据", "刷新数据", pal) {
+						a.Reload()
+						a.setStatus("已刷新数据")
+					}
 				})
 			})
 		})

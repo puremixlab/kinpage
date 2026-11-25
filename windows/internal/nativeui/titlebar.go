@@ -25,17 +25,22 @@ func (a *App) viewTitleBar(c *ui.Context) {
 		rightPad = bar.Right + 10
 	}
 
-	ui.Row(c).Height(height).Shrink(0).AlignSelf(ui.Stretch).AlignItems(ui.Center).
-		Background(pal.sidebar).Padding(0, rightPad, 0, leftPad).DragWindow().Children(func() {
-		// Left zone: Planet brand + panel collapse toggles aligned to 228px sidebar.
-		leftZone := ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(6).Shrink(0)
+	ui.Row(c).Height(height).Shrink(0).AlignSelf(ui.Stretch).AlignItems(ui.Stretch).
+		Background(pal.canvas).DragWindow().Children(func() {
+		// Left zone: matches 228px sidebar surface (#ececec) seamlessly down into the sidebar.
+		leftBg := pal.canvas
+		if !a.sidebarCollapsed {
+			leftBg = pal.sidebar
+		}
+		leftZone := ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(6).
+			Background(leftBg).Padding(0, 10, 0, leftPad).Shrink(0)
 		if !a.sidebarCollapsed && bar.Left == 0 {
-			leftZone.Width(228 - leftPad)
+			leftZone.Width(228)
 		}
 		leftZone.Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Gap(7).Children(func() {
-				ui.Icon(c, iconPlanet).Size(18, 18).TextColor(pal.ink)
-				ui.Text(c, "Planet").Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).NoWrap()
+			ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+				ui.Icon(c, iconPlanet).Size(20, 20).TextColor(pal.ink)
+				ui.Text(c, "Planet").Font(macPlanetFont).FontSize(15).FontWeight(600).TextColor(pal.ink).NoWrap()
 			})
 			ui.Row(c).AlignItems(ui.Center).Gap(2).Children(func() {
 				sbIcon := lucide.PanelLeftClose()
@@ -57,31 +62,50 @@ func (a *App) viewTitleBar(c *ui.Context) {
 			})
 		})
 
-		// Center zone: compact global search pill (Ctrl K).
-		ui.Row(c).Grow(1).MinWidth(0).Justify(ui.Center).AlignItems(ui.Center).PaddingX(12).Children(func() {
-			if interactiveRow(c, "tb-search", "搜索文章", pal.canvas, pal.subtle, pal.active).
-				Width(240).MinHeight(28).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(3).
-				Children(func() {
-					ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-						ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
-							ui.Icon(c, iconSearch).Size(13, 13).TextColor(pal.muted)
-							ui.Text(c, "搜索文章").Font(macPlanetFont).FontSize(12).TextColor(pal.muted).NoWrap()
-						})
-						ui.Box(c).PaddingX(4).PaddingY(1).Border(0.5, pal.line).Radius(4).Children(func() {
-							ui.Text(c, "Ctrl K").Font(macPlanetFont).FontSize(10).FontWeight(500).TextColor(pal.muted).NoWrap()
-						})
-					})
-				}).Clicked() {
-				a.openGlobalSearch()
-			}
-		})
+		if !a.sidebarCollapsed {
+			ui.Box(c).Width(1).AlignSelf(ui.Stretch).Background(pal.line)
+		}
 
-		// Right zone: context-aware primary & quick actions (padded safely left of bar.Right).
-		ui.Row(c).AlignItems(ui.Center).Gap(6).Shrink(0).Children(func() {
-			a.viewTitleBarActions(c)
+		// Right main top bar: pure white canvas (#ffffff) matching main WebView workspace.
+		ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Justify(ui.SpaceBetween).
+			Background(pal.canvas).Padding(0, rightPad, 0, 16).DragWindow().Children(func() {
+			// Center-left compact search pill (Ctrl K).
+			ui.Row(c).Grow(1).MinWidth(0).Justify(ui.Center).AlignItems(ui.Center).PaddingX(8).Children(func() {
+				if interactiveRow(c, "tb-search", "搜索文章", pal.subtle, pal.hover, pal.active).
+					Width(220).MinHeight(28).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(3).
+					Children(func() {
+						ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
+							ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+								ui.Icon(c, iconSearch).Size(13, 13).TextColor(pal.muted)
+								ui.Text(c, "搜索文章").Font(macPlanetFont).FontSize(12).TextColor(pal.muted).NoWrap()
+							})
+							ui.Box(c).PaddingX(4).PaddingY(1).Border(0.5, pal.line).Radius(4).Children(func() {
+								ui.Text(c, "Ctrl K").Font(macPlanetFont).FontSize(10).FontWeight(500).TextColor(pal.muted).NoWrap()
+							})
+						})
+					}).Clicked() {
+					a.openGlobalSearch()
+				}
+			})
+
+			// Right zone: restrained context-aware primary actions (padded safely left of bar.Right).
+			ui.Row(c).AlignItems(ui.Center).Gap(6).Shrink(0).Children(func() {
+				a.viewTitleBarActions(c)
+			})
 		})
 	})
-	ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+	// Only draw divider under the right canvas side when sidebar is open, so sidebar flows seamlessly.
+	ui.Row(c).Height(1).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+		if !a.sidebarCollapsed {
+			ui.Box(c).Width(228).Height(1).Background(pal.sidebar)
+			ui.Box(c).Width(1).Height(1).Background(pal.line)
+		}
+		if a.mode != viewOverview {
+			ui.Box(c).Grow(1).Height(1).Background(pal.line)
+		} else {
+			ui.Box(c).Grow(1).Height(1).Background(pal.canvas)
+		}
+	})
 }
 
 func (a *App) viewTitleBarActions(c *ui.Context) {
@@ -185,13 +209,7 @@ func (a *App) viewTitleBarActions(c *ui.Context) {
 		return
 	}
 
-	// Overview (Dashboard) mode actions.
-	if ghostIconButton(c, "tb-quick-post", "⚡ 快捷发文", "⚡ 快捷发文", pal) {
-		a.openQuickPost()
-	}
-	if ghostIconButton(c, "tb-ai", "AI 助手", "AI 助手", pal) {
-		a.openToolsModal(toolsTabAI)
-	}
+	// Overview (Dashboard) mode actions (cleanly restrained like main WebView).
 	if action.Button(c.Key("dash-compose"), "写文章", action.ButtonProps{Variant: action.Primary, Size: theme.Small}).Clicked() {
 		a.handleDashboardCompose()
 	}

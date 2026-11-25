@@ -934,14 +934,14 @@ func TestNativeUIUnifiedTitleBarToggles(t *testing.T) {
 	tt := ui.NewTester(app.View, 1280, 820)
 	tt.Frame()
 
-	// Overview mode should expose quick actions in the unified titlebar.
-	if err := tt.Click("AI 助手"); err != nil {
-		t.Fatalf("expected AI 助手 button in unified titlebar: %v", err)
+	// Overview mode should expose global search in the unified titlebar.
+	if err := tt.Click("搜索文章"); err != nil {
+		t.Fatalf("expected 搜索文章 pill in unified titlebar: %v", err)
 	}
-	if !app.toolsModal.open {
-		t.Fatal("expected tools modal to open from titlebar AI 助手 button")
+	if !app.searchModalOpen {
+		t.Fatal("expected global search modal to open from titlebar")
 	}
-	app.toolsModal.open = false
+	app.searchModalOpen = false
 	tt.Frame()
 
 	// Collapse and expand sidebar via the unified titlebar toggle.
