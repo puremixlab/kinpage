@@ -51,7 +51,10 @@ func (l *imageLoader) Load(rawURL string) (ui.ImageSource, error) {
 	l.mu.Lock()
 	if entry, ok := l.cache[rawURL]; ok {
 		l.mu.Unlock()
-		return entry.bmp, entry.err
+		if entry.err != nil || entry.bmp == nil {
+			return nil, entry.err
+		}
+		return entry.bmp, nil
 	}
 	l.mu.Unlock()
 
@@ -64,7 +67,10 @@ func (l *imageLoader) Load(rawURL string) (ui.ImageSource, error) {
 	l.cache[rawURL] = cachedImage{bmp: bmp, err: err}
 	l.mu.Unlock()
 
-	return bmp, err
+	if err != nil || bmp == nil {
+		return nil, err
+	}
+	return bmp, nil
 }
 
 func (l *imageLoader) fetchAndDecode(rawURL string) (*ui.Bitmap, error) {
@@ -175,7 +181,11 @@ func (a *App) markdownImageLoader(baseURL, localDir string) func(string) (ui.Ima
 			if len(data) > maxMarkdownImageBytes {
 				return nil, errors.New("local image exceeds size limit")
 			}
-			return ui.DecodeBitmapScaled(data, maxMarkdownImageDim)
+			bmp, err := ui.DecodeBitmapScaled(data, maxMarkdownImageDim)
+			if err != nil || bmp == nil {
+				return nil, err
+			}
+			return bmp, nil
 		}
 		return nil, fmt.Errorf("unsupported image source %q", trimmed)
 	}

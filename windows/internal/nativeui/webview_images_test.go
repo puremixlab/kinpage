@@ -83,8 +83,16 @@ func TestImageLoaderHTTPCacheAndSafety(t *testing.T) {
 	}
 
 	for _, bad := range []string{"javascript:alert(1)", "ftp://example.com/a.png", "file:///C:/Windows/win.ini"} {
-		if _, err := loader.Load(bad); err == nil {
+		src, err := loader.Load(bad)
+		if err == nil {
 			t.Fatalf("expected unsafe scheme %q to be rejected", bad)
+		}
+		if src != nil {
+			t.Fatalf("expected untyped nil ImageSource on error for %q, got %T", bad, src)
+		}
+		// Second call hits the error cache and must also return untyped nil.
+		if cachedSrc, cachedErr := loader.Load(bad); cachedErr == nil || cachedSrc != nil {
+			t.Fatalf("expected cached untyped nil ImageSource on error for %q, got src=%T err=%v", bad, cachedSrc, cachedErr)
 		}
 	}
 }
