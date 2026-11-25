@@ -22,7 +22,7 @@ func TestNativeUIDashboardActivityModesAndTrendRanges(t *testing.T) {
 	tt := ui.NewTester(app.View, 1280, 900)
 	tt.Frame()
 
-	if err := tt.Click("按周"); err != nil {
+	if err := tt.Click("每周"); err != nil {
 		t.Fatalf("failed to switch heatmap to weekly: %v", err)
 	}
 	if app.activityMode != activityModeWeekly {

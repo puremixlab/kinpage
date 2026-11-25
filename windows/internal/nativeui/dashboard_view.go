@@ -167,51 +167,57 @@ func (a *App) viewDashboard(c *ui.Context) {
 
 func (a *App) viewLinearActivityStrip(c *ui.Context) {
 	pal := a.pal
-	_, paperBg, _, paperEdge, paperShadow := paperDeskColors(pal)
-	_, streak := a.writingStatsSummary()
 	counts := make(map[string]int, len(a.activity))
-	totalActions := 0
 	for _, item := range a.activity {
-		n := item.Articles + item.Drafts
-		counts[item.Date] = n
-		totalActions += n
+		counts[item.Date] = item.Articles + item.Drafts
 	}
 
-	// Faithful Option B horizontal activity strip: left summary, right-aligned
-	// mode switch in the top-right corner above the 36-week monochrome heatmap.
-	ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).
-		Padding(14, 18, 14, 18).Background(paperBg).Radius(8).
-		Border(0.5, paperEdge).Shadow(0, 1, 4, 0, paperShadow).Children(func() {
-		ui.Column(c).Gap(3).Shrink(0).Children(func() {
-			ui.Text(c, fmt.Sprintf("近半年写作 %d 次", totalActions)).Font(macPlanetFont).FontSize(13.5).FontWeight(600).TextColor(pal.ink).NoWrap()
-			streakText := "今天也可以写点什么"
-			if streak > 0 {
-				streakText = fmt.Sprintf("连续 %d 天保持记录", streak)
-			}
-			ui.Text(c, streakText).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted).NoWrap()
-		})
-		ui.Column(c).Gap(8).AlignItems(ui.End).Children(func() {
-			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+	cardBg := ui.Hex("#edf2f7")
+	trackBg := ui.RGBA(15, 23, 42, 0.055)
+	pillActiveBg := ui.Hex("#ffffff")
+	pillActiveShadow := ui.RGBA(15, 23, 42, 0.08)
+	if pal.dark {
+		cardBg = ui.Hex("#1d2128")
+		trackBg = ui.RGBA(255, 255, 255, 0.07)
+		pillActiveBg = ui.RGBA(255, 255, 255, 0.14)
+		pillActiveShadow = ui.RGBA(0, 0, 0, 0.25)
+	}
+
+	card := ui.Column(c).AlignSelf(ui.Stretch).Padding(18, 22, 16, 22).Gap(14).
+		Background(cardBg).Radius(16)
+	if pal.dark {
+		card.Border(0.5, ui.RGBA(255, 255, 255, 0.06))
+	}
+	card.Children(func() {
+		// Minimal top header: title on left, pill segmented control on right.
+		ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
+			ui.Text(c, "写作活动").Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink)
+			ui.Row(c).Padding(3).Radius(999).Background(trackBg).Gap(2).AlignItems(ui.Center).Children(func() {
 				modes := []struct {
 					id    int
 					label string
 				}{
-					{activityModeDaily, "按日"},
-					{activityModeWeekly, "按周"},
+					{activityModeDaily, "每日"},
+					{activityModeWeekly, "每周"},
 					{activityModeCumulative, "累计"},
 				}
 				for _, m := range modes {
 					active := a.activityMode == m.id
-					col := pal.muted
+					col := pal.secondary
 					if active {
 						col = pal.ink
 					}
 					btn := ui.ButtonBase(c.Key(fmt.Sprintf("act-mode-%d", m.id))).Label(m.label).
-						Padding(1, 0, 1, 0).Cursor(ui.CursorPointer)
+						Padding(4, 12, 4, 12).Radius(999).Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+					if active {
+						btn.Background(pillActiveBg).Shadow(0, 1, 2, 0, pillActiveShadow)
+					} else if btn.Hovered() {
+						btn.Background(pal.hover)
+					}
 					btn.Children(func() {
-						t := ui.Text(c, m.label).Font(macPlanetFont).FontSize(11).TextColor(col).NoWrap()
+						t := ui.Text(c, m.label).Font(macPlanetFont).FontSize(12).TextColor(col).NoWrap()
 						if active {
-							t.FontWeight(600)
+							t.FontWeight(500)
 						}
 					})
 					if btn.Clicked() {
@@ -219,8 +225,9 @@ func (a *App) viewLinearActivityStrip(c *ui.Context) {
 					}
 				}
 			})
-			a.viewHeatmapGrid(c, counts)
 		})
+
+		a.viewHeatmapGrid(c, counts)
 	})
 }
 
@@ -400,71 +407,90 @@ func (a *App) siteBookmarkChip(c *ui.Context, key, label string, site *store.Sit
 
 func (a *App) viewHeatmapGrid(c *ui.Context, counts map[string]int) {
 	pal := a.pal
-	const weeks = 36
+	const weeks = 52
 	today := time.Now()
 	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.Local)
 	endOffset := int(time.Saturday - today.Weekday())
 	endDay := today.AddDate(0, 0, endOffset)
 	startDay := endDay.AddDate(0, 0, -(weeks*7 - 1))
 
-	switch a.activityMode {
-	case activityModeWeekly:
-		ui.Row(c).Gap(3).AlignItems(ui.End).Children(func() {
-			for w := range weeks {
-				sum := 0
-				for d := range 7 {
-					day := startDay.AddDate(0, 0, w*7+d)
-					sum += counts[day.Format("2006-01-02")]
-				}
-				h := float32(6)
-				if sum > 0 {
-					h = min(float32(56), float32(12+sum*8))
-				}
-				tip := fmt.Sprintf("第 %d 周：%d 次", w+1, sum)
-				ui.Box(c.Key(fmt.Sprintf("hm-week-%d", w))).Size(9, h).Radius(2).Background(heatmapColor(sum, pal)).Tooltip(tip)
-			}
-		})
-	case activityModeCumulative:
-		running := 0
-		ui.Row(c).Gap(2.5).Children(func() {
-			for w := range weeks {
-				ui.Column(c.Key(fmt.Sprintf("hm-cw-%d", w))).Gap(2.5).Children(func() {
-					for d := range 7 {
-						day := startDay.AddDate(0, 0, w*7+d)
-						key := day.Format("2006-01-02")
-						running += counts[key]
-						level := 0
-						switch {
-						case running >= 12:
-							level = 6
-						case running >= 6:
-							level = 4
-						case running >= 3:
-							level = 2
-						case running >= 1:
-							level = 1
-						}
-						ui.Box(c.Key("hm-c-"+key)).Size(9, 9).Radius(2).Background(heatmapColor(level, pal)).
-							Tooltip(fmt.Sprintf("%s：累计 %d 次", key, running))
-					}
-				})
-			}
-		})
-	default:
-		ui.Row(c).Gap(2.5).Children(func() {
-			for w := range weeks {
-				ui.Column(c.Key(fmt.Sprintf("hm-w-%d", w))).Gap(2.5).Children(func() {
-					for d := range 7 {
-						day := startDay.AddDate(0, 0, w*7+d)
-						key := day.Format("2006-01-02")
-						n := counts[key]
-						ui.Box(c.Key("hm-"+key)).Size(9, 9).Radius(2).Background(heatmapColor(n, pal)).
-							Tooltip(fmt.Sprintf("%s：%d 次", key, n))
-					}
-				})
-			}
-		})
+	renderCell := func(key string, level int, tip string) {
+		cell := ui.Box(c.Key(key)).Size(11.5, 11.5).Radius(3.5).Background(heatmapColor(level, pal)).Tooltip(tip)
+		if level == 1 && !pal.dark {
+			cell.Border(0.5, ui.Hex("#7aaef8"))
+		}
 	}
+
+	ui.Column(c).AlignSelf(ui.Stretch).Gap(10).Children(func() {
+		switch a.activityMode {
+		case activityModeWeekly:
+			ui.Row(c).AlignSelf(ui.Stretch).Justify(ui.SpaceBetween).AlignItems(ui.End).Height(96).Children(func() {
+				for w := range weeks {
+					sum := 0
+					for d := range 7 {
+						day := startDay.AddDate(0, 0, w*7+d)
+						sum += counts[day.Format("2006-01-02")]
+					}
+					h := float32(8)
+					if sum > 0 {
+						h = min(float32(92), float32(18+sum*10))
+					}
+					tip := fmt.Sprintf("第 %d 周：%d 次", w+1, sum)
+					ui.Box(c.Key(fmt.Sprintf("hm-week-%d", w))).Size(11.5, h).Radius(3).Background(heatmapColor(sum, pal)).Tooltip(tip)
+				}
+			})
+		case activityModeCumulative:
+			running := 0
+			ui.Row(c).AlignSelf(ui.Stretch).Justify(ui.SpaceBetween).Children(func() {
+				for w := range weeks {
+					ui.Column(c.Key(fmt.Sprintf("hm-cw-%d", w))).Gap(3.5).Children(func() {
+						for d := range 7 {
+							day := startDay.AddDate(0, 0, w*7+d)
+							key := day.Format("2006-01-02")
+							running += counts[key]
+							level := 0
+							switch {
+							case running >= 12:
+								level = 6
+							case running >= 6:
+								level = 4
+							case running >= 3:
+								level = 2
+							case running >= 1:
+								level = 1
+							}
+							renderCell("hm-c-"+key, level, fmt.Sprintf("%s：累计 %d 次", key, running))
+						}
+					})
+				}
+			})
+		default:
+			ui.Row(c).AlignSelf(ui.Stretch).Justify(ui.SpaceBetween).Children(func() {
+				for w := range weeks {
+					ui.Column(c.Key(fmt.Sprintf("hm-w-%d", w))).Gap(3.5).Children(func() {
+						for d := range 7 {
+							day := startDay.AddDate(0, 0, w*7+d)
+							key := day.Format("2006-01-02")
+							n := counts[key]
+							renderCell("hm-"+key, n, fmt.Sprintf("%s：%d 次", key, n))
+						}
+					})
+				}
+			})
+		}
+
+		// Dynamic 12-month axis aligned evenly across the 52-week span.
+		var months []string
+		for m := 11; m >= 0; m-- {
+			t := time.Date(today.Year(), today.Month()-time.Month(m), 1, 0, 0, 0, 0, time.Local)
+			months = append(months, fmt.Sprintf("%d月", int(t.Month())))
+		}
+		ui.Row(c).AlignSelf(ui.Stretch).Justify(ui.SpaceBetween).Padding(0, 12, 0, 0).Children(func() {
+			for _, label := range months {
+				ui.Text(c, label).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted).NoWrap()
+			}
+		})
+	})
 }
 
 func (a *App) viewComposePickerModal(c *ui.Context) {
@@ -503,17 +529,17 @@ func heatmapColor(count int, pal macPalette) ui.Color {
 		if pal.dark {
 			return ui.RGBA(255, 255, 255, 0.06)
 		}
-		return ui.RGBA(15, 23, 42, 0.06)
+		return ui.RGBA(148, 163, 184, 0.17)
 	}
 	switch {
 	case count == 1:
-		return pal.ink.Alpha(0.28)
+		return ui.Hex("#a8c7fa")
 	case count <= 3:
-		return pal.ink.Alpha(0.50)
+		return ui.Hex("#6da8f7")
 	case count <= 5:
-		return pal.ink.Alpha(0.72)
+		return ui.Hex("#3b82f6")
 	default:
-		return pal.ink.Alpha(0.92)
+		return ui.Hex("#1d64e8")
 	}
 }
 
