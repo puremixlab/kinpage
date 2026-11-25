@@ -155,6 +155,7 @@ type App struct {
 	pal              macPalette
 	bitmapCache      map[string]*ui.Bitmap
 	settingsMenuOpen bool
+	sidebarCollapsed bool
 	postsCollapsed   bool
 
 	// Feedback status.
@@ -505,25 +506,30 @@ func (a *App) View(c *ui.Context) {
 	}
 
 	pal := a.pal
-	ui.Row(c).Fill().Background(pal.canvas).Children(func() {
-		a.viewSidebar(c)
-		ui.Box(c).Width(1).AlignSelf(ui.Stretch).Background(pal.line)
-		ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
-			if a.statusText != "" {
-				a.viewStatusBar(c)
+	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
+		a.viewTitleBar(c)
+		ui.Row(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+			if !a.sidebarCollapsed {
+				a.viewSidebar(c)
+				ui.Box(c).Width(1).AlignSelf(ui.Stretch).Background(pal.line)
 			}
-			switch a.mode {
-			case viewToday, viewUnread, viewStarred, viewSubscription:
-				a.viewSubscriptionWorkspace(c)
-			case viewSite:
-				if a.currentSite() != nil {
-					a.viewSiteWorkspace(c)
-				} else {
+			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+				if a.statusText != "" {
+					a.viewStatusBar(c)
+				}
+				switch a.mode {
+				case viewToday, viewUnread, viewStarred, viewSubscription:
+					a.viewSubscriptionWorkspace(c)
+				case viewSite:
+					if a.currentSite() != nil {
+						a.viewSiteWorkspace(c)
+					} else {
+						a.viewDashboard(c)
+					}
+				default:
 					a.viewDashboard(c)
 				}
-			default:
-				a.viewDashboard(c)
-			}
+			})
 		})
 	})
 
@@ -579,12 +585,8 @@ func (a *App) viewStatusBar(c *ui.Context) {
 func (a *App) viewSidebar(c *ui.Context) {
 	pal := a.pal
 	ui.Column(c).Width(228).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Children(func() {
-		// Brand header & primary nav (exact mac-planet.css:219-325).
-		ui.Column(c).PaddingX(10).PaddingY(10).Gap(4).Shrink(0).Children(func() {
-			ui.Row(c).MinHeight(38).PaddingX(8).AlignItems(ui.Center).Gap(8).Children(func() {
-				ui.Icon(c, iconPlanet).Size(20, 20).TextColor(pal.ink)
-				ui.Text(c, "Planet").Font(macPlanetFont).FontSize(15).FontWeight(600).TextColor(pal.ink)
-			})
+		// Primary nav (brand + global search now live in the unified top titlebar).
+		ui.Column(c).PaddingX(10).PaddingY(8).Gap(2).Shrink(0).Children(func() {
 			if sidebarNavRow(c, "nav-overview", "写作台", a.mode == viewOverview, 0, func() {
 				ui.Icon(c, iconGrid).Size(16, 16).TextColor(pal.ink).Shrink(0)
 			}, pal) {
@@ -594,22 +596,6 @@ func (a *App) viewSidebar(c *ui.Context) {
 					a.clearStatus()
 					a.Reload()
 				})
-			}
-			// Compact macOS search field with bordered <kbd> hint.
-			if interactiveRow(c, "nav-search", "搜索文章", pal.searchBg, pal.hover, pal.active).
-				MinHeight(30).Border(0.5, pal.line).Radius(6).PaddingX(8).PaddingY(4).
-				Children(func() {
-					ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-						ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
-							ui.Icon(c, iconSearch).Size(14, 14).TextColor(pal.muted)
-							ui.Text(c, "搜索文章").Font(macPlanetFont).FontSize(12).TextColor(pal.muted).NoWrap()
-						})
-						ui.Box(c).PaddingX(5).PaddingY(1).Border(0.5, pal.line).Radius(4).Children(func() {
-							ui.Text(c, "Ctrl K").Font(macPlanetFont).FontSize(10).FontWeight(500).TextColor(pal.muted).NoWrap()
-						})
-					})
-				}).Clicked() {
-				a.openGlobalSearch()
 			}
 		})
 
@@ -789,32 +775,12 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 	query := strings.ToLower(strings.TrimSpace(a.postSearchQuery))
 
 	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
-		// Exact 52px header matching mac-planet.css:565-590.
-		ui.Row(c).Height(52).PaddingX(14).Gap(6).AlignItems(ui.Center).Justify(ui.SpaceBetween).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).Grow(1).NoWrap()
-			ui.Row(c).Gap(2).AlignItems(ui.Center).Shrink(0).Children(func() {
-				if macIconButton(c, "site-new-post", iconEdit, 30, 16, pal.secondary, "+ 写文章") {
-					a.guardUnsaved(func() { a.startNewDraft(siteID) })
-				}
-				if ghostIconButton(c, "site-publish", "发布站点", "发布站点", pal) {
-					a.triggerPublishSite(*site)
-				}
-				if macIconButton(c, "site-settings", iconSettings, 30, 16, pal.secondary, "站点设置") {
-					a.openSiteSettings(*site)
-				}
-				if macIconButton(c, "site-integrations", iconMore, 30, 16, pal.secondary, "扩展") {
-					a.openIntegrationsModal(*site)
-				}
-			})
+		// Slim 38px list header (primary site actions live in the unified top titlebar).
+		ui.Row(c).Height(38).PaddingX(14).Gap(6).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.subtle).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+			ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink).Grow(1).NoWrap()
+			ui.Text(c, fmt.Sprintf("%d 篇", len(a.articles)+len(a.drafts))).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
 		})
 		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
-
-		// 32px --mac-subtle caption bar matching mac-planet.css:591-625.
-		ui.Row(c).Height(32).PaddingX(14).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.subtle).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, "文章").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.secondary)
-			ui.Text(c, fmt.Sprintf("%d 篇", len(a.articles)+len(a.drafts))).Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
-		})
-		hairlineH(c, pal)
 
 		ui.Scroll(c).TrackScroll(&a.postsListScroll).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).PaddingX(8).PaddingY(6).Gap(0).Children(func() {
@@ -919,36 +885,8 @@ func (a *App) viewDetailPane(c *ui.Context) {
 func (a *App) viewEditor(c *ui.Context) {
 	pal := a.pal
 	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
-		// Exact 52px Mac Planet editor toolbar matching writing-editor.png.
-		ui.Row(c).Height(52).PaddingX(18).Gap(10).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.canvas).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
-				if macIconButton(c, "toggle-posts", iconSidebar, 30, 16, pal.secondary, "切换文章列表") {
-					a.postsCollapsed = !a.postsCollapsed
-				}
-				ui.Text(c, "撰写文章").Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(pal.secondary)
-			})
-			ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
-				saveStateText := "草稿已保存（未发布）"
-				if a.isEditorDirty() {
-					saveStateText = "有未保存更改"
-				}
-				ui.Text(c, saveStateText).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
-				if macSecondaryButton(c, "editor-save", "保存草稿", pal) {
-					a.saveCurrentDraft()
-				}
-				if macPrimaryButton(c, "editor-publish", "发布", pal) {
-					a.publishCurrentDraft()
-				}
-				if a.activeDraftID != "" {
-					if ghostIconButton(c, "editor-delete", "删除", "删除草稿", pal) {
-						a.deleteCurrentDraft()
-					}
-				}
-			})
-		})
-		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
-
-		// Single 760px rail matching mac-planet.css:837-886 & writing-editor.png.
+		// Single 760px rail matching mac-planet.css:837-886 & writing-editor.png
+		// (save state, 保存草稿, 发布, 删除 live in the unified top titlebar).
 		ui.Column(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).AlignItems(ui.Center).Background(pal.canvas).Children(func() {
 			maxW := float32(760)
 			if a.editorPaneMode == editorPaneSplit {
@@ -1049,50 +987,9 @@ func (a *App) viewArticleReader(c *ui.Context) {
 	}
 
 	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
-		// Exact 52px Mac Planet reader toolbar.
-		ui.Row(c).Height(52).PaddingX(18).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.canvas).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
-				if macIconButton(c, "reader-toggle-posts", iconSidebar, 30, 16, pal.secondary, "切换文章列表") {
-					a.postsCollapsed = !a.postsCollapsed
-				}
-				ui.Text(c, "阅读文章").Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(pal.secondary)
-			})
-			ui.Row(c).Gap(6).AlignItems(ui.Center).Shrink(0).Children(func() {
-				pinLabel := "置顶"
-				if art.Pinned != nil {
-					pinLabel = "取消置顶"
-				}
-				speakLabel := "朗读"
-				if a.speaker != nil && a.speaker.Speaking() {
-					speakLabel = "停止朗读"
-				}
-				if ghostIconButton(c, "reader-speak", speakLabel, speakLabel, pal) {
-					a.toggleSpeak(art.Title, art.Content)
-				}
-				if ghostIconButton(c, "reader-related", "相关文章", "相关文章", pal) {
-					a.openRelatedArticles(art.SiteID, art.ID, "", "", art.Title)
-				}
-				if ghostIconButton(c, "reader-pin", pinLabel, pinLabel, pal) {
-					a.toggleArticlePinned(*art)
-				}
-				if ghostIconButton(c, "reader-settings", "文章设置", "文章设置", pal) {
-					a.openArticleSettings(*art)
-				}
-				if macPrimaryButton(c, "reader-edit", "编辑文章", pal) {
-					a.openArticleForEdit(*art)
-				}
-				if ghostIconButton(c, "reader-delete", "删除", "删除文章", pal) {
-					a.deleteArticleID = art.ID
-					a.deleteArticleTitle = art.Title
-					a.deleteArticleOpen = true
-				}
-			})
-		})
-		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
-
 		ui.Scroll(c).TrackScroll(&a.readerScroll).Fill().Background(pal.canvas).Children(func() {
-			ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(36).PaddingY(32).Children(func() {
-				ui.Column(c).AlignSelf(ui.Stretch).MaxWidth(740).Gap(14).Children(func() {
+			ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(36).PaddingY(28).Children(func() {
+				ui.Column(c).AlignSelf(ui.Stretch).MaxWidth(740).Gap(12).Children(func() {
 					ui.Text(c, fallbackTitle(art.Title)).Font(macPlanetFont).FontSize(28).FontWeight(700).LetterSpacing(-0.02).TextColor(pal.ink)
 					var meta []string
 					if site := a.currentSite(); site != nil {
@@ -1110,9 +1007,38 @@ func (a *App) viewArticleReader(c *ui.Context) {
 					if len(art.Tags) > 0 {
 						meta = append(meta, fmt.Sprintf("%d 标签", len(art.Tags)))
 					}
-					if len(meta) > 0 {
-						ui.Text(c, strings.Join(meta, "   ·   ")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
-					}
+					ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(8).Wrap().AlignSelf(ui.Stretch).Children(func() {
+						if len(meta) > 0 {
+							ui.Text(c, strings.Join(meta, "   ·   ")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+						}
+						ui.Row(c).Gap(4).AlignItems(ui.Center).Shrink(0).Children(func() {
+							pinLabel := "置顶"
+							if art.Pinned != nil {
+								pinLabel = "取消置顶"
+							}
+							speakLabel := "朗读"
+							if a.speaker != nil && a.speaker.Speaking() {
+								speakLabel = "停止朗读"
+							}
+							if ghostIconButton(c, "reader-speak", speakLabel, speakLabel, pal) {
+								a.toggleSpeak(art.Title, art.Content)
+							}
+							if ghostIconButton(c, "reader-related", "相关文章", "相关文章", pal) {
+								a.openRelatedArticles(art.SiteID, art.ID, "", "", art.Title)
+							}
+							if ghostIconButton(c, "reader-pin", pinLabel, pinLabel, pal) {
+								a.toggleArticlePinned(*art)
+							}
+							if ghostIconButton(c, "reader-settings", "文章设置", "文章设置", pal) {
+								a.openArticleSettings(*art)
+							}
+							if ghostIconButton(c, "reader-delete", "删除", "删除文章", pal) {
+								a.deleteArticleID = art.ID
+								a.deleteArticleTitle = art.Title
+								a.deleteArticleOpen = true
+							}
+						})
+					})
 					hairlineH(c, pal)
 					markdown.View(c, art.Content, &a.markdownOpts)
 				})

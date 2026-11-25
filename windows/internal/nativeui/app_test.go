@@ -920,3 +920,57 @@ func TestNativeUIEmptyStateAndCreateSite(t *testing.T) {
 		t.Fatalf("expected switched to new site, got mode=%v site=%q", app.mode, app.selectedSiteID)
 	}
 }
+
+func TestNativeUIUnifiedTitleBarToggles(t *testing.T) {
+	now := time.Now()
+	backend := &fakeBackend{
+		sites: []store.Site{{ID: "s1", Name: "我的星球", Created: now}},
+		articles: []store.Article{{
+			ID: "a1", SiteID: "s1", Title: "欢迎文章", Content: "正文",
+			Created: now, Modified: now,
+		}},
+	}
+	app := New(backend)
+	tt := ui.NewTester(app.View, 1280, 820)
+	tt.Frame()
+
+	// Overview mode should expose quick actions in the unified titlebar.
+	if err := tt.Click("AI 助手"); err != nil {
+		t.Fatalf("expected AI 助手 button in unified titlebar: %v", err)
+	}
+	if !app.toolsModal.open {
+		t.Fatal("expected tools modal to open from titlebar AI 助手 button")
+	}
+	app.toolsModal.open = false
+	tt.Frame()
+
+	// Collapse and expand sidebar via the unified titlebar toggle.
+	if err := tt.Click("收起侧边栏"); err != nil {
+		t.Fatalf("failed to collapse sidebar: %v", err)
+	}
+	if !app.sidebarCollapsed {
+		t.Fatal("expected sidebarCollapsed to be true")
+	}
+	if err := tt.Click("展开侧边栏"); err != nil {
+		t.Fatalf("failed to expand sidebar: %v", err)
+	}
+	if app.sidebarCollapsed {
+		t.Fatal("expected sidebarCollapsed to be false")
+	}
+
+	// Switch to site mode and toggle posts list via the unified titlebar.
+	app.selectSite("s1")
+	tt.Frame()
+	if err := tt.Click("切换文章列表"); err != nil {
+		t.Fatalf("failed to toggle posts list: %v", err)
+	}
+	if !app.postsCollapsed {
+		t.Fatal("expected postsCollapsed to be true")
+	}
+	if err := tt.Click("切换文章列表"); err != nil {
+		t.Fatalf("failed to restore posts list: %v", err)
+	}
+	if app.postsCollapsed {
+		t.Fatal("expected postsCollapsed to be false")
+	}
+}

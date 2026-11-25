@@ -3279,6 +3279,7 @@ func main() {
 		var nativeApp *nativeui.App
 		if useNativeUI(os.Args[1:]) {
 			nativeApp = nativeui.New(library)
+			opts.TitleBarStyle = mygo.TitleBarHidden
 			opts.Content = ui.View(nativeApp.View)
 		} else {
 			opts.URL = "/"

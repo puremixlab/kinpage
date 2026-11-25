@@ -38,27 +38,10 @@ func (a *App) viewDashboard(c *ui.Context) {
 	ui.Scroll(c).TrackScroll(&a.dashboardScroll).Grow(1).MinHeight(0).Background(pal.canvas).Children(func() {
 		ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(32).PaddingY(24).Children(func() {
 			ui.Column(c).AlignSelf(ui.Stretch).MaxWidth(1160).Gap(20).Children(func() {
-				// Top 52px header matching workspace-dashboard.png & mac-planet.css:896-905.
-				ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).MinHeight(52).AlignSelf(ui.Stretch).Children(func() {
-					ui.Column(c).Gap(3).Children(func() {
-						ui.Text(c, "写作台").Font(macPlanetFont).FontSize(22).FontWeight(700).LetterSpacing(-0.015).TextColor(pal.ink)
-						ui.Text(c, "继续上次的思路，也开始新的记录。").Font(macPlanetFont).FontSize(12).TextColor(pal.secondary)
-					})
-					ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-						if interactiveRow(c, "dash-search", "搜索文章", pal.canvas, pal.hover, pal.active).Width(212).MinHeight(34).
-							Border(0.5, pal.controlLine).Radius(6).PaddingX(14).PaddingY(6).
-							Children(func() {
-								ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-									ui.Text(c, "搜索文章").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
-									ui.Icon(c, iconSearch).Size(15, 15).TextColor(pal.muted)
-								})
-							}).Clicked() {
-							a.openGlobalSearch()
-						}
-						if macPrimaryButton(c, "dash-compose", "写文章", pal) {
-							a.handleDashboardCompose()
-						}
-					})
+				// Clean header (search & compose button now live in the unified top titlebar).
+				ui.Column(c).Gap(3).AlignSelf(ui.Stretch).Children(func() {
+					ui.Text(c, "写作台").Font(macPlanetFont).FontSize(22).FontWeight(700).LetterSpacing(-0.015).TextColor(pal.ink)
+					ui.Text(c, "继续上次的思路，也开始新的记录。").Font(macPlanetFont).FontSize(12).TextColor(pal.secondary)
 				})
 
 				// Lightweight horizontal metrics bar (0.5px hairline).
