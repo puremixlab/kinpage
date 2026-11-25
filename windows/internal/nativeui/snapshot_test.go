@@ -142,4 +142,17 @@ func TestNativeUIRenderSnapshots(t *testing.T) {
 	app.openToolsModal(toolsTabAI)
 	tt.Frame()
 	savePNG(t, outDir, "09-sheet-tools.png", tt)
+	app.toolsModal.open = false
+
+	// Integrations two-column macOS Preferences sheet snapshot.
+	app.openIntegrationsModal(backend.sites[0])
+	tt.Frame()
+	savePNG(t, outDir, "10-sheet-integrations.png", tt)
+	app.integrations.open = false
+
+	// Dark mode site settings sheet snapshot.
+	tt.SetDark(true)
+	app.openSiteSettings(backend.sites[0])
+	tt.Frame()
+	savePNG(t, outDir, "11-sheet-site-settings-dark.png", tt)
 }

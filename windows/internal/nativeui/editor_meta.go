@@ -14,45 +14,63 @@ import (
 )
 
 func (a *App) viewEditorMetadata(c *ui.Context) {
-	t := c.Theme()
-	ui.Column(c).PaddingX(14).PaddingY(10).Gap(10).Background(t.Surface).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-		// Tags row.
-		ui.Row(c).Gap(8).AlignItems(ui.Center).Wrap().AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, "标签").FontSize(12).Bold().TextColor(t.TextMuted)
+	pal := a.pal
+	ui.Column(c).Padding(12, 14, 12, 14).Gap(12).Background(pal.canvas).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+		// Tags section.
+		ui.Column(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
+			ui.Text(c, "标签").Font(macPlanetFont).FontSize(11.5).FontWeight(600).TextColor(pal.muted)
 			keys := sortedTagKeys(a.editorTags)
-			for _, k := range keys {
-				label := a.editorTags[k]
-				if ui.Button(c.Key("rm-tag-"+k), label+" ×").Clicked() {
-					delete(a.editorTags, k)
-					a.editorTagsDirty = true
+			if len(keys) > 0 {
+				ui.Row(c).Gap(6).Wrap().AlignSelf(ui.Stretch).Children(func() {
+					for _, k := range keys {
+						label := a.editorTags[k]
+						b := ui.ButtonBase(c.Key("rm-tag-"+k)).Label(label+" ×").
+							Padding(3, 8, 3, 8).Radius(6).Background(pal.subtle).Border(0.5, pal.line).
+							Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+						if b.Hovered() {
+							b.Background(pal.hover)
+						}
+						b.Children(func() {
+							ui.Text(c, label+" ×").Font(macPlanetFont).FontSize(12).TextColor(pal.ink).NoWrap()
+						})
+						if b.Clicked() {
+							delete(a.editorTags, k)
+							a.editorTagsDirty = true
+						}
+					}
+				})
+			}
+			ui.Row(c).Gap(6).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
+				if ui.TextInput(c.Key("add-tag-input"), &a.newTagInput).Placeholder("添加标签并回车…").Label("添加标签").Grow(1).Submitted() {
+					a.addEditorTag()
 				}
-			}
-			if ui.TextInput(c.Key("add-tag-input"), &a.newTagInput).Placeholder("添加标签并回车…").Label("添加标签").Width(160).Submitted() {
-				a.addEditorTag()
-			}
-			if ui.Button(c.Key("add-tag-btn"), "+ 标签").Clicked() {
-				a.addEditorTag()
-			}
+				if macSecondaryButton(c, "add-tag-btn", "+ 标签", pal) {
+					a.addEditorTag()
+				}
+			})
 		})
 
-		// Attachments & HeroImage row.
-		ui.Row(c).Gap(8).AlignItems(ui.Center).Wrap().AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, "附件").FontSize(12).Bold().TextColor(t.TextMuted)
-			if ui.Button(c.Key("add-attachment-btn"), "+ 添加附件").Clicked() {
-				a.addDraftAttachment()
-			}
+		hairlineH(c, pal)
+
+		// Attachments & HeroImage section.
+		ui.Column(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
+				ui.Text(c, "附件").Font(macPlanetFont).FontSize(11.5).FontWeight(600).TextColor(pal.muted)
+				if macSecondaryButton(c, "add-attachment-btn", "+ 添加附件", pal) {
+					a.addDraftAttachment()
+				}
+			})
 			if len(a.editorAttachments) == 0 {
-				ui.Text(c, "暂无附件").FontSize(12).TextColor(t.TextMuted)
+				ui.Text(c, "暂无附件").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 			}
 			for _, name := range a.editorAttachments {
 				isHero := a.editorHeroImage == name
-				ui.Row(c.Key("att-row-"+name)).Gap(4).AlignItems(ui.Center).PaddingX(6).PaddingY(3).Background(t.Background).Border(1, t.Border).Radius(6).Children(func() {
-					display := name
+				ui.Row(c.Key("att-row-"+name)).Gap(6).AlignItems(ui.Center).Padding(6, 8, 6, 8).Background(pal.subtle).Border(0.5, pal.line).Radius(6).AlignSelf(ui.Stretch).Children(func() {
 					if isHero {
-						display = "★ " + name
+						ui.Icon(c, iconStarSolid).Size(12, 12).TextColor(pal.yellow).Shrink(0)
 					}
-					ui.Text(c, display).FontSize(12)
-					if ui.Button(c.Key("att-insert-"+name), "插入").Clicked() {
+					ui.Text(c, name).Font(macPlanetFont).FontSize(12).TextColor(pal.ink).MaxLines(1).Ellipsis("…").Grow(1)
+					if macSecondaryButton(c, "att-insert-"+name, "插入", pal) {
 						a.insertAttachmentMarkdown(name)
 					}
 					if isImageFilename(name) {
@@ -60,7 +78,7 @@ func (a *App) viewEditorMetadata(c *ui.Context) {
 						if isHero {
 							heroLabel = "取消封面"
 						}
-						if ui.Button(c.Key("att-hero-"+name), heroLabel).Clicked() {
+						if macSecondaryButton(c, "att-hero-"+name, heroLabel, pal) {
 							nextHero := name
 							if isHero {
 								nextHero = ""
@@ -68,14 +86,13 @@ func (a *App) viewEditorMetadata(c *ui.Context) {
 							a.setDraftHeroImage(nextHero)
 						}
 					}
-					if ui.Button(c.Key("att-rm-"+name), "×").Clicked() {
+					if macSecondaryButton(c, "att-rm-"+name, "×", pal) {
 						a.removeDraftAttachment(name)
 					}
 				})
 			}
 		})
 	})
-	ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
 }
 
 func (a *App) addEditorTag() {

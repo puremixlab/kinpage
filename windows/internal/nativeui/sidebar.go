@@ -90,7 +90,7 @@ func (a *App) viewSidebar(c *ui.Context) {
 
 		// macOS PlanetSidebarView bottom bar (44px):
 		// Left: IPFS online status + peer count; Right: '+' menu (New Planet / Follow Planet).
-		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+		hairlineH(c, pal)
 		ui.Row(c).Height(44).Padding(0, 10, 0, 14).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.bottomBg).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 			dotColor := pal.green
 			ipfsLabel := "IPFS 在线"

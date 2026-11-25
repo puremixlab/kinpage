@@ -147,7 +147,7 @@ func (a *App) viewListPaneHeader(c *ui.Context, title, subtitle string, isSubMod
 			}
 		})
 	})
-	ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+	hairlineH(c, pal)
 }
 
 // viewDetailToolbar renders the 44px icon-only top bar integrated into Column 3
@@ -253,7 +253,7 @@ func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
 	})
 
 	if showBottomBorder {
-		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+		hairlineH(c, pal)
 	}
 }
 

@@ -384,15 +384,15 @@ func (a *App) viewEditSubscriptionModal(c *ui.Context) {
 	pal := a.pal
 	if macSheet(c, &a.editSubOpen, macSheetProps{
 		Title:       "编辑订阅",
-		Width:       440,
+		Width:       460,
 		PrimaryText: "保存订阅",
 		CancelText:  "取消",
 	}, pal, func() {
-		ui.Form(c, func() {
-			ui.Field(c, "订阅地址", func() {
+		macInsetCard(c, pal, func() {
+			macField(c, "订阅地址", "", pal, func() {
 				ui.TextInput(c.Key("edit-sub-url"), &a.editSubNewURL).Label("订阅地址").AlignSelf(ui.Stretch)
 			})
-			ui.Field(c, "自定义名称", func() {
+			macField(c, "自定义名称", "留空使用源标题", pal, func() {
 				ui.TextInput(c.Key("edit-sub-title"), &a.editSubTitle).Placeholder("留空使用源标题").Label("自定义名称").AlignSelf(ui.Stretch)
 			})
 		})

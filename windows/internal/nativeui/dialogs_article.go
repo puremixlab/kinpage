@@ -62,25 +62,27 @@ func (a *App) viewArticleSettingsModal(c *ui.Context) {
 	pal := a.pal
 	if macSheet(c, &a.articleSettingsOpen, macSheetProps{
 		Title:       "文章设置",
-		Width:       440,
+		Width:       480,
 		PrimaryText: "保存设置",
 		CancelText:  "取消",
 	}, pal, func() {
-		ui.Form(c, func() {
-			ui.Field(c, "自定义路径 (Slug)", func() {
+		macInsetCard(c, pal, func() {
+			macField(c, "自定义路径 (Slug)", "留空使用默认路径", pal, func() {
 				ui.TextInput(c.Key("art-set-slug"), &a.articleSettingsSlug).Placeholder("留空使用默认路径").Label("自定义路径").AlignSelf(ui.Stretch)
 			})
-			ui.Field(c, "类型", func() {
-				ui.Segmented(c.Key("art-set-type"), &a.articleSettingsType, "博客文章", "独立页面").Label("文章类型")
+			macField(c, "类型", "", pal, func() {
+				macSegmented(c, "art-set-type", &a.articleSettingsType, []string{"博客文章", "独立页面"}, pal)
 			})
-			ui.Field(c, "外部链接", func() {
+			macField(c, "外部链接", "可选", pal, func() {
 				ui.TextInput(c.Key("art-set-ext"), &a.articleSettingsExtLink).Placeholder("https://…（可选）").Label("外部链接").AlignSelf(ui.Stretch)
 			})
-			ui.Field(c, "导航栏", func() {
+		})
+		macInsetCard(c, pal, func() {
+			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).AlignSelf(ui.Stretch).Children(func() {
 				ui.Checkbox(c.Key("art-set-nav"), &a.articleSettingsInNav, "显示在站点导航栏")
-			})
-			ui.Field(c, "导航权重", func() {
-				ui.TextInput(c.Key("art-set-weight"), &a.articleSettingsWeight).Placeholder("0").Label("导航权重").Width(120)
+				ui.Box(c).Width(110).Children(func() {
+					ui.TextInput(c.Key("art-set-weight"), &a.articleSettingsWeight).Placeholder("权重 0").Label("导航权重").AlignSelf(ui.Stretch)
+				})
 			})
 		})
 		if a.articleSettingsErr != "" {
@@ -169,11 +171,21 @@ func (a *App) viewQuickPostModal(c *ui.Context) {
 			ui.Row(c).Gap(6).Wrap().AlignItems(ui.Center).Children(func() {
 				ui.Text(c, "发布到：").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 				for _, s := range a.sites {
-					btn := ui.Button(c.Key("qp-site-"+s.ID), fallbackTitle(s.Name))
-					if a.quickPostSiteID == s.ID {
-						btn.Background(pal.accent).TextColor(ui.Hex("#ffffff"))
+					active := a.quickPostSiteID == s.ID
+					bg, fg := pal.subtle, pal.ink
+					if active {
+						bg, fg = pal.accent, ui.Hex("#ffffff")
 					}
-					if btn.Clicked() {
+					chip := ui.ButtonBase(c.Key("qp-site-"+s.ID)).Label(fallbackTitle(s.Name)).
+						Padding(4, 10, 4, 10).Radius(6).Background(bg).Border(0.5, pal.line).
+						Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+					if !active && chip.Hovered() {
+						chip.Background(pal.hover)
+					}
+					chip.Children(func() {
+						ui.Text(c, fallbackTitle(s.Name)).Font(macPlanetFont).FontSize(12).FontWeight(500).TextColor(fg).NoWrap()
+					})
+					if chip.Clicked() {
 						a.quickPostSiteID = s.ID
 					}
 				}
