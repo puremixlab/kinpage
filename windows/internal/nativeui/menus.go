@@ -72,6 +72,16 @@ func (a *App) sidebarSiteContextMenu(site store.Site) func(m *ui.Menu) {
 				}
 			}
 		}
+		if len(a.sites) > 1 {
+			m.Submenu("调整顺序", func(sm *ui.Menu) {
+				if sm.Item("上移").Chosen() {
+					a.moveSiteOrder(site.ID, -1)
+				}
+				if sm.Item("下移").Chosen() {
+					a.moveSiteOrder(site.ID, 1)
+				}
+			})
+		}
 		m.Separator()
 		if m.Item("移入回收站").Danger().Chosen() {
 			a.openSiteSettings(site)
@@ -104,6 +114,16 @@ func (a *App) sidebarSubContextMenu(sub store.Subscription) func(m *ui.Menu) {
 			a.editSubTitle = sub.CustomTitle
 			a.editSubErr = ""
 			a.editSubOpen = true
+		}
+		if len(a.subscriptions) > 1 {
+			m.Submenu("调整顺序", func(sm *ui.Menu) {
+				if sm.Item("上移").Chosen() {
+					a.moveSubOrder(sub.URL, -1)
+				}
+				if sm.Item("下移").Chosen() {
+					a.moveSubOrder(sub.URL, 1)
+				}
+			})
 		}
 		m.Separator()
 		if m.Item("取消关注").Danger().Chosen() {

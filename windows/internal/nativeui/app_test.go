@@ -276,6 +276,10 @@ func (f *fakeBackend) RebuildSite(siteID string, quick bool) (int, error) {
 }
 func (f *fakeBackend) PreventSleep() bool           { return f.preventSleep }
 func (f *fakeBackend) SetPreventSleep(v bool) error { f.preventSleep = v; return nil }
+func (f *fakeBackend) DataDir() string              { return `D:\planet-data` }
+func (f *fakeBackend) MoveDataDir(_ context.Context) (string, error) {
+	return `D:\planet-data-new`, nil
+}
 
 func (f *fakeBackend) OfflineMediaUsage() (offline.Usage, error) { return f.offlineUsage, nil }
 func (f *fakeBackend) CleanupOfflineMedia() (offline.Usage, error) {

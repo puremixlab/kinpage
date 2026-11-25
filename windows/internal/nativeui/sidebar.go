@@ -52,7 +52,7 @@ func (a *App) viewSidebar(c *ui.Context) {
 					idx  int
 					site store.Site
 				}
-				for i, site := range a.sites {
+				for i, site := range a.orderedSites() {
 					if site.Archived {
 						archivedSites = append(archivedSites, struct {
 							idx  int
@@ -120,7 +120,7 @@ func (a *App) viewSidebar(c *ui.Context) {
 				if len(a.subscriptions) == 0 {
 					ui.Text(c, "暂无关注").Font(macPlanetFont).FontSize(12).TextColor(pal.muted).PaddingX(8).PaddingY(4)
 				}
-				for _, sub := range a.subscriptions {
+				for _, sub := range a.orderedSubscriptions() {
 					s := sub
 					subURL, title := s.URL, subscriptionTitle(s)
 					unread := 0

@@ -76,6 +76,7 @@ type Library struct {
 	apiMu               sync.Mutex
 	apiServer           *localapi.Server
 	activePublishes     atomic.Int32
+	defaultDataDir      string
 }
 
 func (l *Library) ensureAPIServer() *localapi.Server {
@@ -964,6 +965,33 @@ func (l *Library) SetArticlePinned(siteID, articleID string, pinned bool) (store
 
 func (l *Library) ActivePublishCount() int {
 	return int(l.activePublishes.Load())
+}
+
+func (l *Library) DataDir() string {
+	dir, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return ""
+	}
+	return dir
+}
+
+func (l *Library) MoveDataDir(ctx context.Context) (string, error) {
+	dirs, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "选择新的空数据仓库目录", Directory: true})
+	if err != nil || len(dirs) == 0 {
+		return "", err
+	}
+	currentDir, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return "", err
+	}
+	defaultDir := l.defaultDataDir
+	if defaultDir == "" {
+		defaultDir = currentDir
+	}
+	if err := store.MigrateDataDir(defaultDir, currentDir, dirs[0]); err != nil {
+		return "", err
+	}
+	return dirs[0], nil
 }
 
 func (l *Library) PreventSleep() bool {
@@ -3460,6 +3488,12 @@ func main() {
 		}
 		mygo.App.SetPath(mygo.PathUserData, filepath.Join(path, "development"))
 	}
+	defaultUserDataDir, _ := mygo.App.Path(mygo.PathUserData)
+	if defaultUserDataDir != "" {
+		if resolved := store.ResolveDataDir(defaultUserDataDir); resolved != "" && resolved != defaultUserDataDir {
+			mygo.App.SetPath(mygo.PathUserData, resolved)
+		}
+	}
 	if !mygo.App.RequestSingleInstanceLock() {
 		return
 	}
@@ -3469,7 +3503,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer releaseUpdateLock()
-	library := &Library{}
+	library := &Library{defaultDataDir: defaultUserDataDir}
 	maintenanceCtx, cancelMaintenance := context.WithCancel(context.Background())
 	var maintenance sync.WaitGroup
 	defer func() {

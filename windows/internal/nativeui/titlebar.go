@@ -1,6 +1,7 @@
 package nativeui
 
 import (
+	"context"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -93,6 +94,15 @@ func (a *App) viewSidebarHeader(c *ui.Context) {
 						a.setStatus("已开启防休眠")
 					} else {
 						a.setStatus("已关闭防休眠")
+					}
+				}
+			}
+			if m.Item("迁移数据仓库目录…").Chosen() {
+				if a.backend != nil {
+					if dst, err := a.backend.MoveDataDir(context.Background()); err != nil {
+						a.setError("迁移数据目录失败：" + err.Error())
+					} else if dst != "" {
+						a.setStatus("已迁移至 " + dst + "，重启 Planet 后生效")
 					}
 				}
 			}

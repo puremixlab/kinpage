@@ -25,6 +25,32 @@ const (
 	trendRange1y  = 2
 )
 
+var featuredPlanetAddresses = []string{
+	"planetable.eth",
+	"vitalik.eth",
+}
+
+func (a *App) followFeaturedPlanets() {
+	if a.backend == nil {
+		return
+	}
+	followed := 0
+	var lastErr error
+	for _, addr := range featuredPlanetAddresses {
+		if _, err := a.backend.Follow(addr); err != nil {
+			lastErr = err
+		} else {
+			followed++
+		}
+	}
+	a.Reload()
+	if followed > 0 {
+		a.setStatus(fmt.Sprintf("已关注 %d 个精选站点", followed))
+	} else if lastErr != nil {
+		a.setError("关注精选站点失败：" + lastErr.Error())
+	}
+}
+
 func (a *App) handleDashboardCompose() {
 	switch len(a.sites) {
 	case 0:
@@ -64,9 +90,16 @@ func (a *App) viewDashboard(c *ui.Context) {
 							Title:       "还没有创建站点",
 							Description: "创建一个站点后即可开始本地写作、管理草稿与发布到 IPFS。",
 							Action: func() {
-								if macPrimaryButton(c, "dash-create-first", "创建第一个站点", pal) {
-									a.createSiteOpen = true
-								}
+								ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+									if macPrimaryButton(c, "dash-create-first", "创建第一个站点", pal) {
+										a.createSiteOpen = true
+									}
+									if len(a.subscriptions) == 0 {
+										if macSecondaryButton(c, "dash-follow-featured", "关注精选站点", pal) {
+											a.followFeaturedPlanets()
+										}
+									}
+								})
 							},
 						})
 					})

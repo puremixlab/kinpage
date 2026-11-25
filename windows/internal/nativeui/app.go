@@ -195,6 +195,8 @@ type App struct {
 	postsCollapsed   bool
 	prefsPath        string
 	lastSavedPrefs   layoutPrefs
+	siteOrder        []string
+	subOrder         []string
 
 	// Feedback status (dispatched as non-blocking macOS bottom-right toasts).
 	statusText     string
