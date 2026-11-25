@@ -103,3 +103,21 @@ func TestNativeUIDashboardSiteFilterAndMultiSiteCompose(t *testing.T) {
 		t.Fatalf("expected editor open for s1, modal=%v editing=%v site=%q", app.composePickerOpen, app.editing, app.selectedSiteID)
 	}
 }
+
+func TestDashboardResponsiveColumns(t *testing.T) {
+	cases := []struct {
+		width float32
+		want  int
+	}{
+		{480, 2},
+		{640, 3},
+		{980, 4},
+		{1200, 5},
+		{1600, 6},
+	}
+	for _, tc := range cases {
+		if got := dashboardCardColumns(tc.width); got != tc.want {
+			t.Fatalf("dashboardCardColumns(%v) = %d, want %d", tc.width, got, tc.want)
+		}
+	}
+}
