@@ -129,6 +129,8 @@ func TestNativeUIRenderSnapshots(t *testing.T) {
 	tt.Frame()
 	savePNG(t, outDir, "07-ipfs-popover.png", tt)
 	app.ipfsModal.open = false
+	tt.Frame()
+	tt.Advance(300 * time.Millisecond)
 
 	// Site settings two-column macOS Preferences sheet snapshot.
 	app.openSiteSettings(backend.sites[0])

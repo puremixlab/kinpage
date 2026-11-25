@@ -9,6 +9,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
+	"github.com/lobehub/lobe-mygo/pkg/lucide"
 	"windows/internal/applog"
 	"windows/internal/ipfs"
 	"windows/internal/localapi"
@@ -94,11 +95,11 @@ func (a *App) refreshToolsTab(tab int) {
 func (a *App) viewToolsModal(c *ui.Context) {
 	pal := a.pal
 	m := &a.toolsModal
-	macSheetFrame(c, &m.open, 760, pal, func() {
-		ui.Row(c).Width(760).Height(540).Background(pal.canvas).Children(func() {
-			// Left 180px macOS Preferences sidebar navigation.
-			ui.Column(c).Width(180).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Padding(14).Gap(4).Children(func() {
-				ui.Text(c, "系统工具").Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).PaddingX(8).PaddingY(6)
+	macPreferencesWindow(c, &m.open, 920, 660, pal, func() {
+		ui.Row(c).Fill().Background(pal.canvas).Children(func() {
+			// Left 208px macOS Preferences sidebar navigation.
+			ui.Column(c).Width(208).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Padding(18, 10, 14, 10).Gap(2).Children(func() {
+				ui.Text(c, "系统工具").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).Padding(0, 10, 6, 10)
 				tabs := []struct {
 					idx   int
 					label string
@@ -122,10 +123,22 @@ func (a *App) viewToolsModal(c *ui.Context) {
 			})
 			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.line)
 
-			// Right form pane + footer.
+			// Right form pane + header + footer.
 			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+				tabTitles := map[int]string{
+					toolsTabAI:   "AI 助手与模型配置",
+					toolsTabAPI:  "本地 REST API 服务",
+					toolsTabKeys: "IPNS 密钥管理",
+					toolsTabLogs: "应用运行日志",
+				}
+				ui.Row(c).Padding(20, 20, 12, 28).AlignItems(ui.Center).Justify(ui.SpaceBetween).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+					ui.Text(c, tabTitles[m.tab]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.ink)
+					if toolbarIconBtn(c, "tools-close-x", lucide.X(), "关闭").Clicked() {
+						m.open = false
+					}
+				})
 				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
-					ui.Column(c).Padding(20).Gap(12).AlignSelf(ui.Stretch).Children(func() {
+					ui.Column(c).Padding(4, 28, 24, 28).Gap(14).AlignSelf(ui.Stretch).Children(func() {
 						switch m.tab {
 						case toolsTabAI:
 							a.viewToolsAI(c)
@@ -144,7 +157,7 @@ func (a *App) viewToolsModal(c *ui.Context) {
 					})
 				})
 				hairlineH(c, pal)
-				ui.Row(c).PaddingX(20).PaddingY(12).Gap(8).Justify(ui.End).Background(pal.footer).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.footer).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					if macSecondaryButton(c, "tools-close", "关闭", pal) {
 						m.open = false
 					}

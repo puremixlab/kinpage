@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/lucide"
 	"windows/internal/store"
 )
 
@@ -101,41 +102,70 @@ func (a *App) openIntegrationsModal(site store.Site) {
 func (a *App) viewIntegrationsModal(c *ui.Context) {
 	pal := a.pal
 	m := &a.integrations
-	macSheetFrame(c, &m.open, 780, pal, func() {
-		ui.Row(c).Width(780).Height(540).Background(pal.canvas).Children(func() {
-			// Left 188px macOS Preferences sidebar navigation.
-			ui.Column(c).Width(188).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Padding(14).Gap(4).Children(func() {
-				ui.Text(c, "模板与扩展").Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).PaddingX(8).PaddingY(4)
-				if m.siteName != "" {
-					ui.Text(c, m.siteName).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).Padding(0, 8, 6, 8).MaxLines(1).Ellipsis("…")
+	macPreferencesWindow(c, &m.open, 940, 680, pal, func() {
+		ui.Row(c).Fill().Background(pal.canvas).Children(func() {
+			// Left 216px macOS Preferences sidebar navigation with grouped sections.
+			ui.Column(c).Width(216).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Padding(18, 10, 14, 10).Gap(14).Children(func() {
+				navGroup := func(heading string, items []struct {
+					idx   int
+					label string
+				}) {
+					ui.Column(c).Gap(2).AlignSelf(ui.Stretch).Children(func() {
+						ui.Text(c, heading).Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).Padding(0, 10, 6, 10)
+						for _, tab := range items {
+							tIdx, tLbl := tab.idx, tab.label
+							if sidebarNavRow(c, fmt.Sprintf("int-nav-%d", tIdx), tLbl, m.tab == tIdx, 0, nil, pal) {
+								m.tab = tIdx
+								m.err = ""
+								m.msg = ""
+							}
+						}
+					})
 				}
-				tabs := []struct {
+				navGroup("外观与发布", []struct {
 					idx   int
 					label string
 				}{
 					{intTabTemplates, "模板"},
 					{intTabDeploy, "部署"},
 					{intTabServices, "服务"},
+				})
+				navGroup("内容同步与扩展", []struct {
+					idx   int
+					label string
+				}{
 					{intTabX, "X 同步"},
 					{intTabTelegram, "Telegram"},
 					{intTabAggregate, "聚合"},
 					{intTabWeb3, "Web3"},
-				}
-				for _, tab := range tabs {
-					tIdx, tLbl := tab.idx, tab.label
-					if sidebarNavRow(c, fmt.Sprintf("int-nav-%d", tIdx), tLbl, m.tab == tIdx, 0, nil, pal) {
-						m.tab = tIdx
-						m.err = ""
-						m.msg = ""
-					}
+				})
+				ui.Spacer(c)
+				if m.siteName != "" {
+					hairlineH(c, pal)
+					ui.Text(c, m.siteName).Font(macPlanetFont).FontSize(12).FontWeight(500).TextColor(pal.secondary).Padding(6, 10, 0, 10).MaxLines(1).Ellipsis("…")
 				}
 			})
 			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.line)
 
-			// Right form pane + footer.
+			// Right form pane + header + footer.
 			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+				tabTitles := map[int]string{
+					intTabTemplates: "模板选择与设置",
+					intTabDeploy:    "SSH / Cloudflare 部署",
+					intTabServices:  "固定服务与统计",
+					intTabX:         "X (Twitter) 同步",
+					intTabTelegram:  "Telegram 频道同步",
+					intTabAggregate: "跨源内容聚合",
+					intTabWeb3:      "Web3 与捐赠",
+				}
+				ui.Row(c).Padding(20, 20, 12, 28).AlignItems(ui.Center).Justify(ui.SpaceBetween).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+					ui.Text(c, tabTitles[m.tab]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.ink)
+					if toolbarIconBtn(c, "int-close-x", lucide.X(), "关闭").Clicked() {
+						m.open = false
+					}
+				})
 				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
-					ui.Column(c).Padding(20).Gap(12).AlignSelf(ui.Stretch).Children(func() {
+					ui.Column(c).Padding(4, 28, 24, 28).Gap(14).AlignSelf(ui.Stretch).Children(func() {
 						switch m.tab {
 						case intTabTemplates:
 							a.viewIntTemplates(c)
@@ -160,7 +190,7 @@ func (a *App) viewIntegrationsModal(c *ui.Context) {
 					})
 				})
 				hairlineH(c, pal)
-				ui.Row(c).PaddingX(20).PaddingY(12).Gap(8).Justify(ui.End).Background(pal.footer).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.footer).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					if macSecondaryButton(c, "int-close", "关闭", pal) {
 						m.open = false
 					}

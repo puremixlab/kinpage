@@ -227,6 +227,50 @@ type macSheetProps struct {
 	Danger      bool
 }
 
+// macPreferencesWindow renders a spacious, viewport-responsive macOS Preferences
+// window (centered, up to 960x680, adapting cleanly to smaller viewports).
+func macPreferencesWindow(c *ui.Context, open *bool, maxWidth, maxHeight float32, pal macPalette, content func()) {
+	if open == nil || !*open {
+		return
+	}
+	if maxWidth <= 0 {
+		maxWidth = 960
+	}
+	if maxHeight <= 0 {
+		maxHeight = 680
+	}
+	dim := ui.RGBA(0, 0, 0, 0.28)
+	if pal.dark {
+		dim = ui.RGBA(0, 0, 0, 0.54)
+	}
+	ui.DialogBase(c, open, func(backdrop, panel ui.Element) {
+		backdrop.Center().Padding(28).Background(dim)
+		panel.WidthPercent(100).MaxWidth(maxWidth).HeightPercent(100).MaxHeight(maxHeight).
+			Radius(14).Background(pal.canvas).Border(0.5, pal.line).
+			Shadow(0, 16, 40, 0, pal.shadowColor).Clip()
+		content()
+	})
+}
+
+// macInsetCard renders a macOS Inset Grouped settings card.
+func macInsetCard(c *ui.Context, pal macPalette, content func()) {
+	ui.Column(c).Padding(14, 16, 14, 16).Gap(12).AlignSelf(ui.Stretch).
+		Background(pal.subtle).Border(0.5, pal.line).Radius(10).Children(content)
+}
+
+// macField renders a top-aligned settings field with clear label and optional hint.
+func macField(c *ui.Context, label, hint string, pal macPalette, input func()) {
+	ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(8).AlignSelf(ui.Stretch).Children(func() {
+			ui.Text(c, label).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.ink)
+			if hint != "" {
+				ui.Text(c, hint).Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
+			}
+		})
+		input()
+	})
+}
+
 // macSheetFrame renders a bare macOS-style top-attached sheet frame (no inner
 // padding or footer), ideal for two-column Preferences sheets.
 func macSheetFrame(c *ui.Context, open *bool, width float32, pal macPalette, content func()) {

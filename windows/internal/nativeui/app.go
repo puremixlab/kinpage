@@ -501,8 +501,12 @@ func (a *App) deleteCurrentDraft() {
 }
 
 func (a *App) currentSite() *store.Site {
+	return a.findSiteByID(a.selectedSiteID)
+}
+
+func (a *App) findSiteByID(id string) *store.Site {
 	for i := range a.sites {
-		if a.sites[i].ID == a.selectedSiteID {
+		if a.sites[i].ID == id {
 			return &a.sites[i]
 		}
 	}
