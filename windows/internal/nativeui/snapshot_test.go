@@ -155,4 +155,8 @@ func TestNativeUIRenderSnapshots(t *testing.T) {
 	app.openSiteSettings(backend.sites[0])
 	tt.Frame()
 	savePNG(t, outDir, "11-sheet-site-settings-dark.png", tt)
+	app.siteSettings.open = false
+	app.mode = viewOverview
+	tt.Frame()
+	savePNG(t, outDir, "12-dashboard-dark.png", tt)
 }

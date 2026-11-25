@@ -17,6 +17,21 @@ func (a *App) viewSidebar(c *ui.Context) {
 
 		ui.Scroll(c).TrackScroll(&a.sidebarScroll).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).PaddingX(10).PaddingY(4).Gap(2).Children(func() {
+				// 0. Pinned top-level primary entry: Writing Desk (写作台).
+				if sidebarNavRow(c, "nav-overview", "写作台", a.mode == viewOverview, 0, func() {
+					smartFeedIcon(c, iconGrid, pal.accent)
+				}, pal) {
+					a.guardUnsaved(func() {
+						a.mode = viewOverview
+						a.editing = false
+						a.clearStatus()
+						a.Reload()
+					})
+				}
+				ui.Box(c).Height(6)
+				ui.Box(c).PaddingX(6).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
+				ui.Box(c).Height(6)
+
 				// 1. Smart Feeds (阅读) — matching macOS PlanetSidebarView.swift:34-76.
 				ui.Text(c, "阅读").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).PaddingX(8).PaddingY(3)
 				if sidebarNavRow(c, "nav-today", "今天", a.mode == viewToday, a.totalTodayCount(), func() {
@@ -33,16 +48,6 @@ func (a *App) viewSidebar(c *ui.Context) {
 					smartFeedIcon(c, iconStarSolid, pal.yellow)
 				}, pal) {
 					a.guardUnsaved(func() { a.openSubscriptionView(viewStarred, "") })
-				}
-				if sidebarNavRow(c, "nav-overview", "写作台", a.mode == viewOverview, 0, func() {
-					smartFeedIcon(c, iconGrid, pal.secondary)
-				}, pal) {
-					a.guardUnsaved(func() {
-						a.mode = viewOverview
-						a.editing = false
-						a.clearStatus()
-						a.Reload()
-					})
 				}
 
 				// 2. My Planets (我的站点) — clean section header without inline '+' button.
