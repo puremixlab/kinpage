@@ -121,10 +121,10 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 
 				ui.Spacer(c)
 
-				// Bottom site identity card + remove site action.
-				ui.Column(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
-					prefsHairlineH(c, pal)
-					if site := a.findSiteByID(st.siteID); site != nil {
+				// Bottom site identity card (navigation rail stays free of destructive actions).
+				if site := a.findSiteByID(st.siteID); site != nil {
+					ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {
+						prefsHairlineH(c, pal)
 						ui.Row(c).Padding(6, 8, 2, 8).Gap(10).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
 							a.siteAvatar(c, *site, 0, 28)
 							ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
@@ -136,16 +136,8 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 								ui.Text(c, tpl).Font(macPlanetFont).FontSize(11).TextColor(pal.prefsMuted).MaxLines(1).Ellipsis("…")
 							})
 						})
-					}
-					if interactiveRow(c, "ss-remove-site", "移入回收站", ui.Transparent, pal.hover, pal.active).
-						MinHeight(30).Radius(6).PaddingX(10).PaddingY(5).
-						Children(func() {
-							ui.Text(c, "移入回收站").Font(macPlanetFont).FontSize(12.5).TextColor(pal.danger)
-						}).Clicked() {
-						st.removeSiteName = st.name
-						st.removeConfirm = true
-					}
-				})
+					})
+				}
 			})
 			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
 
@@ -197,7 +189,35 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 							})
 							macInsetCard(c, pal, func() {
 								ui.Checkbox(c.Key("ss-noindex"), &st.doNotIndex, "禁止搜索引擎收录 (noindex)")
-								ui.Text(c, "开启后会在页面头部输出 noindex 元标签，提示搜索引擎不要索引此站点。").Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
+								ui.Text(c, "开启后会在页面头部输出 noindex 元标签，提示搜索引擎不要索引此站点。").Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
+							})
+							// Danger Zone card at the bottom of Basic settings.
+							ui.Column(c).Padding(14, 18, 14, 18).Gap(6).AlignSelf(ui.Stretch).
+								Background(pal.prefsCard).Border(0.5, pal.danger.Alpha(0.32)).Radius(10).
+								Shadow(0, 1, 3, 0, pal.prefsCardShadow).Children(func() {
+								ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).AlignSelf(ui.Stretch).Children(func() {
+									ui.Column(c).Gap(3).Grow(1).MinWidth(0).Children(func() {
+										ui.Text(c, "移除此站点").Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.danger)
+										ui.Text(c, "移入回收站后站点会从侧栏隐藏，可随时在「更多工具 → 回收站」中恢复。").Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
+									})
+									dangerBg := pal.danger.Alpha(0.10)
+									if pal.dark {
+										dangerBg = pal.danger.Alpha(0.16)
+									}
+									rmBtn := ui.ButtonBase(c.Key("ss-remove-site")).Label("移入回收站").Height(30).PaddingX(12).Radius(6).
+										Background(dangerBg).Border(0.5, pal.danger.Alpha(0.35)).Center().Shrink(0).
+										Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+									if rmBtn.Hovered() {
+										rmBtn.Background(pal.danger.Alpha(0.20))
+									}
+									rmBtn.Children(func() {
+										ui.Text(c, "移入回收站").Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.danger).NoWrap()
+									})
+									if rmBtn.Clicked() {
+										st.removeSiteName = st.name
+										st.removeConfirm = true
+									}
+								})
 							})
 
 						case siteSettingsTabProfile:
