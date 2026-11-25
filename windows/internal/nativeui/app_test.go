@@ -10,16 +10,18 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"windows/internal/feeds"
 	"windows/internal/store"
 )
 
 type fakeBackend struct {
-	sites    []store.Site
-	articles []store.Article
-	drafts   []store.Draft
-	activity []store.DailyActivity
-	nextID   int
-	nextFile string
+	sites         []store.Site
+	articles      []store.Article
+	drafts        []store.Draft
+	activity      []store.DailyActivity
+	subscriptions []store.Subscription
+	nextID        int
+	nextFile      string
 }
 
 func (f *fakeBackend) Dashboard() (store.DashboardSnapshot, error) {
@@ -229,6 +231,138 @@ func (f *fakeBackend) QuickPost(siteID, title, content, _, _ string) (store.Arti
 	}
 	f.articles = append(f.articles, art)
 	return art, nil
+}
+
+func (f *fakeBackend) Subscriptions() ([]store.Subscription, error) {
+	out := make([]store.Subscription, len(f.subscriptions))
+	for i, s := range f.subscriptions {
+		s.Feed.Items = append([]feeds.Item(nil), s.Feed.Items...)
+		out[i] = s
+	}
+	return out, nil
+}
+
+func (f *fakeBackend) Follow(address string) (store.Subscription, error) {
+	sub := store.Subscription{
+		URL: address,
+		Feed: feeds.Feed{
+			Title: "订阅源 " + address,
+			Items: []feeds.Item{{
+				Key:     "k1",
+				Title:   "首篇订阅文章",
+				Content: "<p>Hello <strong>Native</strong> Reader</p>",
+			}},
+		},
+	}
+	f.subscriptions = append(f.subscriptions, sub)
+	return sub, nil
+}
+
+func (f *fakeBackend) RefreshSubscription(address string) (store.Subscription, error) {
+	for _, s := range f.subscriptions {
+		if s.URL == address {
+			return s, nil
+		}
+	}
+	return store.Subscription{}, fmt.Errorf("subscription not found")
+}
+
+func (f *fakeBackend) UpdateSubscription(oldAddress, newAddress, customTitle string) (store.Subscription, error) {
+	for i := range f.subscriptions {
+		if f.subscriptions[i].URL == oldAddress {
+			f.subscriptions[i].URL = newAddress
+			f.subscriptions[i].CustomTitle = customTitle
+			return f.subscriptions[i], nil
+		}
+	}
+	return store.Subscription{}, fmt.Errorf("subscription not found")
+}
+
+func (f *fakeBackend) Unfollow(address string) error {
+	for i := range f.subscriptions {
+		if f.subscriptions[i].URL == address {
+			f.subscriptions = append(f.subscriptions[:i], f.subscriptions[i+1:]...)
+			return nil
+		}
+	}
+	return nil
+}
+
+func (f *fakeBackend) StarSubscription(address, key string, starred bool) error {
+	for i := range f.subscriptions {
+		if f.subscriptions[i].URL != address {
+			continue
+		}
+		for j := range f.subscriptions[i].Feed.Items {
+			if feedItemKey(f.subscriptions[i].Feed.Items[j]) == key {
+				f.subscriptions[i].Feed.Items[j].Starred = starred
+				return nil
+			}
+		}
+	}
+	return nil
+}
+
+func (f *fakeBackend) SetSubscriptionRead(address, key string, read bool) error {
+	for i := range f.subscriptions {
+		if f.subscriptions[i].URL != address {
+			continue
+		}
+		for j := range f.subscriptions[i].Feed.Items {
+			if feedItemKey(f.subscriptions[i].Feed.Items[j]) == key {
+				f.subscriptions[i].Feed.Items[j].Read = read
+				return nil
+			}
+		}
+	}
+	return nil
+}
+
+func (f *fakeBackend) MarkSubscriptionRead(address string) error {
+	for i := range f.subscriptions {
+		if f.subscriptions[i].URL != address {
+			continue
+		}
+		for j := range f.subscriptions[i].Feed.Items {
+			f.subscriptions[i].Feed.Items[j].Read = true
+		}
+	}
+	return nil
+}
+
+func (f *fakeBackend) SearchArticles(query string) ([]store.SearchResult, error) {
+	q := strings.ToLower(query)
+	var out []store.SearchResult
+	for _, a := range f.articles {
+		if strings.Contains(strings.ToLower(a.Title+" "+a.Content), q) {
+			out = append(out, store.SearchResult{
+				Title: a.Title, SourceName: f.siteName(a.SiteID), Snippet: a.Content,
+				SiteID: a.SiteID, ArticleID: a.ID,
+			})
+		}
+	}
+	for _, s := range f.subscriptions {
+		for _, item := range s.Feed.Items {
+			if strings.Contains(strings.ToLower(item.Title+" "+item.Content), q) {
+				out = append(out, store.SearchResult{
+					Title: item.Title, SourceName: subscriptionTitle(s), Snippet: item.Title,
+					SubscriptionURL: s.URL, ItemKey: feedItemKey(item),
+				})
+			}
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeBackend) RelatedArticles(_, _, _, _ string) ([]store.SearchResult, error) {
+	var out []store.SearchResult
+	for _, a := range f.articles {
+		out = append(out, store.SearchResult{
+			Title: a.Title, SourceName: f.siteName(a.SiteID),
+			SiteID: a.SiteID, ArticleID: a.ID,
+		})
+	}
+	return out, nil
 }
 
 func TestNativeUIDashboardAndEditorFlow(t *testing.T) {

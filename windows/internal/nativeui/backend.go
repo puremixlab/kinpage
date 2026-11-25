@@ -28,4 +28,14 @@ type Backend interface {
 	UpdateArticleSettings(siteID, articleID, slug string, articleType int, externalLink string, inNavigation bool, weight int) (store.Article, error)
 	DeleteArticle(siteID, articleID string) error
 	QuickPost(siteID, title, content, attachmentName, attachmentBase64 string) (store.Article, error)
+	Subscriptions() ([]store.Subscription, error)
+	Follow(address string) (store.Subscription, error)
+	RefreshSubscription(address string) (store.Subscription, error)
+	UpdateSubscription(oldAddress, newAddress, customTitle string) (store.Subscription, error)
+	Unfollow(address string) error
+	StarSubscription(address, key string, starred bool) error
+	SetSubscriptionRead(address, key string, read bool) error
+	MarkSubscriptionRead(address string) error
+	SearchArticles(query string) ([]store.SearchResult, error)
+	RelatedArticles(siteID, articleID, subscriptionURL, itemKey string) ([]store.SearchResult, error)
 }

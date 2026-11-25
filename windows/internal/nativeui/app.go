@@ -18,6 +18,9 @@ type viewMode int
 const (
 	viewOverview viewMode = iota
 	viewSite
+	viewUnread
+	viewStarred
+	viewSubscription
 )
 
 const (
@@ -33,11 +36,12 @@ type App struct {
 	mode           viewMode
 	selectedSiteID string
 
-	dashboard store.DashboardSnapshot
-	activity  []store.DailyActivity
-	sites     []store.Site
-	drafts    []store.Draft
-	articles  []store.Article
+	dashboard     store.DashboardSnapshot
+	activity      []store.DailyActivity
+	sites         []store.Site
+	drafts        []store.Draft
+	articles      []store.Article
+	subscriptions []store.Subscription
 
 	// Reading / editing selection within the selected site.
 	editing           bool
@@ -104,6 +108,32 @@ type App struct {
 	articleFilterSiteID string
 	composePickerOpen   bool
 
+	// Subscriptions & global search state.
+	selectedSubURL        string
+	selectedSubItemSubURL string
+	selectedSubItemKey    string
+	subSearchQuery        string
+	subReaderScroll       ui.ScrollState
+	followModalOpen       bool
+	followAddress         string
+	followErr             string
+	editSubOpen           bool
+	editSubOldURL         string
+	editSubNewURL         string
+	editSubTitle          string
+	editSubErr            string
+	unfollowOpen          bool
+	unfollowURL           string
+	unfollowTitle         string
+	searchModalOpen       bool
+	searchQuery           string
+	searchResults         []store.SearchResult
+	searchErr             string
+	relatedModalOpen      bool
+	relatedTitle          string
+	relatedResults        []store.SearchResult
+	relatedErr            string
+
 	// Feedback status.
 	statusText  string
 	statusIsErr bool
@@ -148,6 +178,9 @@ func (a *App) Reload() {
 		a.setError("读取站点列表失败：" + err.Error())
 	} else {
 		a.sites = sites
+	}
+	if subs, err := a.backend.Subscriptions(); err == nil {
+		a.subscriptions = subs
 	}
 	if a.selectedSiteID != "" {
 		a.loadSiteItems(a.selectedSiteID)
@@ -402,6 +435,9 @@ func (a *App) View(c *ui.Context) {
 	if a.editing && !a.anyModalOpen() && c.Shortcut(ui.Ctrl, ui.KeyS) {
 		a.saveCurrentDraft()
 	}
+	if !a.anyModalOpen() && c.Shortcut(ui.Ctrl, ui.KeyK) {
+		a.openGlobalSearch()
+	}
 
 	t := c.Theme()
 	ui.Row(c).Fill().Background(t.Background).Children(func() {
@@ -411,10 +447,17 @@ func (a *App) View(c *ui.Context) {
 			if a.statusText != "" {
 				a.viewStatusBar(c)
 			}
-			if a.mode == viewOverview || a.currentSite() == nil {
+			switch a.mode {
+			case viewUnread, viewStarred, viewSubscription:
+				a.viewSubscriptionWorkspace(c)
+			case viewSite:
+				if a.currentSite() != nil {
+					a.viewSiteWorkspace(c)
+				} else {
+					a.viewDashboard(c)
+				}
+			default:
 				a.viewDashboard(c)
-			} else {
-				a.viewSiteWorkspace(c)
 			}
 		})
 	})
@@ -424,11 +467,19 @@ func (a *App) View(c *ui.Context) {
 	a.viewArticleSettingsModal(c)
 	a.viewQuickPostModal(c)
 	a.viewDeleteArticleDialog(c)
+	a.viewFollowModal(c)
+	a.viewEditSubscriptionModal(c)
+	a.viewUnfollowDialog(c)
+	a.viewGlobalSearchModal(c)
+	a.viewRelatedArticlesModal(c)
 	a.viewUnsavedDialog(c)
 }
 
 func (a *App) anyModalOpen() bool {
-	return a.createSiteOpen || a.composePickerOpen || a.articleSettingsOpen || a.quickPostOpen || a.deleteArticleOpen || a.unsavedDialogOpen
+	return a.createSiteOpen || a.composePickerOpen || a.articleSettingsOpen ||
+		a.quickPostOpen || a.deleteArticleOpen || a.unsavedDialogOpen ||
+		a.followModalOpen || a.editSubOpen || a.unfollowOpen ||
+		a.searchModalOpen || a.relatedModalOpen
 }
 
 func (a *App) viewStatusBar(c *ui.Context) {
@@ -476,9 +527,14 @@ func (a *App) viewSidebar(c *ui.Context) {
 					a.createSiteOpen = true
 				}
 			})
-			if ui.Button(c.Key("nav-quick-post"), "⚡ 快捷发文").AlignSelf(ui.Stretch).Clicked() {
-				a.openQuickPost()
-			}
+			ui.Row(c).Gap(6).Children(func() {
+				if ui.Button(c.Key("nav-quick-post"), "⚡ 快捷发文").Grow(1).Clicked() {
+					a.openQuickPost()
+				}
+				if ui.Button(c.Key("nav-search"), "🔍 搜索").Clicked() {
+					a.openGlobalSearch()
+				}
+			})
 		})
 		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
 
@@ -497,6 +553,49 @@ func (a *App) viewSidebar(c *ui.Context) {
 					}
 					if btn.Clicked() {
 						a.guardUnsaved(func() { a.selectSite(siteID) })
+					}
+				}
+
+				ui.Box(c).Height(8)
+				ui.Text(c, "阅读").FontSize(11).Bold().TextColor(t.TextMuted).PaddingX(6).PaddingY(4)
+				unreadLabel := fmt.Sprintf("未读 (%d)", a.totalUnreadCount())
+				unreadBtn := ui.Button(c.Key("nav-unread"), unreadLabel).AlignSelf(ui.Stretch)
+				if a.mode == viewUnread {
+					unreadBtn.Background(t.Accent).TextColor(t.AccentText)
+				}
+				if unreadBtn.Clicked() {
+					a.guardUnsaved(func() { a.openSubscriptionView(viewUnread, "") })
+				}
+				starredLabel := fmt.Sprintf("星标 (%d)", a.totalStarredCount())
+				starredBtn := ui.Button(c.Key("nav-starred"), starredLabel).AlignSelf(ui.Stretch)
+				if a.mode == viewStarred {
+					starredBtn.Background(t.Accent).TextColor(t.AccentText)
+				}
+				if starredBtn.Clicked() {
+					a.guardUnsaved(func() { a.openSubscriptionView(viewStarred, "") })
+				}
+
+				ui.Box(c).Height(8)
+				ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).PaddingX(6).PaddingY(4).Children(func() {
+					ui.Text(c, "订阅").FontSize(11).Bold().TextColor(t.TextMuted)
+					if ui.Button(c.Key("nav-follow"), "+ 关注").Clicked() {
+						a.followAddress = ""
+						a.followErr = ""
+						a.followModalOpen = true
+					}
+				})
+				if len(a.subscriptions) == 0 {
+					ui.Text(c, "暂无订阅").FontSize(12).TextColor(t.TextMuted).PaddingX(6).PaddingY(4)
+				}
+				for _, sub := range a.subscriptions {
+					subURL := sub.URL
+					selected := a.mode == viewSubscription && a.selectedSubURL == subURL
+					btn := ui.Button(c.Key("sub-"+subURL), subscriptionTitle(sub)).AlignSelf(ui.Stretch)
+					if selected {
+						btn.Background(t.Accent).TextColor(t.AccentText)
+					}
+					if btn.Clicked() {
+						a.guardUnsaved(func() { a.openSubscriptionView(viewSubscription, subURL) })
 					}
 				}
 			})
@@ -722,6 +821,9 @@ func (a *App) viewArticleReader(c *ui.Context) {
 				pinLabel := "置顶"
 				if art.Pinned != nil {
 					pinLabel = "取消置顶"
+				}
+				if ui.Button(c.Key("reader-related"), "相关文章").Clicked() {
+					a.openRelatedArticles(art.SiteID, art.ID, "", "", art.Title)
 				}
 				if ui.Button(c.Key("reader-pin"), pinLabel).Clicked() {
 					a.toggleArticlePinned(*art)
