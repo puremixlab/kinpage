@@ -1,0 +1,785 @@
+package nativeui
+
+import (
+	"fmt"
+	"strings"
+	"time"
+	"unicode/utf8"
+
+	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/editor"
+	"github.com/egoist/mygo/ui/markdown"
+	"windows/internal/store"
+)
+
+type viewMode int
+
+const (
+	viewOverview viewMode = iota
+	viewSite
+)
+
+const (
+	editorPaneWrite = 0
+	editorPaneSplit = 1
+	editorPaneView  = 2
+)
+
+// App holds the UI state for the Stage 1 MyGo Native UI shell and editor.
+type App struct {
+	backend Backend
+
+	mode           viewMode
+	selectedSiteID string
+
+	dashboard store.DashboardSnapshot
+	activity  []store.DailyActivity
+	sites     []store.Site
+	drafts    []store.Draft
+	articles  []store.Article
+
+	// Reading / editing selection within the selected site.
+	editing          bool
+	activeDraftID    string
+	activeArticleID  string
+	selectedReadID   string
+	editorTitle      string
+	savedTitle       string
+	editorPaneMode   int
+	editorState      *editor.State
+	editorBuffer     *editor.Buffer
+	markdownOpts     markdown.Options
+	previewScroll    ui.ScrollState
+	readerScroll     ui.ScrollState
+	dashboardScroll  ui.ScrollState
+	postsListScroll  ui.ScrollState
+	sidebarScroll    ui.ScrollState
+	postsPanelWidth  float32
+	editorSplitRatio float32
+	postSearchQuery  string
+
+	// Create-site modal state.
+	createSiteOpen  bool
+	newSiteName     string
+	newSiteAbout    string
+	createSiteError string
+
+	// Feedback status.
+	statusText  string
+	statusIsErr bool
+	loaded      bool
+}
+
+// New creates a native UI application bound to backend and loads initial data.
+func New(backend Backend) *App {
+	buf := editor.NewBuffer("")
+	buf.SetLanguage(editor.LanguageFor("post.md"))
+	a := &App{
+		backend:          backend,
+		mode:             viewOverview,
+		editorPaneMode:   editorPaneSplit,
+		editorBuffer:     buf,
+		editorState:      &editor.State{Buffer: buf, SoftWrap: true, Placeholder: "使用 Markdown 开始写作…", Label: "Markdown 正文编辑器"},
+		postsPanelWidth:  260,
+		editorSplitRatio: 50,
+	}
+	a.Reload()
+	return a
+}
+
+// Reload refreshes the dashboard snapshot, writing activity, site list, and
+// currently selected site's drafts and articles.
+func (a *App) Reload() {
+	if a.backend == nil {
+		return
+	}
+	a.loaded = true
+	if dash, err := a.backend.Dashboard(); err != nil {
+		a.setError("读取总览失败：" + err.Error())
+	} else {
+		a.dashboard = dash
+	}
+	if act, err := a.backend.WritingActivity(); err == nil {
+		a.activity = act
+	}
+	if sites, err := a.backend.Sites(); err != nil {
+		a.setError("读取站点列表失败：" + err.Error())
+	} else {
+		a.sites = sites
+	}
+	if a.selectedSiteID != "" {
+		a.loadSiteItems(a.selectedSiteID)
+	}
+}
+
+func (a *App) loadSiteItems(siteID string) {
+	if a.backend == nil || siteID == "" {
+		a.drafts = nil
+		a.articles = nil
+		return
+	}
+	drafts, err := a.backend.Drafts(siteID)
+	if err != nil {
+		a.setError("读取草稿失败：" + err.Error())
+	} else {
+		a.drafts = drafts
+	}
+	articles, err := a.backend.Articles(siteID)
+	if err != nil {
+		a.setError("读取文章失败：" + err.Error())
+	} else {
+		a.articles = articles
+	}
+}
+
+func (a *App) setStatus(msg string) {
+	a.statusText = msg
+	a.statusIsErr = false
+}
+
+func (a *App) setError(msg string) {
+	a.statusText = msg
+	a.statusIsErr = true
+}
+
+func (a *App) clearStatus() {
+	a.statusText = ""
+	a.statusIsErr = false
+}
+
+func (a *App) isEditorDirty() bool {
+	if !a.editing {
+		return false
+	}
+	return a.editorTitle != a.savedTitle || a.editorBuffer.Modified()
+}
+
+func (a *App) selectSite(siteID string) {
+	a.mode = viewSite
+	a.selectedSiteID = siteID
+	a.editing = false
+	a.activeDraftID = ""
+	a.activeArticleID = ""
+	a.selectedReadID = ""
+	a.postSearchQuery = ""
+	a.clearStatus()
+	a.loadSiteItems(siteID)
+	if len(a.articles) > 0 {
+		a.selectedReadID = a.articles[0].ID
+	} else if len(a.drafts) > 0 {
+		a.openDraft(a.drafts[0])
+	}
+}
+
+func (a *App) startNewDraft(siteID string) {
+	if siteID == "" {
+		if len(a.sites) == 0 {
+			a.createSiteOpen = true
+			return
+		}
+		siteID = a.sites[0].ID
+	}
+	a.mode = viewSite
+	if a.selectedSiteID != siteID {
+		a.selectedSiteID = siteID
+		a.loadSiteItems(siteID)
+	}
+	a.editing = true
+	a.activeDraftID = ""
+	a.activeArticleID = ""
+	a.selectedReadID = ""
+	a.editorTitle = ""
+	a.savedTitle = ""
+	a.editorBuffer.Reset("")
+	a.setStatus("新建草稿")
+}
+
+func (a *App) openDraft(d store.Draft) {
+	a.mode = viewSite
+	if a.selectedSiteID != d.SiteID {
+		a.selectedSiteID = d.SiteID
+		a.loadSiteItems(d.SiteID)
+	}
+	a.editing = true
+	a.activeDraftID = d.ID
+	a.activeArticleID = d.ArticleID
+	a.selectedReadID = ""
+	a.editorTitle = d.Title
+	a.savedTitle = d.Title
+	a.editorBuffer.Reset(d.Content)
+	a.clearStatus()
+}
+
+func (a *App) openArticleForRead(siteID, articleID string) {
+	a.mode = viewSite
+	if a.selectedSiteID != siteID {
+		a.selectedSiteID = siteID
+		a.loadSiteItems(siteID)
+	}
+	a.editing = false
+	a.activeDraftID = ""
+	a.activeArticleID = ""
+	a.selectedReadID = articleID
+	a.readerScroll.Y = 0
+	a.clearStatus()
+}
+
+func (a *App) openArticleForEdit(art store.Article) {
+	// Reuse existing draft for this article if one exists.
+	for _, d := range a.drafts {
+		if d.ArticleID == art.ID {
+			a.openDraft(d)
+			return
+		}
+	}
+	a.mode = viewSite
+	a.editing = true
+	a.activeDraftID = ""
+	a.activeArticleID = art.ID
+	a.selectedReadID = ""
+	a.editorTitle = art.Title
+	a.savedTitle = art.Title
+	a.editorBuffer.Reset(art.Content)
+	a.setStatus("正在编辑已发布文章（保存后将创建草稿）")
+}
+
+func (a *App) saveCurrentDraft() {
+	if !a.editing || a.selectedSiteID == "" || a.backend == nil {
+		return
+	}
+	content := a.editorBuffer.String()
+	draft, err := a.backend.SaveDraft(a.selectedSiteID, a.activeDraftID, a.activeArticleID, a.editorTitle, content)
+	if err != nil {
+		a.setError("保存草稿失败：" + err.Error())
+		return
+	}
+	a.activeDraftID = draft.ID
+	a.activeArticleID = draft.ArticleID
+	a.savedTitle = draft.Title
+	a.editorBuffer.MarkSaved()
+	a.Reload()
+	a.setStatus("草稿已保存 " + time.Now().Format("15:04:05"))
+}
+
+func (a *App) publishCurrentDraft() {
+	if !a.editing || a.selectedSiteID == "" || a.backend == nil {
+		return
+	}
+	content := a.editorBuffer.String()
+	art, err := a.backend.PublishDraft(a.selectedSiteID, a.activeDraftID, a.editorTitle, content)
+	if err != nil {
+		a.setError("发布失败：" + err.Error())
+		return
+	}
+	a.editing = false
+	a.activeDraftID = ""
+	a.activeArticleID = ""
+	a.selectedReadID = art.ID
+	a.editorBuffer.MarkSaved()
+	a.Reload()
+	a.setStatus("已发布：" + fallbackTitle(art.Title))
+}
+
+func (a *App) deleteCurrentDraft() {
+	if !a.editing || a.selectedSiteID == "" || a.activeDraftID == "" || a.backend == nil {
+		return
+	}
+	if err := a.backend.DeleteDraft(a.selectedSiteID, a.activeDraftID); err != nil {
+		a.setError("删除草稿失败：" + err.Error())
+		return
+	}
+	a.editing = false
+	a.activeDraftID = ""
+	a.activeArticleID = ""
+	a.Reload()
+	a.setStatus("草稿已删除")
+}
+
+func (a *App) currentSite() *store.Site {
+	for i := range a.sites {
+		if a.sites[i].ID == a.selectedSiteID {
+			return &a.sites[i]
+		}
+	}
+	return nil
+}
+
+func (a *App) currentArticle() *store.Article {
+	for i := range a.articles {
+		if a.articles[i].ID == a.selectedReadID {
+			return &a.articles[i]
+		}
+	}
+	return nil
+}
+
+// View renders the entire native Planet window.
+func (a *App) View(c *ui.Context) {
+	if !a.loaded {
+		a.Reload()
+	}
+
+	if a.editing && c.Shortcut(ui.Ctrl, ui.KeyS) {
+		a.saveCurrentDraft()
+	}
+
+	t := c.Theme()
+	ui.Row(c).Fill().Background(t.Background).Children(func() {
+		a.viewSidebar(c)
+		ui.Box(c).Width(1).AlignSelf(ui.Stretch).Background(t.Border)
+		ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Children(func() {
+			if a.statusText != "" {
+				a.viewStatusBar(c)
+			}
+			if a.mode == viewOverview || a.currentSite() == nil {
+				a.viewDashboard(c)
+			} else {
+				a.viewSiteWorkspace(c)
+			}
+		})
+	})
+
+	a.viewCreateSiteModal(c)
+}
+
+func (a *App) viewStatusBar(c *ui.Context) {
+	t := c.Theme()
+	bg := t.Surface
+	fg := t.TextMuted
+	if a.statusIsErr {
+		bg = ui.RGBA(220, 38, 38, 0.12)
+		fg = t.Danger
+	}
+	ui.Row(c).AlignSelf(ui.Stretch).PaddingX(14).PaddingY(6).Gap(8).AlignItems(ui.Center).Background(bg).Children(func() {
+		ui.Text(c, a.statusText).FontSize(12).TextColor(fg).Grow(1)
+		if ui.Button(c.Key("dismiss-status"), "关闭").Clicked() {
+			a.clearStatus()
+		}
+	})
+	ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
+}
+
+func (a *App) viewSidebar(c *ui.Context) {
+	t := c.Theme()
+	ui.Column(c).Width(220).Shrink(0).AlignSelf(ui.Stretch).Background(t.Surface).Children(func() {
+		// Top brand & primary actions.
+		ui.Column(c).Padding(12).Gap(8).Shrink(0).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
+				ui.Text(c, "Planet").Bold().FontSize(16)
+				ui.Badge(c, "Native")
+			})
+			ui.Row(c).Gap(6).Children(func() {
+				overviewBtn := ui.Button(c.Key("nav-overview"), "总览").Grow(1)
+				if a.mode == viewOverview {
+					overviewBtn.Background(t.Accent).TextColor(t.AccentText)
+				}
+				if overviewBtn.Clicked() {
+					a.mode = viewOverview
+					a.clearStatus()
+					a.Reload()
+				}
+				if ui.Button(c.Key("nav-new-site"), "+ 站点").Clicked() {
+					a.newSiteName = ""
+					a.newSiteAbout = ""
+					a.createSiteError = ""
+					a.createSiteOpen = true
+				}
+			})
+		})
+		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
+
+		// Sites list.
+		ui.Scroll(c).TrackScroll(&a.sidebarScroll).Grow(1).MinHeight(0).Children(func() {
+			ui.Column(c).Padding(10).Gap(4).Children(func() {
+				ui.Text(c, "我的站点").FontSize(11).Bold().TextColor(t.TextMuted).PaddingX(6).PaddingY(4)
+				if len(a.sites) == 0 {
+					ui.Text(c, "暂无站点").FontSize(12).TextColor(t.TextMuted).PaddingX(6).PaddingY(4)
+				}
+				for _, site := range a.sites {
+					selected := a.mode == viewSite && a.selectedSiteID == site.ID
+					btn := ui.Button(c.Key("site-"+site.ID), fallbackTitle(site.Name)).AlignSelf(ui.Stretch)
+					if selected {
+						btn.Background(t.Accent).TextColor(t.AccentText)
+					}
+					if btn.Clicked() {
+						a.selectSite(site.ID)
+					}
+				}
+			})
+		})
+
+		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
+		ui.Row(c).Padding(10).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).Shrink(0).Children(func() {
+			ui.Text(c, "MyGo GPU 模式").FontSize(11).TextColor(t.TextMuted)
+			if ui.Button(c.Key("sidebar-refresh"), "刷新").Clicked() {
+				a.Reload()
+				a.setStatus("已刷新数据")
+			}
+		})
+	})
+}
+
+func (a *App) viewDashboard(c *ui.Context) {
+	t := c.Theme()
+	ui.Scroll(c).TrackScroll(&a.dashboardScroll).Grow(1).MinHeight(0).Children(func() {
+		ui.Column(c).Padding(24).Gap(20).AlignSelf(ui.Stretch).Children(func() {
+			// Header.
+			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
+				ui.Column(c).Gap(4).Children(func() {
+					ui.Text(c, "写作总览").Bold().FontSize(22)
+					ui.Text(c, "阶段 1 原生界面原型（直连本地 Store，验证写作、预览与中文输入）").FontSize(12).TextColor(t.TextMuted)
+				})
+				ui.Row(c).Gap(8).Children(func() {
+					if ui.PrimaryButton(c.Key("dash-compose"), "写文章").Clicked() {
+						a.startNewDraft(a.selectedSiteID)
+					}
+				})
+			})
+
+			// KPI cards.
+			ui.Row(c).Gap(12).AlignSelf(ui.Stretch).Children(func() {
+				statCard(c, "站点", fmt.Sprintf("%d", a.dashboard.SiteCount))
+				statCard(c, "已发布文章", fmt.Sprintf("%d", a.dashboard.ArticleCount))
+				statCard(c, "本地草稿", fmt.Sprintf("%d", a.dashboard.DraftCount))
+				statCard(c, "未读订阅", fmt.Sprintf("%d", a.dashboard.UnreadCount))
+			})
+
+			// Native writing activity heatmap.
+			a.viewActivityHeatmap(c)
+
+			if a.dashboard.SiteCount == 0 {
+				ui.Column(c).Padding(24).Gap(10).Background(t.Surface).Border(1, t.Border).Radius(8).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, "还没有创建站点").Bold().FontSize(15)
+					ui.Text(c, "创建一个站点后即可体验原生 Markdown 编辑器与实时分屏预览。").FontSize(12).TextColor(t.TextMuted)
+					if ui.PrimaryButton(c.Key("dash-create-first"), "创建第一个站点").Clicked() {
+						a.createSiteOpen = true
+					}
+				})
+				return
+			}
+
+			// Recent drafts & articles side by side.
+			ui.Row(c).Gap(16).AlignSelf(ui.Stretch).AlignItems(ui.Start).Children(func() {
+				ui.Column(c).Grow(1).MinWidth(0).Padding(16).Gap(8).Background(t.Surface).Border(1, t.Border).Radius(8).Children(func() {
+					ui.Text(c, "最近草稿").Bold().FontSize(14)
+					if len(a.dashboard.RecentDrafts) == 0 {
+						ui.Text(c, "暂无本地草稿").FontSize(12).TextColor(t.TextMuted)
+					}
+					for _, d := range a.dashboard.RecentDrafts {
+						label := fmt.Sprintf("%s  ·  %s", fallbackTitle(d.Title), fallbackTitle(d.SiteName))
+						if ui.Button(c.Key("dash-draft-"+d.ID), label).AlignSelf(ui.Stretch).Clicked() {
+							a.openDraftByID(d.SiteID, d.ID)
+						}
+					}
+				})
+
+				ui.Column(c).Grow(1).MinWidth(0).Padding(16).Gap(8).Background(t.Surface).Border(1, t.Border).Radius(8).Children(func() {
+					ui.Text(c, "最近文章").Bold().FontSize(14)
+					if len(a.dashboard.RecentArticles) == 0 {
+						ui.Text(c, "暂无已发布文章").FontSize(12).TextColor(t.TextMuted)
+					}
+					for _, art := range a.dashboard.RecentArticles {
+						label := fmt.Sprintf("%s  ·  %s", fallbackTitle(art.Title), fallbackTitle(art.SiteName))
+						if ui.Button(c.Key("dash-art-"+art.ID), label).AlignSelf(ui.Stretch).Clicked() {
+							a.openArticleForRead(art.SiteID, art.ID)
+						}
+					}
+				})
+			})
+		})
+	})
+}
+
+func (a *App) openDraftByID(siteID, draftID string) {
+	a.selectSite(siteID)
+	for _, d := range a.drafts {
+		if d.ID == draftID {
+			a.openDraft(d)
+			return
+		}
+	}
+}
+
+func statCard(c *ui.Context, title, value string) {
+	t := c.Theme()
+	ui.Column(c.Key("stat-"+title)).Grow(1).MinWidth(0).Padding(14).Gap(4).Background(t.Surface).Border(1, t.Border).Radius(8).Children(func() {
+		ui.Text(c, title).FontSize(12).TextColor(t.TextMuted)
+		ui.Text(c, value).Bold().FontSize(22)
+	})
+}
+
+func (a *App) viewActivityHeatmap(c *ui.Context) {
+	t := c.Theme()
+	counts := make(map[string]int, len(a.activity))
+	totalActions := 0
+	for _, item := range a.activity {
+		n := item.Articles + item.Drafts
+		counts[item.Date] = n
+		totalActions += n
+	}
+
+	const weeks = 16
+	today := time.Now()
+	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.Local)
+	// Align end of grid to Saturday of current week.
+	endOffset := int(time.Saturday - today.Weekday())
+	endDay := today.AddDate(0, 0, endOffset)
+	startDay := endDay.AddDate(0, 0, -(weeks*7 - 1))
+
+	ui.Column(c).Padding(16).Gap(10).Background(t.Surface).Border(1, t.Border).Radius(8).AlignSelf(ui.Stretch).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
+			ui.Text(c, "写作活跃度（近 16 周）").Bold().FontSize(14)
+			ui.Text(c, fmt.Sprintf("累计 %d 次写作记录", totalActions)).FontSize(12).TextColor(t.TextMuted)
+		})
+		ui.Row(c).Gap(4).Children(func() {
+			for w := range weeks {
+				ui.Column(c.Key(fmt.Sprintf("hm-w-%d", w))).Gap(4).Children(func() {
+					for d := range 7 {
+						day := startDay.AddDate(0, 0, w*7+d)
+						key := day.Format("2006-01-02")
+						n := counts[key]
+						color := heatmapColor(n, t.Dark)
+						ui.Box(c.Key("hm-"+key)).Size(14, 14).Radius(3).Background(color)
+					}
+				})
+			}
+		})
+	})
+}
+
+func heatmapColor(count int, dark bool) ui.Color {
+	if count <= 0 {
+		if dark {
+			return ui.Hex("#27272a")
+		}
+		return ui.Hex("#ebedf0")
+	}
+	switch {
+	case count == 1:
+		return ui.Hex("#9be9a8")
+	case count <= 3:
+		return ui.Hex("#40c463")
+	case count <= 5:
+		return ui.Hex("#30a14e")
+	default:
+		return ui.Hex("#216e39")
+	}
+}
+
+func (a *App) viewSiteWorkspace(c *ui.Context) {
+	ui.Split(c.Key("site-split"), &a.postsPanelWidth,
+		func() { a.viewPostsPanel(c) },
+		func() { a.viewDetailPane(c) },
+	).SplitReset(260).Grow(1).MinHeight(0).AlignSelf(ui.Stretch)
+}
+
+func (a *App) viewPostsPanel(c *ui.Context) {
+	t := c.Theme()
+	site := a.currentSite()
+	if site == nil {
+		return
+	}
+	query := strings.ToLower(strings.TrimSpace(a.postSearchQuery))
+
+	ui.Column(c).Fill().Background(t.Surface).Children(func() {
+		ui.Column(c).Padding(12).Gap(8).Shrink(0).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
+				ui.Text(c, fallbackTitle(site.Name)).Bold().FontSize(14)
+				if ui.PrimaryButton(c.Key("site-new-post"), "+ 写文章").Clicked() {
+					a.startNewDraft(site.ID)
+				}
+			})
+			ui.SearchField(c.Key("post-search"), &a.postSearchQuery).Placeholder("筛选文章或草稿…").AlignSelf(ui.Stretch)
+		})
+		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
+
+		ui.Scroll(c).TrackScroll(&a.postsListScroll).Grow(1).MinHeight(0).Children(func() {
+			ui.Column(c).Padding(10).Gap(4).Children(func() {
+				if len(a.drafts) > 0 {
+					ui.Text(c, fmt.Sprintf("草稿 (%d)", len(a.drafts))).FontSize(11).Bold().TextColor(t.TextMuted).PaddingX(6).PaddingY(4)
+					for _, d := range a.drafts {
+						title := fallbackTitle(d.Title)
+						if query != "" && !strings.Contains(strings.ToLower(title), query) {
+							continue
+						}
+						btn := ui.Button(c.Key("draft-"+d.ID), "✎ "+title).AlignSelf(ui.Stretch)
+						if a.editing && a.activeDraftID == d.ID {
+							btn.Background(t.Accent).TextColor(t.AccentText)
+						}
+						if btn.Clicked() {
+							a.openDraft(d)
+						}
+					}
+				}
+
+				ui.Text(c, fmt.Sprintf("已发布 (%d)", len(a.articles))).FontSize(11).Bold().TextColor(t.TextMuted).PaddingX(6).PaddingY(4)
+				if len(a.articles) == 0 {
+					ui.Text(c, "暂无文章").FontSize(12).TextColor(t.TextMuted).PaddingX(6).PaddingY(4)
+				}
+				for _, art := range a.articles {
+					title := fallbackTitle(art.Title)
+					if query != "" && !strings.Contains(strings.ToLower(title), query) {
+						continue
+					}
+					btn := ui.Button(c.Key("article-"+art.ID), title).AlignSelf(ui.Stretch)
+					if !a.editing && a.selectedReadID == art.ID {
+						btn.Background(t.Accent).TextColor(t.AccentText)
+					}
+					if btn.Clicked() {
+						a.openArticleForRead(site.ID, art.ID)
+					}
+				}
+			})
+		})
+	})
+}
+
+func (a *App) viewDetailPane(c *ui.Context) {
+	if a.editing {
+		a.viewEditor(c)
+		return
+	}
+	a.viewArticleReader(c)
+}
+
+func (a *App) viewEditor(c *ui.Context) {
+	t := c.Theme()
+	ui.Column(c).Fill().Background(t.Background).Children(func() {
+		// Editor toolbar.
+		ui.Row(c).PaddingX(14).PaddingY(10).Gap(10).AlignItems(ui.Center).Background(t.Surface).Shrink(0).Children(func() {
+			ui.TextInput(c.Key("editor-title"), &a.editorTitle).Placeholder("输入文章标题…").Label("文章标题").Grow(1)
+			ui.Segmented(c.Key("editor-mode"), &a.editorPaneMode, "编辑", "分屏", "预览").Label("视图模式")
+			if ui.Button(c.Key("editor-save"), "保存草稿").Clicked() {
+				a.saveCurrentDraft()
+			}
+			if ui.PrimaryButton(c.Key("editor-publish"), "发布").Clicked() {
+				a.publishCurrentDraft()
+			}
+			if a.activeDraftID != "" {
+				if ui.Button(c.Key("editor-delete"), "删除").Clicked() {
+					a.deleteCurrentDraft()
+				}
+			}
+		})
+		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
+
+		// Editor / Preview body.
+		ui.Box(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
+			switch a.editorPaneMode {
+			case editorPaneWrite:
+				editor.View(c, a.editorState).Fill()
+			case editorPaneView:
+				a.viewMarkdownPreview(c, a.editorTitle, a.editorBuffer.String(), &a.previewScroll)
+			default:
+				ui.SplitPercent(c.Key("editor-split"), &a.editorSplitRatio,
+					func() { editor.View(c, a.editorState).Fill() },
+					func() { a.viewMarkdownPreview(c, a.editorTitle, a.editorBuffer.String(), &a.previewScroll) },
+				).SplitReset(50).Fill()
+			}
+		})
+
+		// Bottom editor status line.
+		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
+		pos := a.editorState.CursorPos()
+		chars := utf8.RuneCountInString(a.editorBuffer.String())
+		dirtyText := "已保存"
+		if a.isEditorDirty() {
+			dirtyText = "● 未保存（Ctrl+S 保存）"
+		}
+		ui.Row(c).PaddingX(14).PaddingY(6).Gap(16).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(t.Surface).Shrink(0).Children(func() {
+			ui.Text(c, dirtyText).FontSize(11).TextColor(t.TextMuted)
+			ui.Text(c, fmt.Sprintf("行 %d, 列 %d  ·  %d 行  ·  %d 字", pos.Line+1, pos.Col+1, a.editorBuffer.LineCount(), chars)).FontSize(11).TextColor(t.TextMuted)
+		})
+	})
+}
+
+func (a *App) viewMarkdownPreview(c *ui.Context, title, content string, scroll *ui.ScrollState) {
+	t := c.Theme()
+	ui.Scroll(c).TrackScroll(scroll).Fill().Background(t.Background).Children(func() {
+		ui.Column(c).Padding(24).Gap(14).AlignSelf(ui.Stretch).Children(func() {
+			if strings.TrimSpace(title) != "" {
+				ui.Text(c, title).Bold().FontSize(24)
+			}
+			if strings.TrimSpace(content) == "" {
+				ui.Text(c, "预览区域为空，输入 Markdown 内容后将实时渲染。").FontSize(13).TextColor(t.TextMuted)
+			} else {
+				markdown.View(c, content, &a.markdownOpts)
+			}
+		})
+	})
+}
+
+func (a *App) viewArticleReader(c *ui.Context) {
+	t := c.Theme()
+	art := a.currentArticle()
+	if art == nil {
+		ui.Column(c).Fill().Center().Gap(10).Children(func() {
+			ui.Text(c, "选择一篇文章阅读，或点击左上角“+ 写文章”开始创作").FontSize(13).TextColor(t.TextMuted)
+			if site := a.currentSite(); site != nil {
+				if ui.PrimaryButton(c.Key("empty-compose"), "写新文章").Clicked() {
+					a.startNewDraft(site.ID)
+				}
+			}
+		})
+		return
+	}
+
+	ui.Column(c).Fill().Background(t.Background).Children(func() {
+		ui.Row(c).PaddingX(16).PaddingY(10).Gap(10).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(t.Surface).Shrink(0).Children(func() {
+			ui.Column(c).Gap(2).Children(func() {
+				ui.Text(c, fallbackTitle(art.Title)).Bold().FontSize(15)
+				if !art.Modified.IsZero() {
+					ui.Text(c, "更新于 "+art.Modified.Local().Format("2006-01-02 15:04")).FontSize(11).TextColor(t.TextMuted)
+				}
+			})
+			if ui.PrimaryButton(c.Key("reader-edit"), "编辑文章").Clicked() {
+				a.openArticleForEdit(*art)
+			}
+		})
+		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
+		a.viewMarkdownPreview(c, "", art.Content, &a.readerScroll)
+	})
+}
+
+func (a *App) viewCreateSiteModal(c *ui.Context) {
+	t := c.Theme()
+	ui.Modal(c, &a.createSiteOpen, func() {
+		ui.Column(c).Width(360).Gap(12).Children(func() {
+			ui.Text(c, "新建站点").Bold().FontSize(16)
+			ui.TextInput(c.Key("modal-site-name"), &a.newSiteName).Placeholder("站点名称").Label("站点名称").AutoFocus().AlignSelf(ui.Stretch)
+			ui.TextArea(c.Key("modal-site-about"), &a.newSiteAbout).Placeholder("站点简介（可选）").Label("站点简介").Lines(2, 4).AlignSelf(ui.Stretch)
+			if a.createSiteError != "" {
+				ui.Text(c, a.createSiteError).FontSize(12).TextColor(t.Danger)
+			}
+			ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
+				if ui.Button(c.Key("modal-site-cancel"), "取消").Clicked() {
+					a.createSiteOpen = false
+				}
+				if ui.PrimaryButton(c.Key("modal-site-submit"), "创建").Clicked() {
+					name := strings.TrimSpace(a.newSiteName)
+					if name == "" {
+						a.createSiteError = "请输入站点名称"
+						return
+					}
+					site, err := a.backend.CreateSite(name, strings.TrimSpace(a.newSiteAbout))
+					if err != nil {
+						a.createSiteError = err.Error()
+						return
+					}
+					a.createSiteOpen = false
+					a.createSiteError = ""
+					a.Reload()
+					a.selectSite(site.ID)
+					a.setStatus("已创建站点：" + site.Name)
+				}
+			})
+		})
+	})
+}
+
+func fallbackTitle(s string) string {
+	if strings.TrimSpace(s) == "" {
+		return "无标题"
+	}
+	return s
+}

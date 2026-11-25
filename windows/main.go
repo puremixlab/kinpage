@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/ui"
 	"windows/internal/applog"
 	"windows/internal/attachments"
 	"windows/internal/audiostream"
@@ -25,6 +26,7 @@ import (
 	"windows/internal/ipfs"
 	"windows/internal/localapi"
 	"windows/internal/migration"
+	"windows/internal/nativeui"
 	"windows/internal/offline"
 	"windows/internal/pinnable"
 	"windows/internal/preview"
@@ -3270,10 +3272,17 @@ func main() {
 		}
 		maintenance.Add(1)
 		go func() { defer maintenance.Done(); library.maintainPublished(maintenanceCtx) }()
-		win := mygo.NewWindow(mygo.WindowOptions{
+		opts := mygo.WindowOptions{
 			Title: "Planet", Width: 1280, Height: 820, MinWidth: 860, MinHeight: 600,
-			BackgroundColor: "#f7f7f5", StateKey: "main", URL: "/",
-		})
+			BackgroundColor: "#f7f7f5", StateKey: "main",
+		}
+		if useNativeUI(os.Args[1:]) {
+			opts.Title = "Planet (Native)"
+			opts.Content = ui.View(nativeui.New(library).View)
+		} else {
+			opts.URL = "/"
+		}
+		win := mygo.NewWindow(opts)
 		var closing atomic.Bool
 		win.OnClose(func(event *mygo.CloseEvent) {
 			event.PreventDefault()
@@ -3292,4 +3301,16 @@ func main() {
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func useNativeUI(args []string) bool {
+	if os.Getenv("PLANET_NATIVE_UI") == "1" {
+		return true
+	}
+	for _, arg := range args {
+		if arg == "--native" {
+			return true
+		}
+	}
+	return false
 }
