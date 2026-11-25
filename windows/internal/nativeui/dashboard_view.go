@@ -123,7 +123,7 @@ func (a *App) viewDashboardDrafts(c *ui.Context) {
 			if interactiveRow(c, "dash-draft-"+draftID, label, ui.Transparent, pal.hover, pal.active).MinHeight(58).
 				Radius(6).PaddingX(12).PaddingY(10).
 				Children(func() {
-					ui.Row(c).AlignItems(ui.Center).Gap(12).AlignSelf(ui.Stretch).Children(func() {
+					ui.Row(c).AlignItems(ui.Center).Gap(12).Grow(1).MinWidth(0).Children(func() {
 						ui.Icon(c, iconEdit).Size(17, 17).TextColor(pal.secondary).Shrink(0)
 						ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
 							ui.Text(c, title).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).NoWrap()
@@ -188,7 +188,7 @@ func (a *App) viewDashboardArticles(c *ui.Context) {
 			if interactiveRow(c, "dash-art-"+artID, label, ui.Transparent, pal.hover, pal.active).MinHeight(54).
 				Radius(6).PaddingX(12).PaddingY(10).
 				Children(func() {
-					ui.Row(c).AlignItems(ui.Center).Gap(12).AlignSelf(ui.Stretch).Children(func() {
+					ui.Row(c).AlignItems(ui.Center).Gap(12).Grow(1).MinWidth(0).Children(func() {
 						ui.Icon(c, iconFile).Size(17, 17).TextColor(pal.muted).Shrink(0)
 						ui.Text(c, title).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).Grow(1).NoWrap()
 						ui.Text(c, siteName).Font(macPlanetFont).FontSize(12).TextColor(pal.secondary).Shrink(0).NoWrap()
@@ -268,13 +268,15 @@ func (a *App) viewDashboardSites(c *ui.Context) {
 			if interactiveRow(c, "dash-site-row-"+site.ID, fallbackTitle(site.Name), ui.Transparent, pal.hover, pal.active).
 				Radius(6).PaddingX(8).PaddingY(10).
 				Children(func() {
-					ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {
+					ui.Column(c).Gap(6).Grow(1).MinWidth(0).Children(func() {
 						ui.Row(c).AlignItems(ui.Center).Gap(8).AlignSelf(ui.Stretch).Children(func() {
 							a.siteAvatar(c, fullSite, idx, 28)
 							ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).Grow(1).NoWrap()
 							ui.Icon(c, iconArrow).Size(14, 14).TextColor(pal.muted)
 						})
-						display.Tag(c, statusLabel, display.TagProps{Color: statusTagColor, Size: theme.Small})
+						ui.Row(c).AlignItems(ui.Center).Children(func() {
+							display.Tag(c, statusLabel, display.TagProps{Color: statusTagColor, Size: theme.Small})
+						})
 						ui.Text(c, fmt.Sprintf("%d 篇文章，%d 篇草稿", site.ArticleCount, site.DraftCount)).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 					})
 				}).Clicked() {

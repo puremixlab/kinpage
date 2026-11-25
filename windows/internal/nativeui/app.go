@@ -836,7 +836,7 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 						if interactiveRow(c, "draft-"+draft.ID, "✎ "+title, restBg, hoverBg, pal.active).
 							Radius(7).Padding(10, 12, 10, 14).
 							Children(func() {
-								ui.Column(c).Gap(3).AlignSelf(ui.Stretch).Children(func() {
+								ui.Column(c).Gap(3).Grow(1).MinWidth(0).Children(func() {
 									ui.Text(c, title).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(titleColor).MaxLines(2).Ellipsis("…")
 									if snippet != "" {
 										ui.Text(c, snippet).Font(macPlanetFont).FontSize(12).TextColor(excerptColor).MaxLines(2).Ellipsis("…")
@@ -891,9 +891,9 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 					}
 					snippet := excerptText(art.Content, 56)
 					if interactiveRow(c, "article-"+artID, displayTitle, restBg, hoverBg, pal.active).
-						Radius(7).Padding(10, 12, 10, 22).
+						Radius(7).Padding(10, 12, 10, 14).
 						Children(func() {
-							ui.Column(c).Gap(3).AlignSelf(ui.Stretch).Children(func() {
+							ui.Column(c).Gap(3).Grow(1).MinWidth(0).Children(func() {
 								ui.Text(c, displayTitle).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(titleColor).MaxLines(2).Ellipsis("…")
 								if snippet != "" {
 									ui.Text(c, snippet).Font(macPlanetFont).FontSize(12).TextColor(excerptColor).MaxLines(2).Ellipsis("…")
@@ -906,7 +906,7 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 						a.guardUnsaved(func() { a.openArticleForRead(siteID, artID) })
 					}
 					if !selected {
-						ui.Box(c).Padding(0, 12, 0, 22).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
+						ui.Box(c).Padding(0, 12, 0, 14).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
 					}
 				}
 			})

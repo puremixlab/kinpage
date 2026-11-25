@@ -247,7 +247,7 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 					if interactiveRow(c, "subitem-"+subURL+"-"+key, title, restBg, hoverBg, pal.active).
 						Radius(7).Padding(10, 12, 10, 6).
 						Children(func() {
-							ui.Row(c).AlignItems(ui.Start).Gap(0).AlignSelf(ui.Stretch).Children(func() {
+							ui.Row(c).AlignItems(ui.Start).Gap(0).Grow(1).MinWidth(0).Children(func() {
 								ui.Box(c).Width(16).PaddingY(5).Center().Shrink(0).Children(func() {
 									if !entry.item.Read {
 										dotColor := pal.accent

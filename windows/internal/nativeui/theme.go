@@ -245,11 +245,12 @@ func (a *App) subAvatar(c *ui.Context, sub store.Subscription, size float32, pal
 	})
 }
 
-// interactiveRow creates a truly borderless clickable row using ui.ButtonBase
-// with smooth Mac Planet hover/pressed transitions (zero unwanted default chrome).
+// interactiveRow creates a truly borderless, left-aligned full-width clickable row
+// using ui.ButtonBase (zero unwanted default button chrome or centering).
 func interactiveRow(c *ui.Context, key, ariaLabel string, restBg, hoverBg, activeBg ui.Color) ui.Element {
 	b := ui.ButtonBase(c.Key(key)).Label(ariaLabel).AlignSelf(ui.Stretch).
-		Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+		Justify(ui.Start).AlignItems(ui.Center).
+		Cursor(ui.CursorPointer)
 	bg := restBg
 	switch {
 	case b.Pressed():
@@ -272,7 +273,7 @@ func sidebarNavRow(c *ui.Context, key, label string, selected bool, badge int, l
 	b := interactiveRow(c, key, label, rest, hover, active).
 		MinHeight(30).Radius(6).PaddingX(8).PaddingY(5).
 		Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Gap(8).AlignSelf(ui.Stretch).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(8).Grow(1).MinWidth(0).Children(func() {
 				if leading != nil {
 					leading()
 				}
@@ -307,10 +308,28 @@ func ghostIconButton(c *ui.Context, key, text, ariaLabel string, _ macPalette) b
 	}).Label(ariaLabel).Clicked()
 }
 
-func macPrimaryButton(c *ui.Context, key, label string, _ macPalette) bool {
-	return action.Button(c.Key(key), label, action.ButtonProps{
-		Variant: action.Primary,
-	}).Clicked()
+func macPrimaryButton(c *ui.Context, key, label string, pal macPalette) bool {
+	return macPrimaryButtonSized(c, key, label, 32, 14, 13, pal)
+}
+
+func macPrimaryButtonSmall(c *ui.Context, key, label string, pal macPalette) bool {
+	return macPrimaryButtonSized(c, key, label, 28, 12, 12, pal)
+}
+
+func macPrimaryButtonSized(c *ui.Context, key, label string, height, padX, fontSize float32, pal macPalette) bool {
+	b := ui.ButtonBase(c.Key(key)).Label(label).Height(height).PaddingX(padX).Radius(6).
+		Center().Cursor(ui.CursorPointer)
+	bg := pal.accent
+	switch {
+	case b.Pressed():
+		bg = pal.accentActive
+	case b.Hovered():
+		bg = pal.accentHover
+	}
+	b.Background(bg).Children(func() {
+		ui.Text(c, label).Font(macPlanetFont).FontSize(fontSize).FontWeight(500).TextColor(ui.Hex("#ffffff")).NoWrap()
+	})
+	return b.Clicked()
 }
 
 func macSecondaryButton(c *ui.Context, key, label string, _ macPalette) bool {

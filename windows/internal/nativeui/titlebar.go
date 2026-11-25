@@ -86,9 +86,9 @@ func (a *App) viewTitleBar(c *ui.Context) {
 			// Center: compact global search pill using lobe-mygo display.Hotkey.
 			ui.Row(c).Grow(1).MinWidth(0).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
 				if interactiveRow(c, "tb-search", "搜索文章", pal.subtle, pal.hover, pal.active).
-					Width(224).MinHeight(28).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(3).
+					Width(240).MinHeight(28).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(3).
 					Children(func() {
-						ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
+						ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Grow(1).MinWidth(0).Children(func() {
 							ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
 								ui.Icon(c, iconSearch).Size(13, 13).TextColor(pal.muted)
 								ui.Text(c, "搜索文章").Font(macPlanetFont).FontSize(12).TextColor(pal.muted).NoWrap()
@@ -177,7 +177,7 @@ func (a *App) viewTitleBarActions(c *ui.Context) {
 			if action.Button(c.Key("editor-save"), "保存草稿", action.ButtonProps{Variant: action.Default, Size: theme.Small}).Clicked() {
 				a.saveCurrentDraft()
 			}
-			if action.Button(c.Key("editor-publish"), "发布", action.ButtonProps{Variant: action.Primary, Size: theme.Small}).Clicked() {
+			if macPrimaryButtonSmall(c, "editor-publish", "发布", pal) {
 				a.publishCurrentDraft()
 			}
 			if a.activeDraftID != "" {
@@ -193,7 +193,7 @@ func (a *App) viewTitleBarActions(c *ui.Context) {
 				a.triggerPublishSite(*site)
 			}
 			if art := a.currentArticle(); art != nil {
-				if action.Button(c.Key("reader-edit"), "编辑文章", action.ButtonProps{Variant: action.Primary, Size: theme.Small}).Clicked() {
+				if macPrimaryButtonSmall(c, "reader-edit", "编辑文章", pal) {
 					a.openArticleForEdit(*art)
 				}
 			}
@@ -253,8 +253,8 @@ func (a *App) viewTitleBarActions(c *ui.Context) {
 		return
 	}
 
-	// Overview (Dashboard) mode actions (cleanly restrained like main WebView).
-	if action.Button(c.Key("dash-compose"), "写文章", action.ButtonProps{Variant: action.Primary, Size: theme.Small}).Clicked() {
+	// Overview (Dashboard) mode actions (Mac Planet #007aff primary button).
+	if macPrimaryButtonSmall(c, "dash-compose", "写文章", pal) {
 		a.handleDashboardCompose()
 	}
 }
