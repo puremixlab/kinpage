@@ -16,8 +16,8 @@ func (a *App) viewSidebar(c *ui.Context) {
 
 		ui.Scroll(c).TrackScroll(&a.sidebarScroll).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).PaddingX(10).PaddingY(4).Gap(2).Children(func() {
-				// 1. Smart Feeds (智能订阅) — matching macOS PlanetSidebarView.swift:34-76.
-				ui.Text(c, "智能订阅").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).PaddingX(8).PaddingY(3)
+				// 1. Smart Feeds (阅读) — matching macOS PlanetSidebarView.swift:34-76.
+				ui.Text(c, "阅读").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).PaddingX(8).PaddingY(3)
 				if sidebarNavRow(c, "nav-today", "今天", a.mode == viewToday, a.totalTodayCount(), func() {
 					smartFeedIcon(c, iconSunSolid, pal.orange)
 				}, pal) {
