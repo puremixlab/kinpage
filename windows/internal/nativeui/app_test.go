@@ -16,6 +16,7 @@ import (
 	"windows/internal/publisher"
 	"windows/internal/siteimage"
 	"windows/internal/store"
+	"windows/internal/templateinstall"
 )
 
 type fakeBackend struct {
@@ -30,6 +31,10 @@ type fakeBackend struct {
 	ipfsRepoSize  int64
 	offlineUsage  offline.Usage
 	gcCount       int
+	deployCalls   []string
+	xConfigured   bool
+	tgConfigured  bool
+	aggSynced     int
 	nextID        int
 	nextFile      string
 }
@@ -286,6 +291,95 @@ func (f *fakeBackend) RemovePublishedFolder(folderID string) error {
 		}
 	}
 	return nil
+}
+
+func (f *fakeBackend) BuiltinTemplates() []templateinstall.Builtin {
+	return []templateinstall.Builtin{{ID: "plain", Name: "Plain", Description: "简洁文字博客"}}
+}
+
+func (f *fakeBackend) ApplyBuiltinTemplate(siteID, id string) (store.Site, error) {
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].TemplateID = id
+			f.sites[i].TemplateName = "Plain"
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
+}
+
+func (f *fakeBackend) SelectTemplate(_ context.Context, siteID string) (store.Site, error) {
+	return f.ApplyBuiltinTemplate(siteID, "custom")
+}
+
+func (f *fakeBackend) TemplateSettings(siteID string) (map[string]string, error) {
+	return map[string]string{"accentColor": "#2563eb"}, nil
+}
+
+func (f *fakeBackend) SaveTemplateSettings(siteID, values string) (store.Site, error) {
+	var m map[string]string
+	if err := json.Unmarshal([]byte(values), &m); err != nil {
+		return store.Site{}, err
+	}
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].TemplateSettings = m
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
+}
+
+func (f *fakeBackend) ConfigureDeployment(_, kind, _, _, _ string, _, _ bool) error {
+	f.deployCalls = append(f.deployCalls, "cfg:"+kind)
+	return nil
+}
+func (f *fakeBackend) DisableDeployment(_, kind string) error {
+	f.deployCalls = append(f.deployCalls, "off:"+kind)
+	return nil
+}
+func (f *fakeBackend) DeploySite(_, kind string) (string, error) {
+	f.deployCalls = append(f.deployCalls, "run:"+kind)
+	return "ok", nil
+}
+func (f *fakeBackend) ConfigureService(_, _, _, _ string) error        { return nil }
+func (f *fakeBackend) ConfigurePlausibleAt(_, _, _, _, _ string) error { return nil }
+func (f *fakeBackend) RequestFilebasePin(_ string) error               { return nil }
+func (f *fakeBackend) ConfigurePinnable(_, _ string) error             { return nil }
+func (f *fakeBackend) RequestPinnablePin(_ string) error               { return nil }
+func (f *fakeBackend) ConfigureXSync(_, _, _, _, _ string, _ bool) error {
+	f.xConfigured = true
+	return nil
+}
+func (f *fakeBackend) DisableXSync(_ string) error            { f.xConfigured = false; return nil }
+func (f *fakeBackend) ConfigureTelegram(_, _, _ string) error { f.tgConfigured = true; return nil }
+func (f *fakeBackend) DisableTelegram(_ string) error         { f.tgConfigured = false; return nil }
+func (f *fakeBackend) RetryTelegram(_ string) (int, error)    { return 2, nil }
+func (f *fakeBackend) UpdateSiteAggregation(siteID, sources string) (store.Site, error) {
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].Aggregation = strings.Fields(sources)
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
+}
+func (f *fakeBackend) SyncSiteAggregation(_ string) (int, error) { f.aggSynced++; return 3, nil }
+func (f *fakeBackend) UpdateSiteWeb3(siteID, web3JSON string) (store.Site, error) {
+	var cfg store.SiteWeb3Settings
+	if err := json.Unmarshal([]byte(web3JSON), &cfg); err != nil {
+		return store.Site{}, err
+	}
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].AcceptsDonation = cfg.AcceptsDonation
+			f.sites[i].AcceptsDonationETHAddress = cfg.AcceptsDonationETHAddress
+			f.sites[i].JuiceboxEnabled = cfg.JuiceboxEnabled
+			f.sites[i].JuiceboxProjectID = cfg.JuiceboxProjectID
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
 }
 
 func (f *fakeBackend) Articles(siteID string) ([]store.Article, error) {

@@ -8,6 +8,7 @@ import (
 	"windows/internal/publisher"
 	"windows/internal/siteimage"
 	"windows/internal/store"
+	"windows/internal/templateinstall"
 )
 
 // Backend abstracts the Planet Library operations needed by the native UI.
@@ -42,6 +43,27 @@ type Backend interface {
 	AddPublishedFolder(ctx context.Context, name string, autoPublish bool) (store.PublishedFolder, error)
 	PublishFolder(folderID string) (store.PublishedFolder, error)
 	RemovePublishedFolder(folderID string) error
+	BuiltinTemplates() []templateinstall.Builtin
+	ApplyBuiltinTemplate(siteID, id string) (store.Site, error)
+	SelectTemplate(ctx context.Context, siteID string) (store.Site, error)
+	TemplateSettings(siteID string) (map[string]string, error)
+	SaveTemplateSettings(siteID, values string) (store.Site, error)
+	ConfigureDeployment(siteID, kind, name, server, token string, auto, deleteRemote bool) error
+	DisableDeployment(siteID, kind string) error
+	DeploySite(siteID, kind string) (string, error)
+	ConfigureService(siteID, kind, name, token string) error
+	ConfigurePlausibleAt(siteID, domain, token, scriptID, server string) error
+	RequestFilebasePin(siteID string) error
+	ConfigurePinnable(siteID, endpoint string) error
+	RequestPinnablePin(siteID string) error
+	ConfigureXSync(siteID, apiKey, apiSecret, accessToken, accessTokenSecret string, autoSync bool) error
+	DisableXSync(siteID string) error
+	ConfigureTelegram(siteID, chatID, token string) error
+	DisableTelegram(siteID string) error
+	RetryTelegram(siteID string) (int, error)
+	UpdateSiteAggregation(siteID, sourcesText string) (store.Site, error)
+	SyncSiteAggregation(siteID string) (int, error)
+	UpdateSiteWeb3(siteID, web3JSON string) (store.Site, error)
 	Articles(siteID string) ([]store.Article, error)
 	Drafts(siteID string) ([]store.Draft, error)
 	SaveDraft(siteID, draftID, articleID, title, content string) (store.Draft, error)

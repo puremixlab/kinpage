@@ -142,6 +142,9 @@ type App struct {
 	foldersModal foldersModalState
 	removedSites removedSitesState
 
+	// Batch 3B modals state.
+	integrations integrationsModalState
+
 	// Feedback status.
 	statusText  string
 	statusIsErr bool
@@ -486,6 +489,7 @@ func (a *App) View(c *ui.Context) {
 	a.viewOfflineModal(c)
 	a.viewFoldersModal(c)
 	a.viewRemovedSitesModal(c)
+	a.viewIntegrationsModal(c)
 	a.viewUnsavedDialog(c)
 }
 
@@ -496,7 +500,7 @@ func (a *App) anyModalOpen() bool {
 		a.searchModalOpen || a.relatedModalOpen ||
 		a.siteSettings.open || a.siteSettings.removeConfirm ||
 		a.publishModal.open || a.ipfsModal.open || a.offlineModal.open ||
-		a.foldersModal.open || a.removedSites.open
+		a.foldersModal.open || a.removedSites.open || a.integrations.open
 }
 
 func (a *App) viewStatusBar(c *ui.Context) {
@@ -685,6 +689,9 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 				}
 				if ui.Button(c.Key("site-settings"), "站点设置").Clicked() {
 					a.openSiteSettings(*site)
+				}
+				if ui.Button(c.Key("site-integrations"), "扩展").Clicked() {
+					a.openIntegrationsModal(*site)
 				}
 			})
 			ui.SearchField(c.Key("post-search"), &a.postSearchQuery).Placeholder("筛选文章或草稿…").AlignSelf(ui.Stretch)
