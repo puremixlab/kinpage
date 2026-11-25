@@ -15,8 +15,15 @@ import (
 const (
 	siteSettingsTabBasic      = 0
 	siteSettingsTabProfile    = 1
-	siteSettingsTabCustomCode = 2
-	siteSettingsTabPodcast    = 3
+	siteSettingsTabTemplates  = 2
+	siteSettingsTabCustomCode = 3
+	siteSettingsTabPodcast    = 4
+	siteSettingsTabDeploy     = 5
+	siteSettingsTabServices   = 6
+	siteSettingsTabX          = 7
+	siteSettingsTabTelegram   = 8
+	siteSettingsTabAggregate  = 9
+	siteSettingsTabWeb3       = 10
 )
 
 type siteSettingsState struct {
@@ -88,44 +95,65 @@ func (a *App) openSiteSettings(site store.Site) {
 		podcastExp:  site.PodcastExplicit,
 		podcastCats: strings.Join(site.PodcastCategories, ", "),
 	}
+	a.loadIntegrationsState(site)
 }
 
 func (a *App) viewSiteSettingsModal(c *ui.Context) {
 	pal := a.pal
 	st := &a.siteSettings
-	macPreferencesWindow(c, &st.open, 940, 680, pal, func() {
-		// Responsive two-column macOS Sequoia Preferences layout.
+	m := &a.integrations
+	macPreferencesWindow(c, &st.open, 960, 680, pal, func() {
+		// Unified two-column macOS Sequoia Site Settings (11 tabs in 3 groups).
 		ui.Row(c).Fill().Background(pal.prefsCanvas).Children(func() {
-			// Left 220px cool-tinted sidebar navigation + site identity footer.
-			ui.Column(c).Width(220).Shrink(0).AlignSelf(ui.Stretch).Background(pal.prefsSidebar).Padding(18, 10, 14, 10).Gap(12).Children(func() {
-				ui.Column(c).Gap(3).AlignSelf(ui.Stretch).Children(func() {
-					ui.Text(c, "站点设置").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.prefsMuted).Padding(0, 10, 6, 10)
-					tabs := []struct {
-						idx   int
-						label string
-						icon  *ui.SVG
-						tint  ui.Color
-					}{
-						{siteSettingsTabBasic, "基本资料", lucide.SlidersHorizontal(), ui.Hex("#2563eb")},
-						{siteSettingsTabProfile, "社交", lucide.Globe(), ui.Hex("#4f46e5")},
-						{siteSettingsTabCustomCode, "自定义代码", lucide.Code(), ui.Hex("#475569")},
-						{siteSettingsTabPodcast, "播客", lucide.Podcast(), ui.Hex("#7c3aed")},
-					}
-					for _, tab := range tabs {
-						tIdx, tLbl := tab.idx, tab.label
-						if prefsNavRow(c, fmt.Sprintf("ss-nav-%d", tIdx), tLbl, st.tab == tIdx, tab.icon, tab.tint, pal) {
-							st.tab = tIdx
-							st.scroll.Y = 0
-							st.err = ""
+			// Left 224px cool-tinted sidebar navigation + bottom site identity card.
+			ui.Column(c).Width(224).Shrink(0).AlignSelf(ui.Stretch).Background(pal.prefsSidebar).Padding(16, 10, 12, 10).Gap(10).Children(func() {
+				type navSpec struct {
+					idx   int
+					label string
+					icon  *ui.SVG
+					tint  ui.Color
+				}
+				navGroup := func(heading string, items []navSpec) {
+					ui.Column(c).Gap(2).AlignSelf(ui.Stretch).Children(func() {
+						ui.Text(c, heading).Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.prefsMuted).Padding(0, 10, 5, 10)
+						for _, tab := range items {
+							tIdx, tLbl := tab.idx, tab.label
+							if prefsNavRow(c, fmt.Sprintf("ss-nav-%d", tIdx), tLbl, st.tab == tIdx, tab.icon, tab.tint, pal) {
+								st.tab = tIdx
+								st.scroll.Y = 0
+								st.err = ""
+								m.err = ""
+								m.msg = ""
+							}
 						}
-					}
-				})
+					})
+				}
 
-				ui.Spacer(c)
+				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
+					ui.Column(c).Gap(14).AlignSelf(ui.Stretch).Children(func() {
+						navGroup("站点设置", []navSpec{
+							{siteSettingsTabBasic, "基本资料", lucide.SlidersHorizontal(), ui.Hex("#2563eb")},
+							{siteSettingsTabProfile, "社交", lucide.Globe(), ui.Hex("#4f46e5")},
+							{siteSettingsTabTemplates, "模板", lucide.LayoutGrid(), ui.Hex("#0d9488")},
+							{siteSettingsTabCustomCode, "自定义代码", lucide.Code(), ui.Hex("#475569")},
+							{siteSettingsTabPodcast, "播客", lucide.Podcast(), ui.Hex("#7c3aed")},
+						})
+						navGroup("发布与固定", []navSpec{
+							{siteSettingsTabDeploy, "部署", lucide.Upload(), ui.Hex("#0284c7")},
+							{siteSettingsTabServices, "服务", lucide.Activity(), ui.Hex("#d97706")},
+						})
+						navGroup("内容同步与扩展", []navSpec{
+							{siteSettingsTabX, "X 同步", lucide.Share2(), ui.Hex("#475569")},
+							{siteSettingsTabTelegram, "Telegram", lucide.Send(), ui.Hex("#0ea5e9")},
+							{siteSettingsTabAggregate, "聚合", lucide.Rss(), ui.Hex("#ea580c")},
+							{siteSettingsTabWeb3, "Web3", lucide.Wallet(), ui.Hex("#7c3aed")},
+						})
+					})
+				})
 
 				// Bottom site identity card (navigation rail stays free of destructive actions).
 				if site := a.findSiteByID(st.siteID); site != nil {
-					ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {
+					ui.Column(c).Gap(6).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 						prefsHairlineH(c, pal)
 						ui.Row(c).Padding(6, 8, 2, 8).Gap(10).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
 							a.siteAvatar(c, *site, 0, 28)
@@ -145,20 +173,25 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 
 			// Right pane: soft canvas + elevated white inset cards + cool-tinted footer bar.
 			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
-				pageTitle, pageDesc := "基本资料", "配置站点头像、名称、简介、路径别名与搜索引擎收录偏好。"
-				switch st.tab {
-				case siteSettingsTabProfile:
-					pageTitle, pageDesc = "社交与域名", "设置自定义域名与公开社交账号链接。"
-				case siteSettingsTabCustomCode:
-					pageTitle, pageDesc = "自定义代码与发布", "向生成的静态页面注入自定义 HTML，并控制 IPNS 与网关预热行为。"
-				case siteSettingsTabPodcast:
-					pageTitle, pageDesc = "播客设置", "配置 RSS 播客频道语言、分类与内容分级标记。"
+				tabMeta := map[int][2]string{
+					siteSettingsTabBasic:      {"基本资料", "配置站点头像、名称、简介、路径别名与搜索引擎收录偏好。"},
+					siteSettingsTabProfile:    {"社交与域名", "设置自定义域名与公开社交账号链接。"},
+					siteSettingsTabTemplates:  {"模板选择与设置", "选择内置模板或导入本地目录，并微调模板参数。"},
+					siteSettingsTabCustomCode: {"自定义代码与发布", "向生成的静态页面注入自定义 HTML，并控制 IPNS 与网关预热行为。"},
+					siteSettingsTabPodcast:    {"播客设置", "配置 RSS 播客频道语言、分类与内容分级标记。"},
+					siteSettingsTabDeploy:     {"SSH / Cloudflare 部署", "配置静态站点的自动化外部部署目标。"},
+					siteSettingsTabServices:   {"固定服务与统计", "配置 Plausible 访问统计与 Filebase / Pinnable 持久化固定。"},
+					siteSettingsTabX:          {"X (Twitter) 同步", "绑定 X API 凭据并在发布文章时自动同步。"},
+					siteSettingsTabTelegram:   {"Telegram 频道同步", "通过 Bot 将新发布的文章推送到指定频道。"},
+					siteSettingsTabAggregate:  {"跨源内容聚合", "订阅外部 RSS / Atom / IPNS 源并聚合到当前站点。"},
+					siteSettingsTabWeb3:       {"Web3 与捐赠", "配置以太坊打赏地址与 Juicebox 项目支持。"},
 				}
+				meta := tabMeta[st.tab]
 
 				ui.Row(c).Padding(22, 20, 14, 28).AlignItems(ui.Start).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Column(c).Gap(4).Grow(1).MinWidth(0).Children(func() {
-						ui.Text(c, pageTitle).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
-						ui.Text(c, pageDesc).Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
+						ui.Text(c, meta[0]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
+						ui.Text(c, meta[1]).Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
 					})
 					if toolbarIconBtn(c, "ss-close-x", lucide.X(), "关闭").Clicked() {
 						st.open = false
@@ -359,22 +392,48 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 								})
 								ui.Checkbox(c.Key("ss-pod-exp"), &st.podcastExp, "包含成人/敏感内容 (Explicit)")
 							})
+						case siteSettingsTabTemplates:
+							a.viewIntTemplates(c)
+						case siteSettingsTabDeploy:
+							a.viewIntDeploy(c)
+						case siteSettingsTabServices:
+							a.viewIntServices(c)
+						case siteSettingsTabX:
+							a.viewIntX(c)
+						case siteSettingsTabTelegram:
+							a.viewIntTelegram(c)
+						case siteSettingsTabAggregate:
+							a.viewIntAggregate(c)
+						case siteSettingsTabWeb3:
+							a.viewIntWeb3(c)
 						}
 
 						if st.err != "" {
 							ui.Text(c, st.err).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+						} else if m.err != "" {
+							ui.Text(c, m.err).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+						} else if m.msg != "" {
+							ui.Text(c, m.msg).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted)
 						}
 					})
 				})
 
 				// Mac Sheet bottom action bar with 0.5px top border.
+				isCoreTab := st.tab == siteSettingsTabBasic || st.tab == siteSettingsTabProfile ||
+					st.tab == siteSettingsTabCustomCode || st.tab == siteSettingsTabPodcast
 				prefsHairlineH(c, pal)
 				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.prefsFooter).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-					if macSecondaryButton(c, "ss-cancel", "取消", pal) {
-						st.open = false
-					}
-					if macPrimaryButton(c, "ss-save", "保存站点设置", pal) {
-						a.saveSiteSettings()
+					if isCoreTab {
+						if macSecondaryButton(c, "ss-cancel", "取消", pal) {
+							st.open = false
+						}
+						if macPrimaryButton(c, "ss-save", "保存站点设置", pal) {
+							a.saveSiteSettings()
+						}
+					} else {
+						if macSecondaryButton(c, "ss-close", "关闭", pal) {
+							st.open = false
+						}
 					}
 				})
 			})

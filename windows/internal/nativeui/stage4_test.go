@@ -68,8 +68,11 @@ func TestNativeUITTSSpeakAndTemplateBrowserPreview(t *testing.T) {
 	}
 
 	// Template preview opens generated HTML via external browser hook.
-	if err := tt.Click("扩展"); err != nil {
-		t.Fatalf("failed to open integrations modal: %v", err)
+	if err := tt.Click("站点设置"); err != nil {
+		t.Fatalf("failed to open site settings: %v", err)
+	}
+	if err := tt.Click("模板"); err != nil {
+		t.Fatalf("failed to switch to templates tab: %v", err)
 	}
 	if err := tt.Click("预览"); err != nil {
 		t.Fatalf("failed to click template preview: %v", err)

@@ -93,7 +93,6 @@ func (a *App) View(c *ui.Context) {
 	a.viewOfflineModal(c)
 	a.viewFoldersModal(c)
 	a.viewRemovedSitesModal(c)
-	a.viewIntegrationsModal(c)
 	a.viewToolsModal(c)
 	a.viewUnsavedDialog(c)
 	a.maybeSaveLayoutPrefs()

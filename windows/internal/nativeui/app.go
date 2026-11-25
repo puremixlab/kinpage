@@ -529,7 +529,7 @@ func (a *App) anyModalOpen() bool {
 		a.searchModalOpen || a.relatedModalOpen ||
 		a.siteSettings.open || a.siteSettings.removeConfirm ||
 		a.publishModal.open || a.ipfsModal.open || a.offlineModal.open ||
-		a.foldersModal.open || a.removedSites.open || a.integrations.open ||
+		a.foldersModal.open || a.removedSites.open ||
 		a.toolsModal.open
 }
 

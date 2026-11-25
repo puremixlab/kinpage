@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/lobehub/lobe-mygo/pkg/lucide"
 	"windows/internal/store"
 )
 
@@ -78,14 +77,14 @@ type integrationsModalState struct {
 	web3JuiceboxID string
 }
 
-func (a *App) openIntegrationsModal(site store.Site) {
+func (a *App) loadIntegrationsState(site store.Site) {
 	vals := map[string]string{}
-	if loaded, err := a.backend.TemplateSettings(site.ID); err == nil && loaded != nil {
-		vals = loaded
+	if a.backend != nil {
+		if loaded, err := a.backend.TemplateSettings(site.ID); err == nil && loaded != nil {
+			vals = loaded
+		}
 	}
 	a.integrations = integrationsModalState{
-		open:           true,
-		tab:            intTabTemplates,
 		siteID:         site.ID,
 		siteName:       fallbackTitle(site.Name),
 		templateName:   site.TemplateName,
@@ -99,116 +98,9 @@ func (a *App) openIntegrationsModal(site store.Site) {
 	}
 }
 
-func (a *App) viewIntegrationsModal(c *ui.Context) {
-	pal := a.pal
-	m := &a.integrations
-	macPreferencesWindow(c, &m.open, 940, 680, pal, func() {
-		ui.Row(c).Fill().Background(pal.prefsCanvas).Children(func() {
-			// Left 220px macOS Sequoia sidebar navigation with grouped tinted icons.
-			ui.Column(c).Width(220).Shrink(0).AlignSelf(ui.Stretch).Background(pal.prefsSidebar).Padding(18, 10, 14, 10).Gap(14).Children(func() {
-				type navSpec struct {
-					idx   int
-					label string
-					icon  *ui.SVG
-					tint  ui.Color
-				}
-				navGroup := func(heading string, items []navSpec) {
-					ui.Column(c).Gap(3).AlignSelf(ui.Stretch).Children(func() {
-						ui.Text(c, heading).Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.prefsMuted).Padding(0, 10, 6, 10)
-						for _, tab := range items {
-							tIdx, tLbl := tab.idx, tab.label
-							if prefsNavRow(c, fmt.Sprintf("int-nav-%d", tIdx), tLbl, m.tab == tIdx, tab.icon, tab.tint, pal) {
-								m.tab = tIdx
-								m.err = ""
-								m.msg = ""
-							}
-						}
-					})
-				}
-				navGroup("外观与发布", []navSpec{
-					{intTabTemplates, "模板", lucide.LayoutGrid(), ui.Hex("#0d9488")},
-					{intTabDeploy, "部署", lucide.Upload(), ui.Hex("#0284c7")},
-					{intTabServices, "服务", lucide.Activity(), ui.Hex("#d97706")},
-				})
-				navGroup("内容同步与扩展", []navSpec{
-					{intTabX, "X 同步", lucide.Share2(), ui.Hex("#475569")},
-					{intTabTelegram, "Telegram", lucide.Send(), ui.Hex("#0ea5e9")},
-					{intTabAggregate, "聚合", lucide.Rss(), ui.Hex("#ea580c")},
-					{intTabWeb3, "Web3", lucide.Wallet(), ui.Hex("#7c3aed")},
-				})
-				ui.Spacer(c)
-				if site := a.findSiteByID(m.siteID); site != nil {
-					prefsHairlineH(c, pal)
-					ui.Row(c).Padding(8, 8, 2, 8).Gap(10).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-						a.siteAvatar(c, *site, 0, 28)
-						ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-							ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsInk).MaxLines(1).Ellipsis("…")
-							tpl := m.templateName
-							if tpl == "" {
-								tpl = "默认模板"
-							}
-							ui.Text(c, tpl).Font(macPlanetFont).FontSize(11).TextColor(pal.prefsMuted).MaxLines(1).Ellipsis("…")
-						})
-					})
-				}
-			})
-			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
-
-			// Right form pane + header + footer.
-			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
-				tabMeta := map[int][2]string{
-					intTabTemplates: {"模板选择与设置", "选择内置模板或导入本地目录，并微调模板参数。"},
-					intTabDeploy:    {"SSH / Cloudflare 部署", "配置静态站点的自动化外部部署目标。"},
-					intTabServices:  {"固定服务与统计", "配置 Plausible 访问统计与 Filebase / Pinnable 持久化固定。"},
-					intTabX:         {"X (Twitter) 同步", "绑定 X API 凭据并在发布文章时自动同步。"},
-					intTabTelegram:  {"Telegram 频道同步", "通过 Bot 将新发布的文章推送到指定频道。"},
-					intTabAggregate: {"跨源内容聚合", "订阅外部 RSS / Atom / IPNS 源并聚合到当前站点。"},
-					intTabWeb3:      {"Web3 与捐赠", "配置以太坊打赏地址与 Juicebox 项目支持。"},
-				}
-				meta := tabMeta[m.tab]
-				ui.Row(c).Padding(22, 20, 14, 28).AlignItems(ui.Start).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-					ui.Column(c).Gap(4).Grow(1).MinWidth(0).Children(func() {
-						ui.Text(c, meta[0]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
-						ui.Text(c, meta[1]).Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
-					})
-					if toolbarIconBtn(c, "int-close-x", lucide.X(), "关闭").Clicked() {
-						m.open = false
-					}
-				})
-				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
-					ui.Column(c).Padding(4, 28, 24, 28).Gap(14).AlignSelf(ui.Stretch).Children(func() {
-						switch m.tab {
-						case intTabTemplates:
-							a.viewIntTemplates(c)
-						case intTabDeploy:
-							a.viewIntDeploy(c)
-						case intTabServices:
-							a.viewIntServices(c)
-						case intTabX:
-							a.viewIntX(c)
-						case intTabTelegram:
-							a.viewIntTelegram(c)
-						case intTabAggregate:
-							a.viewIntAggregate(c)
-						case intTabWeb3:
-							a.viewIntWeb3(c)
-						}
-						if m.err != "" {
-							ui.Text(c, m.err).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
-						} else if m.msg != "" {
-							ui.Text(c, m.msg).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
-						}
-					})
-				})
-				prefsHairlineH(c, pal)
-				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.prefsFooter).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-					if macSecondaryButton(c, "int-close", "关闭", pal) {
-						m.open = false
-					}
-				})
-			})
-		})
-	})
+func (a *App) openIntegrationsModal(site store.Site) {
+	a.openSiteSettings(site)
+	a.siteSettings.tab = siteSettingsTabTemplates
 }
 
 func (a *App) viewIntTemplates(c *ui.Context) {

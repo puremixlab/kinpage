@@ -188,9 +188,6 @@ func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
 					if toolbarIconBtn(c, "site-settings", lucide.Info(), "站点设置").Clicked() {
 						a.openSiteSettings(*site)
 					}
-					if toolbarIconBtn(c, "site-integrations", lucide.SlidersHorizontal(), "扩展").Clicked() {
-						a.openIntegrationsModal(*site)
-					}
 					if !a.editing {
 						if toolbarIconBtn(c, "site-publish", lucide.Upload(), "发布站点").Clicked() {
 							a.triggerPublishSite(*site)

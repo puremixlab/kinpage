@@ -16,9 +16,6 @@ func (a *App) sidebarSiteContextMenu(site store.Site) func(m *ui.Menu) {
 			a.openSiteSettings(site)
 		}
 		m.Separator()
-		if m.Item("扩展与模板…").Chosen() {
-			a.openIntegrationsModal(site)
-		}
 		if m.Item("发布站点").Chosen() {
 			a.triggerPublishSite(site)
 		}

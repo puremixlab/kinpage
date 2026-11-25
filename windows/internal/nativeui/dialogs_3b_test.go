@@ -20,8 +20,11 @@ func TestNativeUIIntegrationsModalBatch3B(t *testing.T) {
 	if err := tt.Click("集成测试站"); err != nil {
 		t.Fatalf("failed to select site: %v", err)
 	}
-	if err := tt.Click("扩展"); err != nil {
-		t.Fatalf("failed to open integrations modal: %v", err)
+	if err := tt.Click("站点设置"); err != nil {
+		t.Fatalf("failed to open site settings: %v", err)
+	}
+	if err := tt.Click("模板"); err != nil {
+		t.Fatalf("failed to switch to templates tab: %v", err)
 	}
 
 	// 1. Templates tab.
