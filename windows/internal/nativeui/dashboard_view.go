@@ -88,83 +88,116 @@ func paperDeskColors(pal macPalette) (deskBg, paperBg, paperHover, paperEdge, pa
 		ui.RGBA(15, 23, 42, 0.09), ui.RGBA(15, 23, 42, 0.055)
 }
 
+func (a *App) dashboardInnerWidth(c *ui.Context) float32 {
+	winW, _ := c.Size()
+	if winW <= 0 {
+		return 1000
+	}
+	sideW := float32(0)
+	if !a.sidebarCollapsed {
+		sideW = a.sidebarWidth
+		if sideW < 220 {
+			sideW = 228
+		}
+	}
+	inner := winW - sideW - 72 // 36px left + 36px right horizontal padding
+	if inner < 420 {
+		inner = 420
+	}
+	return inner
+}
+
+func dashboardCardColumns(innerW float32) int {
+	switch {
+	case innerW >= 1400:
+		return 6
+	case innerW >= 1120:
+		return 5
+	case innerW >= 820:
+		return 4
+	case innerW >= 580:
+		return 3
+	default:
+		return 2
+	}
+}
+
 func (a *App) viewDashboard(c *ui.Context) {
 	pal := a.pal
 	deskBg, paperBg, _, paperEdge, paperShadow := paperDeskColors(pal)
+	innerW := a.dashboardInnerWidth(c)
 
 	ui.Scroll(c).TrackScroll(&a.dashboardScroll).Grow(1).MinHeight(0).Background(deskBg).Children(func() {
-		ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(40).PaddingY(24).Children(func() {
-			ui.Column(c).AlignSelf(ui.Stretch).MaxWidth(840).Gap(20).Children(func() {
-				// Title-less compact utility row: understated stats on left, monochrome actions on right.
-				ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-					ui.Text(c, fmt.Sprintf("%d 站点  ·  %d 篇文章  ·  %d 篇草稿",
-						a.dashboard.SiteCount, a.dashboard.ArticleCount, a.dashboard.DraftCount)).
-						Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
-					ui.Row(c).AlignItems(ui.Center).Gap(8).Shrink(0).Children(func() {
-						if len(a.sites) > 0 {
-							if macSecondaryButton(c, "dash-hero-quick", "快捷发文", pal) {
-								a.openQuickPost()
-							}
+		ui.Column(c).AlignSelf(ui.Stretch).PaddingX(36).PaddingY(24).Gap(20).Children(func() {
+			// Title-less compact utility row: understated stats on left, monochrome actions on right.
+			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).AlignSelf(ui.Stretch).Children(func() {
+				ui.Text(c, fmt.Sprintf("%d 站点  ·  %d 篇文章  ·  %d 篇草稿",
+					a.dashboard.SiteCount, a.dashboard.ArticleCount, a.dashboard.DraftCount)).
+					Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+				ui.Row(c).AlignItems(ui.Center).Gap(8).Shrink(0).Children(func() {
+					if len(a.sites) > 0 {
+						if macSecondaryButton(c, "dash-hero-quick", "快捷发文", pal) {
+							a.openQuickPost()
 						}
-						btn := ui.ButtonBase(c.Key("dash-hero-compose")).Label("写文章").
-							Height(28).PaddingX(14).Radius(6).Background(pal.ink).
-							Center().Cursor(ui.CursorPointer).Transition(rowHoverTransition)
-						if btn.Hovered() {
-							btn.Background(pal.ink.Alpha(0.86))
-						}
-						btn.Children(func() {
-							ui.Text(c, "写文章").Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.canvas).NoWrap()
-						})
-						if btn.Clicked() {
-							a.handleDashboardCompose()
-						}
+					}
+					btn := ui.ButtonBase(c.Key("dash-hero-compose")).Label("写文章").
+						Height(28).PaddingX(14).Radius(6).Background(pal.ink).
+						Center().Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+					if btn.Hovered() {
+						btn.Background(pal.ink.Alpha(0.86))
+					}
+					btn.Children(func() {
+						ui.Text(c, "写文章").Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.canvas).NoWrap()
 					})
-				})
-
-				if a.dashboard.SiteCount == 0 {
-					ui.Column(c).AlignSelf(ui.Stretch).Padding(40).Radius(8).
-						Background(paperBg).Border(0.5, paperEdge).Shadow(0, 2, 6, 0, paperShadow).Children(func() {
-						display.Empty(c, display.EmptyProps{
-							Icon:        lucide.Globe(),
-							Title:       "还没有创建站点",
-							Description: "创建一个站点后即可开始本地写作、管理草稿与发布到 IPFS。",
-							Action: func() {
-								ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-									if macPrimaryButton(c, "dash-create-first", "创建第一个站点", pal) {
-										a.createSiteOpen = true
-									}
-									if len(a.subscriptions) == 0 {
-										if macSecondaryButton(c, "dash-follow-featured", "关注精选站点", pal) {
-											a.followFeaturedPlanets()
-										}
-									}
-								})
-							},
-						})
-					})
-					return
-				}
-
-				// 1. Sleek full-width monochrome activity strip.
-				a.viewLinearActivityStrip(c)
-
-				// 2. Unified site & draft bookmark shelf + 4-column portrait paper card grid (drafts first).
-				a.viewDashboardArticles(c)
-
-				// Minimal quiet footer.
-				ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).PaddingY(2).Children(func() {
-					ui.Text(c, "所有草稿与站点均保存在本地").Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
-					if ghostIconButton(c, "dash-refresh", "刷新数据", "刷新数据", pal) {
-						a.Reload()
-						a.setStatus("已刷新数据")
+					if btn.Clicked() {
+						a.handleDashboardCompose()
 					}
 				})
+			})
+
+			if a.dashboard.SiteCount == 0 {
+				ui.Column(c).AlignSelf(ui.Stretch).Padding(40).Radius(8).
+					Background(paperBg).Border(0.5, paperEdge).Shadow(0, 2, 6, 0, paperShadow).Children(func() {
+					display.Empty(c, display.EmptyProps{
+						Icon:        lucide.Globe(),
+						Title:       "还没有创建站点",
+						Description: "创建一个站点后即可开始本地写作、管理草稿与发布到 IPFS。",
+						Action: func() {
+							ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+								if macPrimaryButton(c, "dash-create-first", "创建第一个站点", pal) {
+									a.createSiteOpen = true
+								}
+								if len(a.subscriptions) == 0 {
+									if macSecondaryButton(c, "dash-follow-featured", "关注精选站点", pal) {
+										a.followFeaturedPlanets()
+									}
+								}
+							})
+						},
+					})
+				})
+				return
+			}
+
+			// 1. Sleek full-width monochrome activity strip.
+			a.viewLinearActivityStrip(c, innerW)
+
+			// 2. Unified site & draft bookmark shelf + responsive portrait paper card grid (drafts first).
+			a.viewDashboardArticles(c, innerW)
+
+			// Minimal quiet footer.
+			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).PaddingY(2).Children(func() {
+				ui.Text(c, "所有草稿与站点均保存在本地").Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
+				if ghostIconButton(c, "dash-refresh", "刷新数据", "刷新数据", pal) {
+					a.Reload()
+					a.setStatus("已刷新数据")
+				}
 			})
 		})
 	})
 }
 
-func (a *App) viewLinearActivityStrip(c *ui.Context) {
+func (a *App) viewLinearActivityStrip(c *ui.Context, innerW float32) {
 	pal := a.pal
 	_, paperBg, _, paperEdge, paperShadow := paperDeskColors(pal)
 	counts := make(map[string]int, len(a.activity))
@@ -222,7 +255,7 @@ func (a *App) viewLinearActivityStrip(c *ui.Context) {
 			})
 		})
 
-		a.viewHeatmapGrid(c, counts)
+		a.viewHeatmapGrid(c, counts, innerW-44)
 	})
 }
 
@@ -231,7 +264,7 @@ type dashboardCardItem struct {
 	isDraft bool
 }
 
-func (a *App) viewDashboardArticles(c *ui.Context) {
+func (a *App) viewDashboardArticles(c *ui.Context, innerW float32) {
 	pal := a.pal
 	_, paperBg, paperHover, paperEdge, paperShadow := paperDeskColors(pal)
 
@@ -338,7 +371,7 @@ func (a *App) viewDashboardArticles(c *ui.Context) {
 			artBadgeBg = ui.RGBA(255, 255, 255, 0.09)
 		}
 
-		const cols = 4
+		cols := dashboardCardColumns(innerW)
 		ui.Column(c).AlignSelf(ui.Stretch).Gap(16).Children(func() {
 			for rowStart := 0; rowStart < len(items); rowStart += cols {
 				ui.Row(c).AlignSelf(ui.Stretch).Gap(16).Children(func() {
@@ -496,7 +529,7 @@ func (a *App) siteBookmarkChip(c *ui.Context, key, label string, site *store.Sit
 	}
 }
 
-func (a *App) viewHeatmapGrid(c *ui.Context, counts map[string]int) {
+func (a *App) viewHeatmapGrid(c *ui.Context, counts map[string]int, cardInnerW float32) {
 	pal := a.pal
 	const weeks = 52
 	today := time.Now()
@@ -505,14 +538,30 @@ func (a *App) viewHeatmapGrid(c *ui.Context, counts map[string]int) {
 	endDay := today.AddDate(0, 0, endOffset)
 	startDay := endDay.AddDate(0, 0, -(weeks*7 - 1))
 
+	// Scale square cells smoothly to the card's inner width so 52 weeks stay balanced
+	// from compact windows up to 1920px+ fullscreen without stretched gaps.
+	cellSize := float32(11.5)
+	if cardInnerW > 0 {
+		s := cardInnerW / 68.0
+		if s < 10.5 {
+			s = 10.5
+		} else if s > 20 {
+			s = 20
+		}
+		cellSize = s
+	}
+	cellGap := max(float32(3.0), cellSize*0.28)
+	cellRadius := max(float32(3.0), cellSize*0.26)
+
 	renderCell := func(key string, level int, tip string) {
-		ui.Box(c.Key(key)).Size(11.5, 11.5).Radius(3.5).Background(heatmapColor(level, pal)).Tooltip(tip)
+		ui.Box(c.Key(key)).Size(cellSize, cellSize).Radius(cellRadius).Background(heatmapColor(level, pal)).Tooltip(tip)
 	}
 
 	ui.Column(c).AlignSelf(ui.Stretch).Gap(10).Children(func() {
 		switch a.activityMode {
 		case activityModeWeekly:
-			ui.Row(c).AlignSelf(ui.Stretch).Justify(ui.SpaceBetween).AlignItems(ui.End).Height(96).Children(func() {
+			barMaxH := cellSize*7 + cellGap*6
+			ui.Row(c).AlignSelf(ui.Stretch).Justify(ui.SpaceBetween).AlignItems(ui.End).Height(barMaxH).Children(func() {
 				for w := range weeks {
 					sum := 0
 					for d := range 7 {
@@ -521,17 +570,17 @@ func (a *App) viewHeatmapGrid(c *ui.Context, counts map[string]int) {
 					}
 					h := float32(8)
 					if sum > 0 {
-						h = min(float32(92), float32(18+sum*10))
+						h = min(barMaxH-4, float32(18+sum*10))
 					}
 					tip := fmt.Sprintf("第 %d 周：%d 次", w+1, sum)
-					ui.Box(c.Key(fmt.Sprintf("hm-week-%d", w))).Size(11.5, h).Radius(3).Background(heatmapColor(sum, pal)).Tooltip(tip)
+					ui.Box(c.Key(fmt.Sprintf("hm-week-%d", w))).Size(cellSize, h).Radius(cellRadius).Background(heatmapColor(sum, pal)).Tooltip(tip)
 				}
 			})
 		case activityModeCumulative:
 			running := 0
 			ui.Row(c).AlignSelf(ui.Stretch).Justify(ui.SpaceBetween).Children(func() {
 				for w := range weeks {
-					ui.Column(c.Key(fmt.Sprintf("hm-cw-%d", w))).Gap(3.5).Children(func() {
+					ui.Column(c.Key(fmt.Sprintf("hm-cw-%d", w))).Gap(cellGap).Children(func() {
 						for d := range 7 {
 							day := startDay.AddDate(0, 0, w*7+d)
 							key := day.Format("2006-01-02")
@@ -555,7 +604,7 @@ func (a *App) viewHeatmapGrid(c *ui.Context, counts map[string]int) {
 		default:
 			ui.Row(c).AlignSelf(ui.Stretch).Justify(ui.SpaceBetween).Children(func() {
 				for w := range weeks {
-					ui.Column(c.Key(fmt.Sprintf("hm-w-%d", w))).Gap(3.5).Children(func() {
+					ui.Column(c.Key(fmt.Sprintf("hm-w-%d", w))).Gap(cellGap).Children(func() {
 						for d := range 7 {
 							day := startDay.AddDate(0, 0, w*7+d)
 							key := day.Format("2006-01-02")
