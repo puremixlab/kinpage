@@ -217,3 +217,73 @@ func formatFeedDate(raw string) string {
 	}
 	return s
 }
+
+type macSheetProps struct {
+	Title       string
+	Width       float32
+	PrimaryText string
+	CancelText  string
+	HideFooter  bool
+	Danger      bool
+}
+
+// macSheet renders a macOS-style top-attached sheet hanging directly beneath
+// the 44px unified titlebar. Returns true on the frame the primary button is clicked.
+func macSheet(c *ui.Context, open *bool, p macSheetProps, pal macPalette, body func()) bool {
+	if open == nil || !*open {
+		return false
+	}
+	width := p.Width
+	if width <= 0 {
+		width = 480
+	}
+	dim := ui.RGBA(0, 0, 0, 0.24)
+	if pal.dark {
+		dim = ui.RGBA(0, 0, 0, 0.50)
+	}
+	submitted := false
+	ui.DialogBase(c, open, func(backdrop, panel ui.Element) {
+		backdrop.Justify(ui.Start).AlignItems(ui.Center).Padding(44, 16, 24, 16).Background(dim)
+		panel.Width(width).MaxWidthPercent(100).MaxHeightPercent(100).
+			Radius(10).Background(pal.canvas).Border(0.5, pal.line).
+			Shadow(0, 12, 32, 0, pal.shadowColor).Clip()
+		ui.Column(c).AlignSelf(ui.Stretch).Children(func() {
+			if p.Title != "" {
+				ui.Row(c).MinHeight(44).Padding(10, 16, 10, 16).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
+					ui.Text(c, p.Title).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink)
+					if toolbarIconBtn(c, "sheet-close-"+p.Title, lucide.X(), "关闭").Clicked() {
+						*open = false
+					}
+				})
+				hairlineH(c, pal)
+			}
+			ui.Scroll(c).Shrink(1).AlignSelf(ui.Stretch).Children(func() {
+				ui.Column(c).Padding(16).Gap(12).AlignSelf(ui.Stretch).Children(body)
+			})
+			if !p.HideFooter {
+				hairlineH(c, pal)
+				ui.Row(c).Padding(12, 16, 12, 16).Gap(8).AlignItems(ui.Center).Justify(ui.End).Background(pal.footer).AlignSelf(ui.Stretch).Children(func() {
+					if p.CancelText != "" {
+						if macSecondaryButton(c, "sheet-cancel-"+p.Title, p.CancelText, pal) {
+							*open = false
+						}
+					}
+					if p.PrimaryText != "" {
+						if p.Danger {
+							b := ui.ButtonBase(c.Key("sheet-ok-" + p.Title)).Label(p.PrimaryText).Height(30).PaddingX(14).Radius(6).
+								Center().Cursor(ui.CursorPointer).Background(pal.danger).Children(func() {
+								ui.Text(c, p.PrimaryText).Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(ui.Hex("#ffffff")).NoWrap()
+							})
+							if b.Clicked() {
+								submitted = true
+							}
+						} else if macPrimaryButtonSized(c, "sheet-ok-"+p.Title, p.PrimaryText, 30, 14, 13, pal) {
+							submitted = true
+						}
+					}
+				})
+			}
+		})
+	})
+	return submitted
+}

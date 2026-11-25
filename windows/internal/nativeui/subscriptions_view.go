@@ -271,7 +271,7 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 						selected:    selected,
 						starred:     entry.item.Starred,
 						unread:      !entry.item.Read,
-					}, pal)
+					}, pal).ContextMenu(a.subItemContextMenu(entry))
 					if row.Clicked() {
 						a.selectSubItem(subURL, key)
 					}

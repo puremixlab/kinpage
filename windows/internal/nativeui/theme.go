@@ -262,7 +262,7 @@ func interactiveRow(c *ui.Context, key, ariaLabel string, restBg, hoverBg, activ
 	return b
 }
 
-func sidebarNavRow(c *ui.Context, key, label string, selected bool, badge int, leading func(), pal macPalette) bool {
+func sidebarNavRowElem(c *ui.Context, key, label string, selected bool, badge int, leading func(), pal macPalette) ui.Element {
 	rest := ui.Transparent
 	hover := pal.hover
 	active := pal.active
@@ -270,7 +270,7 @@ func sidebarNavRow(c *ui.Context, key, label string, selected bool, badge int, l
 		rest = pal.sidebarSelected
 		hover = pal.sidebarSelected
 	}
-	b := interactiveRow(c, key, label, rest, hover, active).
+	return interactiveRow(c, key, label, rest, hover, active).
 		MinHeight(30).Radius(6).PaddingX(8).PaddingY(5).
 		Children(func() {
 			ui.Row(c).AlignItems(ui.Center).Gap(8).Grow(1).MinWidth(0).Children(func() {
@@ -288,7 +288,10 @@ func sidebarNavRow(c *ui.Context, key, label string, selected bool, badge int, l
 				}
 			})
 		})
-	return b.Clicked()
+}
+
+func sidebarNavRow(c *ui.Context, key, label string, selected bool, badge int, leading func(), pal macPalette) bool {
+	return sidebarNavRowElem(c, key, label, selected, badge, leading, pal).Clicked()
 }
 
 // macIconButton wraps lobe-mygo's action.ActionIcon for crisp hover/press transitions.

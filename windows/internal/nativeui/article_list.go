@@ -113,7 +113,7 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 							selected:    selected,
 							isDraft:     true,
 							attachments: len(draft.Attachments),
-						}, pal)
+						}, pal).ContextMenu(a.draftContextMenu(draft))
 						if row.Clicked() {
 							a.guardUnsaved(func() { a.openDraft(draft) })
 						}
@@ -160,7 +160,7 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 						isPage:      item.ArticleType == 1,
 						navWeight:   navWeight,
 						attachments: len(item.Attachments),
-					}, pal)
+					}, pal).ContextMenu(a.articleContextMenu(item))
 					if row.Clicked() {
 						a.guardUnsaved(func() { a.openArticleForRead(siteID, artID) })
 					}

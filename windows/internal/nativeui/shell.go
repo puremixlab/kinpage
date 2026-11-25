@@ -15,11 +15,36 @@ func (a *App) View(c *ui.Context) {
 		a.Reload()
 	}
 
-	if a.editing && !a.anyModalOpen() && c.Shortcut(ui.Ctrl, ui.KeyS) {
-		a.saveCurrentDraft()
-	}
-	if !a.anyModalOpen() && c.Shortcut(ui.Ctrl, ui.KeyK) {
-		a.openGlobalSearch()
+	if !a.anyModalOpen() {
+		if a.editing && c.Shortcut(ui.Ctrl, ui.KeyS) {
+			a.saveCurrentDraft()
+		}
+		if c.Shortcut(ui.Ctrl, ui.KeyK) {
+			a.openGlobalSearch()
+		}
+		if c.Shortcut(ui.Ctrl, ui.KeyN) {
+			a.guardUnsaved(func() { a.startNewDraft(a.selectedSiteID) })
+		}
+		if c.Shortcut(ui.Ctrl, ui.KeyD) {
+			a.openQuickPost()
+		}
+		if a.mode == viewSite && !a.editing && c.Shortcut(ui.Ctrl, ui.KeyE) {
+			if art := a.currentArticle(); art != nil {
+				a.openArticleForEdit(*art)
+			}
+		}
+		if a.mode != viewOverview && c.Shortcut(ui.Ctrl, ui.KeyF) {
+			a.listSearchOpen = !a.listSearchOpen
+			if !a.listSearchOpen {
+				a.postSearchQuery = ""
+				a.subSearchQuery = ""
+			}
+		}
+		if a.listSearchOpen && c.Shortcut(0, ui.KeyEscape) {
+			a.listSearchOpen = false
+			a.postSearchQuery = ""
+			a.subSearchQuery = ""
+		}
 	}
 
 	pal := a.pal
@@ -65,7 +90,6 @@ func (a *App) View(c *ui.Context) {
 	a.viewRelatedArticlesModal(c)
 	a.viewSiteSettingsModal(c)
 	a.viewPublishModal(c)
-	a.viewIPFSModal(c)
 	a.viewOfflineModal(c)
 	a.viewFoldersModal(c)
 	a.viewRemovedSitesModal(c)
@@ -102,19 +126,17 @@ func (a *App) viewDashboardPane(c *ui.Context) {
 
 func (a *App) viewCreateSiteModal(c *ui.Context) {
 	pal := a.pal
-	if feedback.Modal(c, &a.createSiteOpen, feedback.ModalProps{
-		Title:      "新建站点",
-		Width:      440,
-		OkText:     "创建",
-		CancelText: "取消",
-	}, func() {
-		ui.Column(c).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-			ui.TextInput(c.Key("modal-site-name"), &a.newSiteName).Placeholder("站点名称").Label("站点名称").AutoFocus().AlignSelf(ui.Stretch)
-			ui.TextArea(c.Key("modal-site-about"), &a.newSiteAbout).Placeholder("站点简介（可选）").Label("站点简介").Lines(2, 4).AlignSelf(ui.Stretch)
-			if a.createSiteError != "" {
-				ui.Text(c, a.createSiteError).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
-			}
-		})
+	if macSheet(c, &a.createSiteOpen, macSheetProps{
+		Title:       "新建站点",
+		Width:       440,
+		PrimaryText: "创建",
+		CancelText:  "取消",
+	}, pal, func() {
+		ui.TextInput(c.Key("modal-site-name"), &a.newSiteName).Placeholder("站点名称").Label("站点名称").AutoFocus().AlignSelf(ui.Stretch)
+		ui.TextArea(c.Key("modal-site-about"), &a.newSiteAbout).Placeholder("站点简介（可选）").Label("站点简介").Lines(2, 4).AlignSelf(ui.Stretch)
+		if a.createSiteError != "" {
+			ui.Text(c, a.createSiteError).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+		}
 	}) {
 		name := strings.TrimSpace(a.newSiteName)
 		if name == "" {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/lobehub/lobe-mygo/pkg/lucide"
+	"github.com/lobehub/lobe-mygo/pkg/overlay"
 )
 
 func (a *App) viewSidebar(c *ui.Context) {
@@ -53,9 +54,10 @@ func (a *App) viewSidebar(c *ui.Context) {
 					idx, s := i, site
 					siteID, siteName := s.ID, fallbackTitle(s.Name)
 					selected := a.mode == viewSite && a.selectedSiteID == siteID
-					if sidebarNavRow(c, "site-"+siteID, siteName, selected, 0, func() {
+					row := sidebarNavRowElem(c, "site-"+siteID, siteName, selected, 0, func() {
 						a.siteAvatar(c, s, idx, 24)
-					}, pal) {
+					}, pal).ContextMenu(a.sidebarSiteContextMenu(s))
+					if row.Clicked() {
 						a.guardUnsaved(func() { a.selectSite(siteID) })
 					}
 				}
@@ -76,9 +78,10 @@ func (a *App) viewSidebar(c *ui.Context) {
 						}
 					}
 					selected := a.mode == viewSubscription && a.selectedSubURL == subURL
-					if sidebarNavRow(c, "sub-"+subURL, title, selected, unread, func() {
+					row := sidebarNavRowElem(c, "sub-"+subURL, title, selected, unread, func() {
 						a.subAvatar(c, s, 24, pal)
-					}, pal) {
+					}, pal).ContextMenu(a.sidebarSubContextMenu(s))
+					if row.Clicked() {
 						a.guardUnsaved(func() { a.openSubscriptionView(viewSubscription, subURL) })
 					}
 				}
@@ -111,7 +114,9 @@ func (a *App) viewSidebar(c *ui.Context) {
 
 			ipfsBtn := ui.ButtonBase(c.Key("sys-ipfs")).Label("IPFS 节点").MinHeight(30).
 				Radius(6).PaddingX(6).Cursor(ui.CursorPointer).Tooltip("查看 IPFS 节点状态").Transition(rowHoverTransition)
-			if ipfsBtn.Hovered() {
+			if a.ipfsModal.open {
+				ipfsBtn.Background(pal.active)
+			} else if ipfsBtn.Hovered() {
 				ipfsBtn.Background(pal.hover)
 			}
 			ipfsBtn.Children(func() {
@@ -120,8 +125,12 @@ func (a *App) viewSidebar(c *ui.Context) {
 					ui.Text(c, ipfsLabel).Font(macPlanetFont).FontSize(12.5).TextColor(pal.ink).NoWrap()
 				})
 			})
-			if ipfsBtn.Clicked() {
-				a.openIPFSModal()
+			wasOpen := a.ipfsModal.open
+			overlay.Popover(c, ipfsBtn, &a.ipfsModal.open, overlay.PopoverProps{Placement: overlay.Top}, func() {
+				a.viewIPFSPopoverContent(c)
+			})
+			if !wasOpen && a.ipfsModal.open {
+				a.refreshIPFSModal()
 			}
 
 			toolbarIconBtn(c, "sidebar-add-menu", lucide.Plus(), "新建或关注").Menu(func(m *ui.Menu) {
