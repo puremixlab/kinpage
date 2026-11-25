@@ -7,7 +7,6 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/chart"
 	"github.com/lobehub/lobe-mygo/pkg/display"
-	"github.com/lobehub/lobe-mygo/pkg/feedback"
 	"github.com/lobehub/lobe-mygo/pkg/layout"
 	"github.com/lobehub/lobe-mygo/pkg/lucide"
 	"github.com/lobehub/lobe-mygo/pkg/theme"
@@ -468,30 +467,28 @@ func (a *App) viewActivityTrendChart(c *ui.Context, counts map[string]int) {
 
 func (a *App) viewComposePickerModal(c *ui.Context) {
 	pal := a.pal
-	feedback.Modal(c, &a.composePickerOpen, feedback.ModalProps{
-		Title:    "选择要写作的站点",
-		Width:    380,
-		NoFooter: true,
-	}, func() {
-		ui.Column(c).Gap(10).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, "当前有多个站点，请选择新文章所属的站点：").Font(macPlanetFont).FontSize(12).TextColor(pal.secondary)
-			ui.Column(c).Gap(4).AlignSelf(ui.Stretch).Children(func() {
-				for i, s := range a.sites {
-					idx, site := i, s
-					siteID, siteName := site.ID, fallbackTitle(site.Name)
-					if interactiveRow(c, "compose-pick-"+siteID, siteName, pal.subtle, pal.hover, pal.active).
-						Radius(6).PaddingX(12).PaddingY(8).
-						Children(func() {
-							ui.Row(c).AlignItems(ui.Center).Gap(8).AlignSelf(ui.Stretch).Children(func() {
-								a.siteAvatar(c, site, idx, 22)
-								ui.Text(c, siteName).Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(pal.ink)
-							})
-						}).Clicked() {
-						a.composePickerOpen = false
-						a.startNewDraft(siteID)
-					}
+	macSheet(c, &a.composePickerOpen, macSheetProps{
+		Title:      "选择要写作的站点",
+		Width:      380,
+		HideFooter: true,
+	}, pal, func() {
+		ui.Text(c, "当前有多个站点，请选择新文章所属的站点：").Font(macPlanetFont).FontSize(12).TextColor(pal.secondary)
+		ui.Column(c).Gap(4).AlignSelf(ui.Stretch).Children(func() {
+			for i, s := range a.sites {
+				idx, site := i, s
+				siteID, siteName := site.ID, fallbackTitle(site.Name)
+				if interactiveRow(c, "compose-pick-"+siteID, siteName, pal.subtle, pal.hover, pal.active).
+					Radius(6).PaddingX(12).PaddingY(8).
+					Children(func() {
+						ui.Row(c).AlignItems(ui.Center).Gap(8).AlignSelf(ui.Stretch).Children(func() {
+							a.siteAvatar(c, site, idx, 22)
+							ui.Text(c, siteName).Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(pal.ink)
+						})
+					}).Clicked() {
+					a.composePickerOpen = false
+					a.startNewDraft(siteID)
 				}
-			})
+			}
 		})
 	})
 }

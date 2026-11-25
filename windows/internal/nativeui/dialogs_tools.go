@@ -92,46 +92,63 @@ func (a *App) refreshToolsTab(tab int) {
 }
 
 func (a *App) viewToolsModal(c *ui.Context) {
-	t := c.Theme()
+	pal := a.pal
 	m := &a.toolsModal
-	ui.Modal(c, &m.open, func() {
-		ui.Column(c).Width(640).Gap(12).Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-				ui.Text(c, "系统工具箱").Bold().FontSize(16)
-				prevTab := m.tab
-				ui.Segmented(c.Key("tools-tab"), &m.tab, "AI 助手", "本地 API", "密钥管理", "应用日志").Label("工具分类")
-				if m.tab != prevTab {
-					m.err = ""
-					m.msg = ""
-					a.refreshToolsTab(m.tab)
+	macSheetFrame(c, &m.open, 760, pal, func() {
+		ui.Row(c).Width(760).Height(540).Background(pal.canvas).Children(func() {
+			// Left 180px macOS Preferences sidebar navigation.
+			ui.Column(c).Width(180).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Padding(14).Gap(4).Children(func() {
+				ui.Text(c, "系统工具").Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).PaddingX(8).PaddingY(6)
+				tabs := []struct {
+					idx   int
+					label string
+				}{
+					{toolsTabAI, "AI 助手"},
+					{toolsTabAPI, "本地 API"},
+					{toolsTabKeys, "密钥管理"},
+					{toolsTabLogs, "应用日志"},
+				}
+				for _, tab := range tabs {
+					tIdx, tLbl := tab.idx, tab.label
+					if sidebarNavRow(c, fmt.Sprintf("tools-nav-%d", tIdx), tLbl, m.tab == tIdx, 0, nil, pal) {
+						if m.tab != tIdx {
+							m.tab = tIdx
+							m.err = ""
+							m.msg = ""
+							a.refreshToolsTab(m.tab)
+						}
+					}
 				}
 			})
+			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.line)
 
-			ui.Scroll(c).Height(360).AlignSelf(ui.Stretch).Children(func() {
-				ui.Column(c).Gap(10).Padding(4).AlignSelf(ui.Stretch).Children(func() {
-					switch m.tab {
-					case toolsTabAI:
-						a.viewToolsAI(c)
-					case toolsTabAPI:
-						a.viewToolsLocalAPI(c)
-					case toolsTabKeys:
-						a.viewToolsKeys(c)
-					case toolsTabLogs:
-						a.viewToolsLogs(c)
+			// Right form pane + footer.
+			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
+					ui.Column(c).Padding(20).Gap(12).AlignSelf(ui.Stretch).Children(func() {
+						switch m.tab {
+						case toolsTabAI:
+							a.viewToolsAI(c)
+						case toolsTabAPI:
+							a.viewToolsLocalAPI(c)
+						case toolsTabKeys:
+							a.viewToolsKeys(c)
+						case toolsTabLogs:
+							a.viewToolsLogs(c)
+						}
+						if m.err != "" {
+							ui.Text(c, m.err).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+						} else if m.msg != "" {
+							ui.Text(c, m.msg).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+						}
+					})
+				})
+				hairlineH(c, pal)
+				ui.Row(c).PaddingX(20).PaddingY(12).Gap(8).Justify(ui.End).Background(pal.footer).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+					if macSecondaryButton(c, "tools-close", "关闭", pal) {
+						m.open = false
 					}
 				})
-			})
-
-			if m.err != "" {
-				ui.Text(c, m.err).FontSize(12).TextColor(t.Danger)
-			} else if m.msg != "" {
-				ui.Text(c, m.msg).FontSize(12).TextColor(t.TextMuted)
-			}
-
-			ui.Row(c).Justify(ui.End).Children(func() {
-				if ui.Button(c.Key("tools-close"), "关闭").Clicked() {
-					m.open = false
-				}
 			})
 		})
 	})

@@ -91,9 +91,9 @@ func (a *App) openSiteSettings(site store.Site) {
 func (a *App) viewSiteSettingsModal(c *ui.Context) {
 	pal := a.pal
 	st := &a.siteSettings
-	ui.Modal(c, &st.open, func() {
-		// Wide 820x580 two-column macOS Preferences layout matching mac-planet.css:1040-1050.
-		ui.Row(c).Width(820).Height(560).Background(pal.canvas).Radius(12).Clip().Children(func() {
+	macSheetFrame(c, &st.open, 820, pal, func() {
+		// Wide 820x560 two-column macOS Preferences sheet matching mac-planet.css:1040-1050.
+		ui.Row(c).Width(820).Height(560).Background(pal.canvas).Children(func() {
 			// Left 200px sidebar navigation.
 			ui.Column(c).Width(200).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Padding(14).Gap(4).Children(func() {
 				ui.Text(c, "站点设置").Font(macPlanetFont).FontSize(15).FontWeight(600).TextColor(pal.ink).PaddingX(8).PaddingY(6)
@@ -282,11 +282,10 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 		})
 	})
 
-	switch ui.AlertDialog(c, &st.removeConfirm,
+	if macConfirmSheet(c, &st.removeConfirm,
 		"将站点移入回收站？",
 		fmt.Sprintf("站点“%s”会被移入回收站，可随时在回收站中恢复。", fallbackTitle(st.removeSiteName)),
-		"取消", "移入回收站") {
-	case 1:
+		"取消", "移入回收站", true, pal) {
 		if err := a.backend.RemoveSite(st.siteID); err != nil {
 			st.err = err.Error()
 		} else {
@@ -370,36 +369,34 @@ func (a *App) triggerPublishSite(site store.Site) {
 }
 
 func (a *App) viewPublishModal(c *ui.Context) {
-	t := c.Theme()
+	pal := a.pal
 	pm := &a.publishModal
-	ui.Modal(c, &pm.open, func() {
-		ui.Column(c).Width(480).Gap(12).Children(func() {
-			ui.Text(c, "发布详情 · "+pm.siteName).Bold().FontSize(16)
-			if pm.err != "" {
-				ui.Text(c, "发布失败："+pm.err).FontSize(13).TextColor(t.Danger)
-			} else {
-				ui.Column(c).Padding(12).Gap(6).Background(t.Surface).Border(1, t.Border).Radius(6).AlignSelf(ui.Stretch).Children(func() {
-					ui.Text(c, "CID: "+pm.result.CID).FontSize(12)
-					if pm.result.IPNS != "" {
-						ui.Text(c, "IPNS: "+pm.result.IPNS).FontSize(12)
-					}
-					ui.Text(c, fmt.Sprintf("版本修订号: %d", pm.result.Revision)).FontSize(12).TextColor(t.TextMuted)
-					if pm.result.Pending {
-						ui.Text(c, "IPNS 仍在后台同步中").FontSize(12).TextColor(t.Warning)
-					}
-					if pm.result.PinnableWarning != "" {
-						ui.Text(c, "Pinnable 提示："+pm.result.PinnableWarning).FontSize(12).TextColor(t.Warning)
-					}
-					if pm.result.TelegramWarning != "" {
-						ui.Text(c, "Telegram 提示："+pm.result.TelegramWarning).FontSize(12).TextColor(t.Warning)
-					}
-				})
-			}
-			ui.Row(c).Justify(ui.End).Children(func() {
-				if ui.PrimaryButton(c.Key("pub-close"), "完成").Clicked() {
-					pm.open = false
+	if macSheet(c, &pm.open, macSheetProps{
+		Title:       "发布详情 · " + pm.siteName,
+		Width:       500,
+		PrimaryText: "完成",
+	}, pal, func() {
+		if pm.err != "" {
+			ui.Text(c, "发布失败："+pm.err).Font(macPlanetFont).FontSize(13).TextColor(pal.danger)
+		} else {
+			ui.Column(c).Padding(12).Gap(6).Background(pal.subtle).Border(0.5, pal.line).Radius(6).AlignSelf(ui.Stretch).Children(func() {
+				ui.Text(c, "CID: "+pm.result.CID).Font(macPlanetFont).FontSize(12).TextColor(pal.ink)
+				if pm.result.IPNS != "" {
+					ui.Text(c, "IPNS: "+pm.result.IPNS).Font(macPlanetFont).FontSize(12).TextColor(pal.ink)
+				}
+				ui.Text(c, fmt.Sprintf("版本修订号: %d", pm.result.Revision)).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+				if pm.result.Pending {
+					ui.Text(c, "IPNS 仍在后台同步中").Font(macPlanetFont).FontSize(12).TextColor(pal.amber)
+				}
+				if pm.result.PinnableWarning != "" {
+					ui.Text(c, "Pinnable 提示："+pm.result.PinnableWarning).Font(macPlanetFont).FontSize(12).TextColor(pal.amber)
+				}
+				if pm.result.TelegramWarning != "" {
+					ui.Text(c, "Telegram 提示："+pm.result.TelegramWarning).Font(macPlanetFont).FontSize(12).TextColor(pal.amber)
 				}
 			})
-		})
-	})
+		}
+	}) {
+		pm.open = false
+	}
 }

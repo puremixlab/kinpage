@@ -99,44 +99,72 @@ func (a *App) openIntegrationsModal(site store.Site) {
 }
 
 func (a *App) viewIntegrationsModal(c *ui.Context) {
-	t := c.Theme()
+	pal := a.pal
 	m := &a.integrations
-	ui.Modal(c, &m.open, func() {
-		ui.Column(c).Width(640).Gap(12).Children(func() {
-			ui.Text(c, "模板与扩展 · "+m.siteName).Bold().FontSize(16)
-			ui.Segmented(c.Key("int-tab"), &m.tab, "模板", "部署", "服务", "X 同步", "Telegram", "聚合", "Web3").Label("扩展分类")
+	macSheetFrame(c, &m.open, 780, pal, func() {
+		ui.Row(c).Width(780).Height(540).Background(pal.canvas).Children(func() {
+			// Left 188px macOS Preferences sidebar navigation.
+			ui.Column(c).Width(188).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Padding(14).Gap(4).Children(func() {
+				ui.Text(c, "模板与扩展").Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).PaddingX(8).PaddingY(4)
+				if m.siteName != "" {
+					ui.Text(c, m.siteName).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).Padding(0, 8, 6, 8).MaxLines(1).Ellipsis("…")
+				}
+				tabs := []struct {
+					idx   int
+					label string
+				}{
+					{intTabTemplates, "模板"},
+					{intTabDeploy, "部署"},
+					{intTabServices, "服务"},
+					{intTabX, "X 同步"},
+					{intTabTelegram, "Telegram"},
+					{intTabAggregate, "聚合"},
+					{intTabWeb3, "Web3"},
+				}
+				for _, tab := range tabs {
+					tIdx, tLbl := tab.idx, tab.label
+					if sidebarNavRow(c, fmt.Sprintf("int-nav-%d", tIdx), tLbl, m.tab == tIdx, 0, nil, pal) {
+						m.tab = tIdx
+						m.err = ""
+						m.msg = ""
+					}
+				}
+			})
+			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.line)
 
-			ui.Scroll(c).Height(340).AlignSelf(ui.Stretch).Children(func() {
-				ui.Column(c).Gap(10).Padding(4).AlignSelf(ui.Stretch).Children(func() {
-					switch m.tab {
-					case intTabTemplates:
-						a.viewIntTemplates(c)
-					case intTabDeploy:
-						a.viewIntDeploy(c)
-					case intTabServices:
-						a.viewIntServices(c)
-					case intTabX:
-						a.viewIntX(c)
-					case intTabTelegram:
-						a.viewIntTelegram(c)
-					case intTabAggregate:
-						a.viewIntAggregate(c)
-					case intTabWeb3:
-						a.viewIntWeb3(c)
+			// Right form pane + footer.
+			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
+					ui.Column(c).Padding(20).Gap(12).AlignSelf(ui.Stretch).Children(func() {
+						switch m.tab {
+						case intTabTemplates:
+							a.viewIntTemplates(c)
+						case intTabDeploy:
+							a.viewIntDeploy(c)
+						case intTabServices:
+							a.viewIntServices(c)
+						case intTabX:
+							a.viewIntX(c)
+						case intTabTelegram:
+							a.viewIntTelegram(c)
+						case intTabAggregate:
+							a.viewIntAggregate(c)
+						case intTabWeb3:
+							a.viewIntWeb3(c)
+						}
+						if m.err != "" {
+							ui.Text(c, m.err).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+						} else if m.msg != "" {
+							ui.Text(c, m.msg).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+						}
+					})
+				})
+				hairlineH(c, pal)
+				ui.Row(c).PaddingX(20).PaddingY(12).Gap(8).Justify(ui.End).Background(pal.footer).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+					if macSecondaryButton(c, "int-close", "关闭", pal) {
+						m.open = false
 					}
 				})
-			})
-
-			if m.err != "" {
-				ui.Text(c, m.err).FontSize(12).TextColor(t.Danger)
-			} else if m.msg != "" {
-				ui.Text(c, m.msg).FontSize(12).TextColor(t.TextMuted)
-			}
-
-			ui.Row(c).Justify(ui.End).Children(func() {
-				if ui.Button(c.Key("int-close"), "关闭").Clicked() {
-					m.open = false
-				}
 			})
 		})
 	})

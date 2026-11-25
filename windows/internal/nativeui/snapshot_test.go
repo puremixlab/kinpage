@@ -128,4 +128,16 @@ func TestNativeUIRenderSnapshots(t *testing.T) {
 	app.openIPFSModal()
 	tt.Frame()
 	savePNG(t, outDir, "07-ipfs-popover.png", tt)
+	app.ipfsModal.open = false
+
+	// Site settings two-column macOS Preferences sheet snapshot.
+	app.openSiteSettings(backend.sites[0])
+	tt.Frame()
+	savePNG(t, outDir, "08-sheet-site-settings.png", tt)
+	app.siteSettings.open = false
+
+	// System tools two-column macOS Preferences sheet snapshot.
+	app.openToolsModal(toolsTabAI)
+	tt.Frame()
+	savePNG(t, outDir, "09-sheet-tools.png", tt)
 }

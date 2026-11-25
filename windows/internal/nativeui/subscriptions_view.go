@@ -343,27 +343,23 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 }
 
 func (a *App) viewFollowModal(c *ui.Context) {
-	t := c.Theme()
-	ui.Modal(c, &a.followModalOpen, func() {
-		ui.Column(c).Width(420).Gap(12).Children(func() {
-			ui.Text(c, "关注订阅").Bold().FontSize(16)
-			ui.Text(c, "支持 RSS / Atom 链接、Planet IPNS 或 ENS 域名").FontSize(12).TextColor(t.TextMuted)
-			if ui.TextInput(c.Key("follow-addr"), &a.followAddress).Placeholder("https://example.com/feed.xml 或 vitalik.eth").Label("订阅地址").AutoFocus().AlignSelf(ui.Stretch).Submitted() {
-				a.submitFollow()
-			}
-			if a.followErr != "" {
-				ui.Text(c, a.followErr).FontSize(12).TextColor(t.Danger)
-			}
-			ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
-				if ui.Button(c.Key("follow-cancel"), "取消").Clicked() {
-					a.followModalOpen = false
-				}
-				if ui.PrimaryButton(c.Key("follow-submit"), "关注").Clicked() {
-					a.submitFollow()
-				}
-			})
-		})
-	})
+	pal := a.pal
+	if macSheet(c, &a.followModalOpen, macSheetProps{
+		Title:       "关注订阅",
+		Width:       440,
+		PrimaryText: "关注",
+		CancelText:  "取消",
+	}, pal, func() {
+		ui.Text(c, "支持 RSS / Atom 链接、Planet IPNS 或 ENS 域名").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+		if ui.TextInput(c.Key("follow-addr"), &a.followAddress).Placeholder("https://example.com/feed.xml 或 vitalik.eth").Label("订阅地址").AutoFocus().AlignSelf(ui.Stretch).Submitted() {
+			a.submitFollow()
+		}
+		if a.followErr != "" {
+			ui.Text(c, a.followErr).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+		}
+	}) {
+		a.submitFollow()
+	}
 }
 
 func (a *App) submitFollow() {
@@ -385,47 +381,42 @@ func (a *App) submitFollow() {
 }
 
 func (a *App) viewEditSubscriptionModal(c *ui.Context) {
-	t := c.Theme()
-	ui.Modal(c, &a.editSubOpen, func() {
-		ui.Column(c).Width(420).Gap(12).Children(func() {
-			ui.Text(c, "编辑订阅").Bold().FontSize(16)
-			ui.Form(c, func() {
-				ui.Field(c, "订阅地址", func() {
-					ui.TextInput(c.Key("edit-sub-url"), &a.editSubNewURL).Label("订阅地址").AlignSelf(ui.Stretch)
-				})
-				ui.Field(c, "自定义名称", func() {
-					ui.TextInput(c.Key("edit-sub-title"), &a.editSubTitle).Placeholder("留空使用源标题").Label("自定义名称").AlignSelf(ui.Stretch)
-				})
+	pal := a.pal
+	if macSheet(c, &a.editSubOpen, macSheetProps{
+		Title:       "编辑订阅",
+		Width:       440,
+		PrimaryText: "保存订阅",
+		CancelText:  "取消",
+	}, pal, func() {
+		ui.Form(c, func() {
+			ui.Field(c, "订阅地址", func() {
+				ui.TextInput(c.Key("edit-sub-url"), &a.editSubNewURL).Label("订阅地址").AlignSelf(ui.Stretch)
 			})
-			if a.editSubErr != "" {
-				ui.Text(c, a.editSubErr).FontSize(12).TextColor(t.Danger)
-			}
-			ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
-				if ui.Button(c.Key("edit-sub-cancel"), "取消").Clicked() {
-					a.editSubOpen = false
-				}
-				if ui.PrimaryButton(c.Key("edit-sub-save"), "保存订阅").Clicked() {
-					sub, err := a.backend.UpdateSubscription(a.editSubOldURL, strings.TrimSpace(a.editSubNewURL), strings.TrimSpace(a.editSubTitle))
-					if err != nil {
-						a.editSubErr = err.Error()
-						return
-					}
-					a.editSubOpen = false
-					a.selectedSubURL = sub.URL
-					a.Reload()
-					a.setStatus("已更新订阅：" + subscriptionTitle(sub))
-				}
+			ui.Field(c, "自定义名称", func() {
+				ui.TextInput(c.Key("edit-sub-title"), &a.editSubTitle).Placeholder("留空使用源标题").Label("自定义名称").AlignSelf(ui.Stretch)
 			})
 		})
-	})
+		if a.editSubErr != "" {
+			ui.Text(c, a.editSubErr).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+		}
+	}) {
+		sub, err := a.backend.UpdateSubscription(a.editSubOldURL, strings.TrimSpace(a.editSubNewURL), strings.TrimSpace(a.editSubTitle))
+		if err != nil {
+			a.editSubErr = err.Error()
+			return
+		}
+		a.editSubOpen = false
+		a.selectedSubURL = sub.URL
+		a.Reload()
+		a.setStatus("已更新订阅：" + subscriptionTitle(sub))
+	}
 }
 
 func (a *App) viewUnfollowDialog(c *ui.Context) {
-	switch ui.AlertDialog(c, &a.unfollowOpen,
+	if macConfirmSheet(c, &a.unfollowOpen,
 		"取消关注订阅？",
 		fmt.Sprintf("确定要取消关注“%s”吗？", fallbackTitle(a.unfollowTitle)),
-		"取消", "取消关注") {
-	case 1:
+		"取消", "取消关注", true, a.pal) {
 		if a.backend != nil && a.unfollowURL != "" {
 			if err := a.backend.Unfollow(a.unfollowURL); err != nil {
 				a.setError("取消关注失败：" + err.Error())
@@ -440,7 +431,7 @@ func (a *App) viewUnfollowDialog(c *ui.Context) {
 		}
 		a.unfollowURL = ""
 		a.unfollowTitle = ""
-	case 0, ui.AlertDismissed:
+	} else if !a.unfollowOpen {
 		a.unfollowURL = ""
 		a.unfollowTitle = ""
 	}
@@ -469,42 +460,44 @@ func (a *App) runGlobalSearch() {
 }
 
 func (a *App) viewGlobalSearchModal(c *ui.Context) {
-	t := c.Theme()
-	ui.Modal(c, &a.searchModalOpen, func() {
-		ui.Column(c).Width(540).Gap(12).Children(func() {
-			ui.Text(c, "全局混合搜索").Bold().FontSize(16)
-			ui.Row(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
-				if ui.TextInput(c.Key("global-search-input"), &a.searchQuery).Placeholder("搜索本站文章与订阅内容…").Label("搜索关键词").AutoFocus().Grow(1).Submitted() {
-					a.runGlobalSearch()
-				}
-				if ui.PrimaryButton(c.Key("global-search-go"), "搜索").Clicked() {
-					a.runGlobalSearch()
-				}
-			})
-			if a.searchErr != "" {
-				ui.Text(c, a.searchErr).FontSize(12).TextColor(t.Danger)
+	pal := a.pal
+	macSheet(c, &a.searchModalOpen, macSheetProps{
+		Title:      "搜索文章",
+		Width:      560,
+		CancelText: "关闭",
+	}, pal, func() {
+		ui.Row(c).Gap(8).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
+			if ui.TextInput(c.Key("global-search-input"), &a.searchQuery).Placeholder("搜索本站文章与订阅内容…").Label("搜索关键词").AutoFocus().Grow(1).Submitted() {
+				a.runGlobalSearch()
 			}
-			ui.Scroll(c).Height(300).AlignSelf(ui.Stretch).Children(func() {
-				ui.Column(c).Gap(6).Children(func() {
-					if len(a.searchResults) == 0 {
-						ui.Text(c, "输入关键词并点击搜索，可同时检索本地站点与已订阅内容。").FontSize(12).TextColor(t.TextMuted)
+			if macPrimaryButtonSmall(c, "global-search-go", "搜索", pal) {
+				a.runGlobalSearch()
+			}
+		})
+		if a.searchErr != "" {
+			ui.Text(c, a.searchErr).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+		}
+		ui.Scroll(c).Height(300).AlignSelf(ui.Stretch).Children(func() {
+			ui.Column(c).Gap(4).Children(func() {
+				if len(a.searchResults) == 0 {
+					ui.Text(c, "输入关键词并点击搜索，可同时检索本地站点与已订阅内容。").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+				}
+				for i, r := range a.searchResults {
+					res := r
+					label := fmt.Sprintf("%s  ·  %s", fallbackTitle(res.Title), fallbackTitle(res.SourceName))
+					if interactiveRow(c, fmt.Sprintf("search-res-%d", i), label, pal.subtle, pal.hover, pal.active).
+						Radius(6).Padding(8, 10, 8, 10).
+						Children(func() {
+							ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
+								ui.Text(c, label).Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(pal.ink).MaxLines(1).Ellipsis("…")
+								if strings.TrimSpace(res.Snippet) != "" {
+									ui.Text(c, res.Snippet).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted).MaxLines(2).Ellipsis("…")
+								}
+							})
+						}).Clicked() {
+						a.searchModalOpen = false
+						a.jumpToSearchResult(res)
 					}
-					for i, r := range a.searchResults {
-						res := r
-						label := fmt.Sprintf("%s  ·  %s", fallbackTitle(res.Title), fallbackTitle(res.SourceName))
-						if ui.Button(c.Key(fmt.Sprintf("search-res-%d", i)), label).AlignSelf(ui.Stretch).Clicked() {
-							a.searchModalOpen = false
-							a.jumpToSearchResult(res)
-						}
-						if strings.TrimSpace(res.Snippet) != "" {
-							ui.Text(c, res.Snippet).FontSize(11).TextColor(t.TextMuted).PaddingX(6)
-						}
-					}
-				})
-			})
-			ui.Row(c).Justify(ui.End).Children(func() {
-				if ui.Button(c.Key("global-search-close"), "关闭").Clicked() {
-					a.searchModalOpen = false
 				}
 			})
 		})
@@ -528,34 +521,34 @@ func (a *App) openRelatedArticles(siteID, articleID, subURL, itemKey, title stri
 }
 
 func (a *App) viewRelatedArticlesModal(c *ui.Context) {
-	t := c.Theme()
-	ui.Modal(c, &a.relatedModalOpen, func() {
-		ui.Column(c).Width(480).Gap(12).Children(func() {
-			ui.Text(c, "相关文章").Bold().FontSize(16)
-			if a.relatedTitle != "" {
-				ui.Text(c, "与“"+a.relatedTitle+"”相关的内容：").FontSize(12).TextColor(t.TextMuted)
-			}
-			if a.relatedErr != "" {
-				ui.Text(c, a.relatedErr).FontSize(12).TextColor(t.Danger)
-			}
-			ui.Scroll(c).Height(260).AlignSelf(ui.Stretch).Children(func() {
-				ui.Column(c).Gap(6).Children(func() {
-					if len(a.relatedResults) == 0 && a.relatedErr == "" {
-						ui.Text(c, "暂无相关文章推荐").FontSize(12).TextColor(t.TextMuted)
+	pal := a.pal
+	macSheet(c, &a.relatedModalOpen, macSheetProps{
+		Title:      "相关文章",
+		Width:      500,
+		CancelText: "关闭",
+	}, pal, func() {
+		if a.relatedTitle != "" {
+			ui.Text(c, "与“"+a.relatedTitle+"”相关的内容：").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+		}
+		if a.relatedErr != "" {
+			ui.Text(c, a.relatedErr).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+		}
+		ui.Scroll(c).Height(260).AlignSelf(ui.Stretch).Children(func() {
+			ui.Column(c).Gap(4).Children(func() {
+				if len(a.relatedResults) == 0 && a.relatedErr == "" {
+					ui.Text(c, "暂无相关文章推荐").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+				}
+				for i, r := range a.relatedResults {
+					res := r
+					label := fmt.Sprintf("%s  ·  %s", fallbackTitle(res.Title), fallbackTitle(res.SourceName))
+					if interactiveRow(c, fmt.Sprintf("related-res-%d", i), label, pal.subtle, pal.hover, pal.active).
+						Radius(6).Padding(8, 10, 8, 10).
+						Children(func() {
+							ui.Text(c, label).Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(pal.ink).MaxLines(1).Ellipsis("…")
+						}).Clicked() {
+						a.relatedModalOpen = false
+						a.jumpToSearchResult(res)
 					}
-					for i, r := range a.relatedResults {
-						res := r
-						label := fmt.Sprintf("%s  ·  %s", fallbackTitle(res.Title), fallbackTitle(res.SourceName))
-						if ui.Button(c.Key(fmt.Sprintf("related-res-%d", i)), label).AlignSelf(ui.Stretch).Clicked() {
-							a.relatedModalOpen = false
-							a.jumpToSearchResult(res)
-						}
-					}
-				})
-			})
-			ui.Row(c).Justify(ui.End).Children(func() {
-				if ui.Button(c.Key("related-close"), "关闭").Clicked() {
-					a.relatedModalOpen = false
 				}
 			})
 		})

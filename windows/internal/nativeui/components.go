@@ -227,6 +227,78 @@ type macSheetProps struct {
 	Danger      bool
 }
 
+// macSheetFrame renders a bare macOS-style top-attached sheet frame (no inner
+// padding or footer), ideal for two-column Preferences sheets.
+func macSheetFrame(c *ui.Context, open *bool, width float32, pal macPalette, content func()) {
+	if open == nil || !*open {
+		return
+	}
+	if width <= 0 {
+		width = 520
+	}
+	dim := ui.RGBA(0, 0, 0, 0.24)
+	if pal.dark {
+		dim = ui.RGBA(0, 0, 0, 0.50)
+	}
+	ui.DialogBase(c, open, func(backdrop, panel ui.Element) {
+		backdrop.Justify(ui.Start).AlignItems(ui.Center).Padding(44, 16, 24, 16).Background(dim)
+		panel.Width(width).MaxWidthPercent(100).MaxHeightPercent(100).
+			Radius(10).Background(pal.canvas).Border(0.5, pal.line).
+			Shadow(0, 12, 32, 0, pal.shadowColor).Clip()
+		content()
+	})
+}
+
+// macConfirmSheet renders a compact macOS-style confirmation sheet.
+// Returns true on the frame the confirm button is clicked (and closes *open).
+func macConfirmSheet(c *ui.Context, open *bool, title, message, cancelText, confirmText string, danger bool, pal macPalette) bool {
+	confirmed := macSheet(c, open, macSheetProps{
+		Title:       title,
+		Width:       380,
+		PrimaryText: confirmText,
+		CancelText:  cancelText,
+		Danger:      danger,
+	}, pal, func() {
+		if message != "" {
+			ui.Text(c, message).Font(macPlanetFont).FontSize(13).TextColor(pal.secondary)
+		}
+	})
+	if confirmed {
+		*open = false
+	}
+	return confirmed
+}
+
+// macThreeActionSheet renders a macOS-style 3-action sheet (cancel, secondary, primary).
+// Returns 0 (none/cancelled), 1 (secondary), or 2 (primary).
+func macThreeActionSheet(c *ui.Context, open *bool, title, message, cancelText, secondaryText, primaryText string, pal macPalette) int {
+	result := 0
+	macSheet(c, open, macSheetProps{
+		Title:      title,
+		Width:      420,
+		HideFooter: true,
+	}, pal, func() {
+		if message != "" {
+			ui.Text(c, message).Font(macPlanetFont).FontSize(13).TextColor(pal.secondary)
+		}
+		ui.Row(c).Padding(8, 0, 0, 0).Gap(8).AlignItems(ui.Center).Justify(ui.End).AlignSelf(ui.Stretch).Children(func() {
+			if macSecondaryButton(c, "sheet3-cancel-"+title, cancelText, pal) {
+				*open = false
+				result = 0
+			}
+			if macSecondaryButton(c, "sheet3-sec-"+title, secondaryText, pal) {
+				*open = false
+				result = 1
+			}
+			if macPrimaryButtonSized(c, "sheet3-pri-"+title, primaryText, 30, 14, 13, pal) {
+				*open = false
+				result = 2
+			}
+		})
+	})
+	return result
+}
+
 // macSheet renders a macOS-style top-attached sheet hanging directly beneath
 // the 44px unified titlebar. Returns true on the frame the primary button is clicked.
 func macSheet(c *ui.Context, open *bool, p macSheetProps, pal macPalette, body func()) bool {
@@ -237,16 +309,8 @@ func macSheet(c *ui.Context, open *bool, p macSheetProps, pal macPalette, body f
 	if width <= 0 {
 		width = 480
 	}
-	dim := ui.RGBA(0, 0, 0, 0.24)
-	if pal.dark {
-		dim = ui.RGBA(0, 0, 0, 0.50)
-	}
 	submitted := false
-	ui.DialogBase(c, open, func(backdrop, panel ui.Element) {
-		backdrop.Justify(ui.Start).AlignItems(ui.Center).Padding(44, 16, 24, 16).Background(dim)
-		panel.Width(width).MaxWidthPercent(100).MaxHeightPercent(100).
-			Radius(10).Background(pal.canvas).Border(0.5, pal.line).
-			Shadow(0, 12, 32, 0, pal.shadowColor).Clip()
+	macSheetFrame(c, open, width, pal, func() {
 		ui.Column(c).AlignSelf(ui.Stretch).Children(func() {
 			if p.Title != "" {
 				ui.Row(c).MinHeight(44).Padding(10, 16, 10, 16).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {

@@ -19,10 +19,10 @@ func (a *App) guardUnsaved(action func()) {
 }
 
 func (a *App) viewUnsavedDialog(c *ui.Context) {
-	switch ui.AlertDialog(c, &a.unsavedDialogOpen,
+	switch macThreeActionSheet(c, &a.unsavedDialogOpen,
 		"有未保存的草稿更改",
 		"是否先保存当前草稿再离开？",
-		"取消", "放弃更改", "保存并继续") {
+		"取消", "放弃更改", "保存并继续", a.pal) {
 	case 1:
 		a.editorBuffer.MarkSaved()
 		a.savedTitle = a.editorTitle
@@ -40,8 +40,10 @@ func (a *App) viewUnsavedDialog(c *ui.Context) {
 				act()
 			}
 		}
-	case 0, ui.AlertDismissed:
-		a.pendingNavAction = nil
+	default:
+		if !a.unsavedDialogOpen {
+			a.pendingNavAction = nil
+		}
 	}
 }
 
@@ -114,11 +116,10 @@ func (a *App) viewArticleSettingsModal(c *ui.Context) {
 }
 
 func (a *App) viewDeleteArticleDialog(c *ui.Context) {
-	switch ui.AlertDialog(c, &a.deleteArticleOpen,
+	if macConfirmSheet(c, &a.deleteArticleOpen,
 		"删除文章？",
 		fmt.Sprintf("确定要删除“%s”吗？此操作不可撤销。", fallbackTitle(a.deleteArticleTitle)),
-		"取消", "删除") {
-	case 1:
+		"取消", "删除", true, a.pal) {
 		if a.backend != nil && a.selectedSiteID != "" && a.deleteArticleID != "" {
 			if err := a.backend.DeleteArticle(a.selectedSiteID, a.deleteArticleID); err != nil {
 				a.setError("删除文章失败：" + err.Error())
@@ -132,7 +133,7 @@ func (a *App) viewDeleteArticleDialog(c *ui.Context) {
 		}
 		a.deleteArticleID = ""
 		a.deleteArticleTitle = ""
-	case 0, ui.AlertDismissed:
+	} else if !a.deleteArticleOpen {
 		a.deleteArticleID = ""
 		a.deleteArticleTitle = ""
 	}
