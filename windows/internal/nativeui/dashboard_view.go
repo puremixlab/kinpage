@@ -167,28 +167,24 @@ func (a *App) viewDashboard(c *ui.Context) {
 
 func (a *App) viewLinearActivityStrip(c *ui.Context) {
 	pal := a.pal
+	_, paperBg, _, paperEdge, paperShadow := paperDeskColors(pal)
 	counts := make(map[string]int, len(a.activity))
 	for _, item := range a.activity {
 		counts[item.Date] = item.Articles + item.Drafts
 	}
 
-	cardBg := ui.Hex("#edf2f7")
 	trackBg := ui.RGBA(15, 23, 42, 0.055)
-	pillActiveBg := ui.Hex("#ffffff")
+	pillActiveBg := paperBg
 	pillActiveShadow := ui.RGBA(15, 23, 42, 0.08)
 	if pal.dark {
-		cardBg = ui.Hex("#1d2128")
 		trackBg = ui.RGBA(255, 255, 255, 0.07)
 		pillActiveBg = ui.RGBA(255, 255, 255, 0.14)
 		pillActiveShadow = ui.RGBA(0, 0, 0, 0.25)
 	}
 
-	card := ui.Column(c).AlignSelf(ui.Stretch).Padding(18, 22, 16, 22).Gap(14).
-		Background(cardBg).Radius(16)
-	if pal.dark {
-		card.Border(0.5, ui.RGBA(255, 255, 255, 0.06))
-	}
-	card.Children(func() {
+	ui.Column(c).AlignSelf(ui.Stretch).Padding(18, 22, 16, 22).Gap(14).
+		Background(paperBg).Radius(16).
+		Border(0.5, paperEdge).Shadow(0, 1, 4, 0, paperShadow).Children(func() {
 		// Minimal top header: title on left, pill segmented control on right.
 		ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
 			ui.Text(c, "写作活动").Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink)
@@ -415,10 +411,7 @@ func (a *App) viewHeatmapGrid(c *ui.Context, counts map[string]int) {
 	startDay := endDay.AddDate(0, 0, -(weeks*7 - 1))
 
 	renderCell := func(key string, level int, tip string) {
-		cell := ui.Box(c.Key(key)).Size(11.5, 11.5).Radius(3.5).Background(heatmapColor(level, pal)).Tooltip(tip)
-		if level == 1 && !pal.dark {
-			cell.Border(0.5, ui.Hex("#7aaef8"))
-		}
+		ui.Box(c.Key(key)).Size(11.5, 11.5).Radius(3.5).Background(heatmapColor(level, pal)).Tooltip(tip)
 	}
 
 	ui.Column(c).AlignSelf(ui.Stretch).Gap(10).Children(func() {
@@ -529,17 +522,17 @@ func heatmapColor(count int, pal macPalette) ui.Color {
 		if pal.dark {
 			return ui.RGBA(255, 255, 255, 0.06)
 		}
-		return ui.RGBA(148, 163, 184, 0.17)
+		return ui.RGBA(15, 23, 42, 0.06)
 	}
 	switch {
 	case count == 1:
-		return ui.Hex("#a8c7fa")
+		return pal.ink.Alpha(0.28)
 	case count <= 3:
-		return ui.Hex("#6da8f7")
+		return pal.ink.Alpha(0.50)
 	case count <= 5:
-		return ui.Hex("#3b82f6")
+		return pal.ink.Alpha(0.72)
 	default:
-		return ui.Hex("#1d64e8")
+		return pal.ink.Alpha(0.92)
 	}
 }
 
