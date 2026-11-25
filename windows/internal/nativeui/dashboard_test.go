@@ -79,7 +79,7 @@ func TestNativeUIDashboardSiteFilterAndMultiSiteCompose(t *testing.T) {
 	}
 
 	// Return to overview and trigger multi-site compose picker.
-	if err := tt.Click("总览"); err != nil {
+	if err := tt.Click("写作台"); err != nil {
 		t.Fatalf("failed to return to overview: %v", err)
 	}
 	if err := tt.Click("写文章"); err != nil {

@@ -155,13 +155,13 @@ func (a *App) viewSubscriptionWorkspace(c *ui.Context) {
 }
 
 func (a *App) viewSubscriptionItemsList(c *ui.Context) {
-	t := c.Theme()
+	pal := a.pal
 	heading := "订阅阅读"
 	switch a.mode {
 	case viewUnread:
-		heading = fmt.Sprintf("未读 (%d)", a.totalUnreadCount())
+		heading = "未读"
 	case viewStarred:
-		heading = fmt.Sprintf("星标 (%d)", a.totalStarredCount())
+		heading = "收藏"
 	case viewSubscription:
 		if sub := a.currentSubscription(); sub != nil {
 			heading = subscriptionTitle(*sub)
@@ -170,16 +170,17 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 
 	items := a.visibleSubscriptionItems()
 
-	ui.Column(c).Fill().Background(t.Surface).Children(func() {
-		ui.Column(c).Padding(12).Gap(8).Shrink(0).Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
-				ui.Text(c, heading).Bold().FontSize(14)
+	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
+		ui.Column(c).PaddingX(14).PaddingY(12).Gap(8).Shrink(0).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
+				ui.Text(c, heading).Bold().FontSize(15).TextColor(pal.ink).NoWrap()
+				ui.Text(c, fmt.Sprintf("%d 篇", len(items))).FontSize(12).TextColor(pal.muted).NoWrap()
 			})
 			if a.mode == viewSubscription {
 				if sub := a.currentSubscription(); sub != nil {
 					subURL := sub.URL
-					ui.Row(c).Gap(6).Wrap().Children(func() {
-						if ui.Button(c.Key("sub-refresh"), "刷新").Clicked() {
+					ui.Row(c).Gap(4).Wrap().Children(func() {
+						if ghostIconButton(c, "sub-refresh", "刷新", "刷新", pal) {
 							if _, err := a.backend.RefreshSubscription(subURL); err != nil {
 								a.setError("刷新订阅失败：" + err.Error())
 							} else {
@@ -187,7 +188,7 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 								a.setStatus("已刷新订阅")
 							}
 						}
-						if ui.Button(c.Key("sub-mark-all"), "全部已读").Clicked() {
+						if ghostIconButton(c, "sub-mark-all", "全部已读", "全部已读", pal) {
 							if err := a.backend.MarkSubscriptionRead(subURL); err != nil {
 								a.setError("标记已读失败：" + err.Error())
 							} else {
@@ -195,14 +196,14 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 								a.setStatus("已全部标记为已读")
 							}
 						}
-						if ui.Button(c.Key("sub-edit"), "编辑").Clicked() {
+						if ghostIconButton(c, "sub-edit", "编辑", "编辑", pal) {
 							a.editSubOldURL = sub.URL
 							a.editSubNewURL = sub.URL
 							a.editSubTitle = sub.CustomTitle
 							a.editSubErr = ""
 							a.editSubOpen = true
 						}
-						if ui.Button(c.Key("sub-unfollow"), "取消关注").Clicked() {
+						if ghostIconButton(c, "sub-unfollow", "取消关注", "取消关注", pal) {
 							a.unfollowURL = sub.URL
 							a.unfollowTitle = subscriptionTitle(*sub)
 							a.unfollowOpen = true
@@ -212,30 +213,64 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 			}
 			ui.SearchField(c.Key("sub-search"), &a.subSearchQuery).Placeholder("筛选订阅文章…").AlignSelf(ui.Stretch)
 		})
-		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
+		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
 
 		ui.Scroll(c).TrackScroll(&a.postsListScroll).Grow(1).MinHeight(0).Children(func() {
-			ui.Column(c).Padding(10).Gap(4).Children(func() {
+			ui.Column(c).Padding(8).Gap(2).Children(func() {
 				if len(items) == 0 {
-					ui.Text(c, "暂无符合条件的订阅内容").FontSize(12).TextColor(t.TextMuted).PaddingX(6).PaddingY(4)
+					ui.Text(c, "暂无符合条件的订阅内容").FontSize(12).TextColor(pal.muted).PaddingX(8).PaddingY(12)
 				}
 				for _, entry := range items {
 					subURL, key := entry.subURL, entry.effective
-					prefix := ""
-					if !entry.item.Read {
-						prefix += "● "
-					}
-					if entry.item.Starred {
-						prefix += "★ "
-					}
-					label := prefix + fallbackTitle(entry.item.Title)
+					title := fallbackTitle(entry.item.Title)
 					selected := a.selectedSubItemSubURL == subURL && a.selectedSubItemKey == key
-					btn := ui.Button(c.Key("subitem-"+subURL+"-"+key), label).AlignSelf(ui.Stretch)
+					cardBg := ui.Color{}
+					titleColor := pal.ink
+					excerptColor := pal.secondary
+					metaColor := pal.muted
 					if selected {
-						btn.Background(t.Accent).TextColor(t.AccentText)
+						cardBg = pal.listSelected
+						titleColor = ui.Hex("#ffffff")
+						excerptColor = pal.listSelMuted
+						metaColor = pal.listSelMuted
 					}
-					if btn.Clicked() {
+					rawBody := entry.item.Content
+					if strings.TrimSpace(rawBody) == "" {
+						rawBody = entry.item.Description
+					}
+					snippet := excerptText(htmlToReadableMarkdown(rawBody), 48)
+					if ui.Button(c.Key("subitem-"+subURL+"-"+key), "").Label(title).AlignSelf(ui.Stretch).
+						Background(cardBg).Border(0, ui.Color{}).Radius(8).PaddingX(12).PaddingY(10).
+						Children(func() {
+							ui.Column(c).Gap(4).AlignSelf(ui.Stretch).Children(func() {
+								ui.Row(c).AlignItems(ui.Center).Gap(6).AlignSelf(ui.Stretch).Children(func() {
+									if !entry.item.Read {
+										dotColor := pal.accent
+										if selected {
+											dotColor = ui.Hex("#ffffff")
+										}
+										ui.Box(c).Size(6, 6).Radius(3).Background(dotColor).Shrink(0)
+									}
+									if entry.item.Starred {
+										ui.Text(c, "★").FontSize(11).TextColor(ui.Hex("#f5b800")).Shrink(0)
+									}
+									ui.Text(c, title).Bold().FontSize(13).TextColor(titleColor).Grow(1).NoWrap()
+								})
+								if snippet != "" {
+									ui.Text(c, snippet).FontSize(12).TextColor(excerptColor)
+								}
+								ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
+									ui.Text(c, entry.subTitle).FontSize(11).TextColor(metaColor).NoWrap()
+									if entry.item.Published != "" {
+										ui.Text(c, entry.item.Published).FontSize(11).TextColor(metaColor).NoWrap()
+									}
+								})
+							})
+						}).Clicked() {
 						a.selectSubItem(subURL, key)
+					}
+					if !selected {
+						ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
 					}
 				}
 			})
@@ -244,11 +279,11 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 }
 
 func (a *App) viewSubscriptionReader(c *ui.Context) {
-	t := c.Theme()
+	pal := a.pal
 	cur, ok := a.currentSubItem()
 	if !ok {
-		ui.Column(c).Fill().Center().Gap(8).Children(func() {
-			ui.Text(c, "从左侧选择一篇订阅文章开始阅读").FontSize(13).TextColor(t.TextMuted)
+		ui.Column(c).Fill().Background(pal.canvas).Center().Gap(8).Children(func() {
+			ui.Text(c, "从左侧选择一篇订阅文章开始阅读").FontSize(13).TextColor(pal.muted)
 		})
 		return
 	}
@@ -260,22 +295,16 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 	}
 	mdBody := htmlToReadableMarkdown(body)
 
-	ui.Column(c).Fill().Background(t.Background).Children(func() {
-		ui.Row(c).PaddingX(16).PaddingY(10).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(t.Surface).Shrink(0).Children(func() {
-			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, fallbackTitle(cur.item.Title)).Bold().FontSize(15)
-				meta := cur.subTitle
-				if cur.item.Published != "" {
-					meta += "  ·  " + cur.item.Published
-				}
-				ui.Text(c, meta).FontSize(11).TextColor(t.TextMuted)
-			})
+	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
+		// 52px pure white toolbar matching subscription-reader.png.
+		ui.Row(c).MinHeight(52).PaddingX(20).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.canvas).Shrink(0).Children(func() {
+			ui.Text(c, "阅读订阅").FontSize(13).TextColor(pal.secondary)
 			ui.Row(c).Gap(6).Shrink(0).Children(func() {
 				starLabel := "☆ 星标"
 				if cur.item.Starred {
 					starLabel = "★ 取消星标"
 				}
-				if ui.Button(c.Key("sub-star"), starLabel).Clicked() {
+				if ghostIconButton(c, "sub-star", starLabel, starLabel, pal) {
 					if err := a.backend.StarSubscription(subURL, key, !cur.item.Starred); err != nil {
 						a.setError("更新星标失败：" + err.Error())
 					} else {
@@ -286,7 +315,7 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 				if !cur.item.Read {
 					readLabel = "标为已读"
 				}
-				if ui.Button(c.Key("sub-toggle-read"), readLabel).Clicked() {
+				if ghostIconButton(c, "sub-toggle-read", readLabel, readLabel, pal) {
 					if err := a.backend.SetSubscriptionRead(subURL, key, !cur.item.Read); err != nil {
 						a.setError("更新阅读状态失败：" + err.Error())
 					} else {
@@ -297,26 +326,35 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 				if a.speaker != nil && a.speaker.Speaking() {
 					speakLabel = "停止朗读"
 				}
-				if ui.Button(c.Key("sub-speak"), speakLabel).Clicked() {
+				if ghostIconButton(c, "sub-speak", speakLabel, speakLabel, pal) {
 					a.toggleSpeak(cur.item.Title, mdBody)
 				}
-				if ui.Button(c.Key("sub-related"), "相关文章").Clicked() {
+				if ghostIconButton(c, "sub-related", "相关文章", "相关文章", pal) {
 					a.openRelatedArticles("", "", subURL, key, cur.item.Title)
 				}
 			})
 		})
-		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
+		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
 
-		ui.Scroll(c).TrackScroll(&a.subReaderScroll).Fill().Background(t.Background).Children(func() {
-			ui.Column(c).Padding(24).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-				if cur.item.Link != "" {
-					ui.Text(c, "原文链接："+cur.item.Link).FontSize(11).TextColor(t.TextMuted)
-				}
-				if strings.TrimSpace(mdBody) == "" {
-					ui.Text(c, "该订阅条目没有正文内容。").FontSize(13).TextColor(t.TextMuted)
-				} else {
-					markdown.View(c, mdBody, &a.markdownOpts)
-				}
+		ui.Scroll(c).TrackScroll(&a.subReaderScroll).Fill().Background(pal.canvas).Children(func() {
+			ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(36).PaddingY(28).Children(func() {
+				ui.Column(c).AlignSelf(ui.Stretch).MaxWidth(740).Gap(14).Children(func() {
+					ui.Text(c, fallbackTitle(cur.item.Title)).Bold().FontSize(26).TextColor(pal.ink)
+					meta := cur.subTitle
+					if cur.item.Published != "" {
+						meta += "   " + cur.item.Published
+					}
+					ui.Text(c, meta).FontSize(12).TextColor(pal.muted)
+					if cur.item.Link != "" {
+						ui.Text(c, cur.item.Link).FontSize(11).TextColor(pal.muted)
+					}
+					ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+					if strings.TrimSpace(mdBody) == "" {
+						ui.Text(c, "该订阅条目没有正文内容。").FontSize(13).TextColor(pal.muted)
+					} else {
+						markdown.View(c, mdBody, &a.markdownOpts)
+					}
+				})
 			})
 		})
 	})

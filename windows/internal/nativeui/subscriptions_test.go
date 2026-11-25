@@ -96,7 +96,7 @@ func TestNativeUIGlobalSearchAndRelatedArticles(t *testing.T) {
 	tt.Frame()
 
 	// Global search for subscription item.
-	if err := tt.Click("🔍 搜索"); err != nil {
+	if err := tt.Click("搜索文章"); err != nil {
 		t.Fatalf("failed to open global search modal: %v", err)
 	}
 	app.searchQuery = "原生"

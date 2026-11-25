@@ -835,7 +835,10 @@ func TestNativeUIUnsavedGuardAndArticleActions(t *testing.T) {
 	tt := ui.NewTester(app.View, 1280, 820)
 	tt.Frame()
 
-	// Quick Post from sidebar.
+	// Quick Post via Settings popover.
+	if err := tt.Click("设置"); err != nil {
+		t.Fatalf("failed to open settings menu: %v", err)
+	}
 	if err := tt.Click("⚡ 快捷发文"); err != nil {
 		t.Fatalf("failed to open quick post: %v", err)
 	}
@@ -872,13 +875,13 @@ func TestNativeUIUnsavedGuardAndArticleActions(t *testing.T) {
 		t.Fatalf("expected updated article settings, got %+v", app.currentArticle())
 	}
 
-	// Enter editor, dirty it, click 总览 -> should open unsaved guard.
+	// Enter editor, dirty it, click 写作台 -> should open unsaved guard.
 	if err := tt.Click("编辑文章"); err != nil {
 		t.Fatalf("failed to enter editor: %v", err)
 	}
 	app.editorTitle = "未保存的修改"
 	tt.Frame()
-	if err := tt.Click("总览"); err != nil {
+	if err := tt.Click("写作台"); err != nil {
 		t.Fatalf("failed to click overview: %v", err)
 	}
 	if !app.unsavedDialogOpen || app.mode != viewSite {
