@@ -198,12 +198,8 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 	items := a.visibleSubscriptionItems()
 
 	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
-		// Slim 38px list header (refresh / mark-all / edit / unfollow live in the unified top titlebar).
-		ui.Row(c).Height(38).PaddingX(14).Gap(6).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.subtle).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, heading).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink).Grow(1).NoWrap()
-			ui.Text(c, fmt.Sprintf("%d 篇", len(items))).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
-		})
-		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+		// Full-height Column 2 integrated 44px header (macOS navigationTitle + navigationSubtitle).
+		a.viewListPaneHeader(c, heading, fmt.Sprintf("%d 篇文章", len(items)))
 
 		ui.Box(c).Padding(8, 10, 4, 10).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 			field.SearchBar(c.Key("sub-filter"), &a.subSearchQuery, field.SearchBarProps{
@@ -289,27 +285,31 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 
 func (a *App) viewSubscriptionReader(c *ui.Context) {
 	pal := a.pal
-	cur, ok := a.currentSubItem()
-	if !ok {
-		ui.Column(c).Fill().Background(pal.canvas).Center().Children(func() {
-			display.Empty(c, display.EmptyProps{
-				Icon:        lucide.BookOpen(),
-				Title:       "选择一篇订阅文章",
-				Description: "从左侧列表点击任意条目即可开始阅读",
-			})
-		})
-		return
-	}
-
-	subURL, key := cur.subURL, cur.effective
-	body := cur.item.Content
-	if strings.TrimSpace(body) == "" {
-		body = cur.item.Description
-	}
-	mdBody := htmlToReadableMarkdown(body)
-
 	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
-		ui.Scroll(c).TrackScroll(&a.subReaderScroll).Fill().Background(pal.canvas).Children(func() {
+		a.viewDetailToolbar(c, true)
+		if a.statusText != "" {
+			a.viewStatusBar(c)
+		}
+		cur, ok := a.currentSubItem()
+		if !ok {
+			ui.Column(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Center().Children(func() {
+				display.Empty(c, display.EmptyProps{
+					Icon:        lucide.BookOpen(),
+					Title:       "选择一篇订阅文章",
+					Description: "从左侧列表点击任意条目即可开始阅读",
+				})
+			})
+			return
+		}
+
+		subURL, key := cur.subURL, cur.effective
+		body := cur.item.Content
+		if strings.TrimSpace(body) == "" {
+			body = cur.item.Description
+		}
+		mdBody := htmlToReadableMarkdown(body)
+
+		ui.Scroll(c).TrackScroll(&a.subReaderScroll).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
 			ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(36).PaddingY(28).Children(func() {
 				ui.Column(c).AlignSelf(ui.Stretch).MaxWidth(740).Gap(12).Children(func() {
 					ui.Text(c, fallbackTitle(cur.item.Title)).Font(macPlanetFont).FontSize(26).FontWeight(700).LetterSpacing(-0.02).TextColor(pal.ink)

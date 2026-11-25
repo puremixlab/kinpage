@@ -511,30 +511,26 @@ func (a *App) View(c *ui.Context) {
 	}
 
 	pal := a.pal
-	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
-		a.viewTitleBar(c)
-		ui.Row(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
-			if !a.sidebarCollapsed {
-				a.viewSidebar(c)
-				ui.Box(c).Width(1).AlignSelf(ui.Stretch).Background(pal.line)
+	// Full-height 3-column macOS NavigationView split geometry:
+	// Column 1 (Sidebar) | Column 2 (ArticleList) | Column 3 (Article/Editor/Dashboard).
+	ui.Row(c).Fill().Background(pal.canvas).Children(func() {
+		if !a.sidebarCollapsed {
+			a.viewSidebar(c)
+			ui.Box(c).Width(1).AlignSelf(ui.Stretch).Background(pal.line)
+		}
+		ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+			switch a.mode {
+			case viewToday, viewUnread, viewStarred, viewSubscription:
+				a.viewSubscriptionWorkspace(c)
+			case viewSite:
+				if a.currentSite() != nil {
+					a.viewSiteWorkspace(c)
+				} else {
+					a.viewDashboardPane(c)
+				}
+			default:
+				a.viewDashboardPane(c)
 			}
-			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
-				if a.statusText != "" {
-					a.viewStatusBar(c)
-				}
-				switch a.mode {
-				case viewToday, viewUnread, viewStarred, viewSubscription:
-					a.viewSubscriptionWorkspace(c)
-				case viewSite:
-					if a.currentSite() != nil {
-						a.viewSiteWorkspace(c)
-					} else {
-						a.viewDashboard(c)
-					}
-				default:
-					a.viewDashboard(c)
-				}
-			})
 		})
 	})
 
@@ -588,11 +584,21 @@ func (a *App) viewStatusBar(c *ui.Context) {
 	}
 }
 
+func (a *App) viewDashboardPane(c *ui.Context) {
+	a.viewDetailToolbar(c, false)
+	if a.statusText != "" {
+		a.viewStatusBar(c)
+	}
+	a.viewDashboard(c)
+}
+
 func (a *App) viewSidebar(c *ui.Context) {
 	pal := a.pal
 	ui.Column(c).Width(228).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Children(func() {
-		// Primary nav (brand + global search now live in the unified top titlebar).
-		ui.Column(c).PaddingX(10).PaddingY(8).Gap(2).Shrink(0).Children(func() {
+		// Full-height Column 1 integrated 44px top bar (macOS PlanetSidebarView.toolbar).
+		a.viewSidebarHeader(c)
+
+		ui.Column(c).PaddingX(10).PaddingY(4).Gap(2).Shrink(0).Children(func() {
 			if sidebarNavRow(c, "nav-overview", "写作台", a.mode == viewOverview, 0, func() {
 				ui.Icon(c, iconGrid).Size(16, 16).TextColor(pal.ink).Shrink(0)
 			}, pal) {
@@ -607,7 +613,26 @@ func (a *App) viewSidebar(c *ui.Context) {
 
 		ui.Scroll(c).TrackScroll(&a.sidebarScroll).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).PaddingX(10).PaddingY(4).Gap(2).Children(func() {
-				// My Sites section.
+				// 1. Smart Feeds (阅读) first — matching macOS PlanetSidebarView.swift:34-76.
+				ui.Text(c, "阅读").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).PaddingX(8).PaddingY(2)
+				if sidebarNavRow(c, "nav-today", "今天", a.mode == viewToday, a.totalTodayCount(), func() {
+					ui.Icon(c, iconClock).Size(16, 16).TextColor(pal.orange).Shrink(0)
+				}, pal) {
+					a.guardUnsaved(func() { a.openSubscriptionView(viewToday, "") })
+				}
+				if sidebarNavRow(c, "nav-unread", "未读", a.mode == viewUnread, a.totalUnreadCount(), func() {
+					ui.Icon(c, iconInbox).Size(16, 16).TextColor(pal.accent).Shrink(0)
+				}, pal) {
+					a.guardUnsaved(func() { a.openSubscriptionView(viewUnread, "") })
+				}
+				if sidebarNavRow(c, "nav-starred", "收藏", a.mode == viewStarred, a.totalStarredCount(), func() {
+					ui.Icon(c, iconStar).Size(16, 16).TextColor(pal.yellow).Shrink(0)
+				}, pal) {
+					a.guardUnsaved(func() { a.openSubscriptionView(viewStarred, "") })
+				}
+
+				// 2. My Planets (我的站点) — matching macOS PlanetSidebarView.swift:78-91.
+				ui.Box(c).Height(12)
 				ui.Row(c).MinHeight(24).AlignItems(ui.Center).Justify(ui.SpaceBetween).PaddingX(8).AlignSelf(ui.Stretch).Children(func() {
 					ui.Text(c, "我的站点").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted)
 					if macIconButton(c, "nav-new-site", iconPlus, 24, 14, pal.muted, "+ 站点") {
@@ -631,27 +656,8 @@ func (a *App) viewSidebar(c *ui.Context) {
 					}
 				}
 
-				// Reading section with exact Mac Planet icon tinting (Today=orange, Unread=blue, Starred=yellow).
-				ui.Box(c).Height(14)
-				ui.Text(c, "阅读").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).PaddingX(8).PaddingY(2)
-				if sidebarNavRow(c, "nav-today", "今天", a.mode == viewToday, a.totalTodayCount(), func() {
-					ui.Icon(c, iconClock).Size(16, 16).TextColor(pal.orange).Shrink(0)
-				}, pal) {
-					a.guardUnsaved(func() { a.openSubscriptionView(viewToday, "") })
-				}
-				if sidebarNavRow(c, "nav-unread", "未读", a.mode == viewUnread, a.totalUnreadCount(), func() {
-					ui.Icon(c, iconInbox).Size(16, 16).TextColor(pal.accent).Shrink(0)
-				}, pal) {
-					a.guardUnsaved(func() { a.openSubscriptionView(viewUnread, "") })
-				}
-				if sidebarNavRow(c, "nav-starred", "收藏", a.mode == viewStarred, a.totalStarredCount(), func() {
-					ui.Icon(c, iconStar).Size(16, 16).TextColor(pal.yellow).Shrink(0)
-				}, pal) {
-					a.guardUnsaved(func() { a.openSubscriptionView(viewStarred, "") })
-				}
-
-				// Subscriptions section.
-				ui.Box(c).Height(14)
+				// 3. Following Planets (订阅) — matching macOS PlanetSidebarView.swift:93-106.
+				ui.Box(c).Height(12)
 				ui.Row(c).MinHeight(24).AlignItems(ui.Center).Justify(ui.SpaceBetween).PaddingX(8).AlignSelf(ui.Stretch).Children(func() {
 					ui.Text(c, "订阅").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted)
 					if macIconButton(c, "nav-follow", iconPlus, 24, 14, pal.muted, "+ 关注") {
@@ -782,26 +788,8 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 	query := strings.ToLower(strings.TrimSpace(a.postSearchQuery))
 
 	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
-		// 42px site list header: site identity + always-available site-level actions
-		// (+ 写文章, 站点设置, 扩展) so editing a draft never hides site controls.
-		ui.Row(c).Height(42).PaddingX(12).Gap(6).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.subtle).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Gap(6).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink).NoWrap()
-				ui.Text(c, fmt.Sprintf("%d", len(a.articles)+len(a.drafts))).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
-			})
-			ui.Row(c).Gap(2).AlignItems(ui.Center).Shrink(0).Children(func() {
-				if macIconButton(c, "site-new-post", iconEdit, 26, 15, pal.secondary, "+ 写文章") {
-					a.guardUnsaved(func() { a.startNewDraft(siteID) })
-				}
-				if macIconButton(c, "site-settings", iconSettings, 26, 15, pal.secondary, "站点设置") {
-					a.openSiteSettings(*site)
-				}
-				if macIconButton(c, "site-integrations", iconMore, 26, 15, pal.secondary, "扩展") {
-					a.openIntegrationsModal(*site)
-				}
-			})
-		})
-		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+		// Full-height Column 2 integrated 44px header (macOS navigationTitle + navigationSubtitle).
+		a.viewListPaneHeader(c, fallbackTitle(site.Name), fmt.Sprintf("%d 篇文章", len(a.articles)+len(a.drafts)))
 
 		// Live filter SearchBar using lobe-mygo pkg/field.
 		ui.Box(c).Padding(8, 10, 4, 10).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
@@ -915,11 +903,19 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 }
 
 func (a *App) viewDetailPane(c *ui.Context) {
-	if a.editing {
-		a.viewEditor(c)
-		return
-	}
-	a.viewArticleReader(c)
+	ui.Column(c).Fill().Background(a.pal.canvas).Children(func() {
+		a.viewDetailToolbar(c, true)
+		if a.statusText != "" {
+			a.viewStatusBar(c)
+		}
+		ui.Column(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
+			if a.editing {
+				a.viewEditor(c)
+			} else {
+				a.viewArticleReader(c)
+			}
+		})
+	})
 }
 
 func (a *App) viewEditor(c *ui.Context) {

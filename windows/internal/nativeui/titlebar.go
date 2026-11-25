@@ -8,166 +8,162 @@ import (
 	"github.com/lobehub/lobe-mygo/pkg/theme"
 )
 
-const defaultTitleBarHeight float32 = 44
+const macTopBarHeight float32 = 44
 
-func (a *App) viewTitleBar(c *ui.Context) {
-	pal := a.pal
+func (a *App) topBarHeight(c *ui.Context) float32 {
 	bar := c.TitleBar()
-	height := defaultTitleBarHeight
-	if bar.Height > height {
-		height = bar.Height
+	if bar.Height > macTopBarHeight {
+		return bar.Height
 	}
-	leftPad := float32(12)
-	if bar.Left > 0 {
-		leftPad = bar.Left + 10
-	}
-	rightPad := float32(12)
+	return macTopBarHeight
+}
+
+func (a *App) topBarRightPad(c *ui.Context) float32 {
+	bar := c.TitleBar()
 	if bar.Right > 0 {
-		rightPad = bar.Right + 10
+		return bar.Right + 10
+	}
+	return 14
+}
+
+func (a *App) topBarLeftPad(c *ui.Context) float32 {
+	bar := c.TitleBar()
+	if bar.Left > 0 {
+		return bar.Left + 10
+	}
+	return 12
+}
+
+// viewSidebarHeader renders the 44px top bar integrated seamlessly into Column 1 (Sidebar),
+// matching macOS PlanetSidebarView.toolbar (Brand + Sidebar toggle + Sparkles AI).
+func (a *App) viewSidebarHeader(c *ui.Context) {
+	pal := a.pal
+	h := a.topBarHeight(c)
+	leftPad := a.topBarLeftPad(c)
+
+	ui.Row(c).Height(h).Shrink(0).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).
+		Background(pal.sidebar).Padding(0, 8, 0, leftPad).DragWindow().Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(7).Children(func() {
+			ui.Icon(c, iconPlanet).Size(20, 20).TextColor(pal.ink)
+			ui.Text(c, "Planet").Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).NoWrap()
+		})
+		ui.Row(c).AlignItems(ui.Center).Gap(2).Children(func() {
+			if action.ActionIcon(c.Key("tb-toggle-sidebar"), lucide.PanelLeftClose(), action.ActionIconProps{
+				Variant: action.ActionIconBorderless, Size: theme.Small, Title: "收起侧边栏",
+			}).Clicked() {
+				a.sidebarCollapsed = true
+			}
+			if action.ActionIcon(c.Key("tb-ai-sparkles"), lucide.Sparkles(), action.ActionIconProps{
+				Variant: action.ActionIconBorderless, Size: theme.Small, Title: "AI 助手",
+			}).Clicked() {
+				a.openToolsModal(toolsTabAI)
+			}
+		})
+	})
+}
+
+// viewListPaneHeader renders the 44px top bar integrated into Column 2 (ArticleListView),
+// matching macOS navigationTitle + navigationSubtitle with zero duplicate headers.
+func (a *App) viewListPaneHeader(c *ui.Context, title, subtitle string) {
+	pal := a.pal
+	h := a.topBarHeight(c)
+	leftPad := float32(14)
+	if a.sidebarCollapsed {
+		leftPad = a.topBarLeftPad(c)
 	}
 
-	ui.Row(c).Height(height).Shrink(0).AlignSelf(ui.Stretch).AlignItems(ui.Stretch).
-		Background(pal.canvas).DragWindow().Children(func() {
-		// Left zone: macOS PlanetSidebarView top bar (228px #ececec seamlessly flowing into sidebar).
-		leftBg := pal.canvas
-		if !a.sidebarCollapsed {
-			leftBg = pal.sidebar
+	ui.Row(c).Height(h).Shrink(0).AlignSelf(ui.Stretch).AlignItems(ui.Center).Gap(8).
+		Background(pal.canvas).Padding(0, 12, 0, leftPad).DragWindow().Children(func() {
+		if a.sidebarCollapsed {
+			if action.ActionIcon(c.Key("tb-expand-sidebar"), lucide.PanelLeftOpen(), action.ActionIconProps{
+				Variant: action.ActionIconBorderless, Size: theme.Small, Title: "展开侧边栏",
+			}).Clicked() {
+				a.sidebarCollapsed = false
+			}
 		}
-		leftZone := ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(4).
-			Background(leftBg).Padding(0, 8, 0, leftPad).Shrink(0)
-		if !a.sidebarCollapsed && bar.Left == 0 {
-			leftZone.Width(228)
-		}
-		leftZone.Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Gap(7).Children(func() {
-				ui.Icon(c, iconPlanet).Size(20, 20).TextColor(pal.ink)
-				ui.Text(c, "Planet").Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).NoWrap()
-			})
-			ui.Row(c).AlignItems(ui.Center).Gap(2).Children(func() {
-				// macOS PlanetSidebarView toolbar: Sidebar toggle + Sparkles AI Chat button.
-				sbIcon := lucide.PanelLeftClose()
-				sbTitle := "收起侧边栏"
-				if a.sidebarCollapsed {
-					sbIcon = lucide.PanelLeftOpen()
-					sbTitle = "展开侧边栏"
-				}
-				if action.ActionIcon(c.Key("tb-toggle-sidebar"), sbIcon, action.ActionIconProps{
-					Variant: action.ActionIconBorderless, Size: theme.Small, Title: sbTitle,
+		ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
+			ui.Text(c, title).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink).NoWrap()
+			if subtitle != "" {
+				ui.Text(c, subtitle).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
+			}
+		})
+	})
+	ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+}
+
+// viewDetailToolbar renders the 44px top bar integrated into Column 3 (ArticleView / Editor / Dashboard),
+// matching macOS ArticleView.toolbar: leading planet actions, draggable spacer, trailing document actions + search.
+func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
+	pal := a.pal
+	h := a.topBarHeight(c)
+	rightPad := a.topBarRightPad(c)
+	leftPad := float32(12)
+	if a.sidebarCollapsed && (a.mode == viewOverview || a.postsCollapsed) {
+		leftPad = a.topBarLeftPad(c)
+	}
+
+	ui.Row(c).Height(h).Shrink(0).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(8).
+		Background(pal.canvas).Padding(0, rightPad, 0, leftPad).DragWindow().Children(func() {
+		// Leading group: macOS toolbarPlanetView (always accessible in site mode, even when editing).
+		ui.Row(c).AlignItems(ui.Center).Gap(4).Shrink(0).Children(func() {
+			if a.sidebarCollapsed && (a.mode == viewOverview || a.postsCollapsed) {
+				if action.ActionIcon(c.Key("tb-expand-sidebar"), lucide.PanelLeftOpen(), action.ActionIconProps{
+					Variant: action.ActionIconBorderless, Size: theme.Small, Title: "展开侧边栏",
 				}).Clicked() {
-					a.sidebarCollapsed = !a.sidebarCollapsed
+					a.sidebarCollapsed = false
 				}
-				if action.ActionIcon(c.Key("tb-ai-sparkles"), lucide.Sparkles(), action.ActionIconProps{
-					Variant: action.ActionIconBorderless, Size: theme.Small, Title: "AI 助手",
-				}).Clicked() {
-					a.openToolsModal(toolsTabAI)
+			}
+			if a.mode != viewOverview {
+				if macIconButton(c, "tb-toggle-posts", iconSidebar, 28, 15, pal.secondary, "切换文章列表") {
+					a.postsCollapsed = !a.postsCollapsed
 				}
-			})
+			}
+			if a.mode == viewSite {
+				if site := a.currentSite(); site != nil {
+					siteID := site.ID
+					ui.Box(c).Width(1).Height(16).Background(pal.line)
+					if macIconButton(c, "site-new-post", iconEdit, 28, 15, pal.secondary, "+ 写文章") {
+						a.guardUnsaved(func() { a.startNewDraft(siteID) })
+					}
+					if action.ActionIcon(c.Key("tb-quick-post"), lucide.Zap(), action.ActionIconProps{
+						Variant: action.ActionIconBorderless, Size: theme.Small, Title: "⚡ 快捷发文",
+					}).Clicked() {
+						a.openQuickPost()
+					}
+					if macIconButton(c, "site-settings", iconSettings, 28, 15, pal.secondary, "站点设置") {
+						a.openSiteSettings(*site)
+					}
+					if macIconButton(c, "site-integrations", iconMore, 28, 15, pal.secondary, "扩展") {
+						a.openIntegrationsModal(*site)
+					}
+				}
+			}
 		})
 
-		if !a.sidebarCollapsed {
-			ui.Box(c).Width(1).AlignSelf(ui.Stretch).Background(pal.line)
-		}
+		// Flexible draggable middle spacer.
+		ui.Box(c).Grow(1).MinWidth(12).Height(h).DragWindow()
 
-		// Right main workspace top bar: pure white canvas (#ffffff) matching macOS ArticleView toolbar.
-		ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(10).
-			Background(pal.canvas).Padding(0, rightPad, 0, 12).DragWindow().Children(func() {
-			// Leading: list-pane toggle + current workspace context label.
-			ui.Row(c).AlignItems(ui.Center).Gap(8).Shrink(0).Children(func() {
-				if a.mode != viewOverview {
-					if macIconButton(c, "tb-toggle-posts", iconSidebar, 26, 15, pal.secondary, "切换文章列表") {
-						a.postsCollapsed = !a.postsCollapsed
-					}
-					if ctxTitle := a.titleBarContextTitle(); ctxTitle != "" {
-						ui.Text(c, ctxTitle).Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(pal.secondary).NoWrap()
-					}
-				}
-			})
-
-			// Center: compact global search pill using lobe-mygo display.Hotkey.
-			ui.Row(c).Grow(1).MinWidth(0).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
-				if interactiveRow(c, "tb-search", "搜索文章", pal.subtle, pal.hover, pal.active).
-					Width(240).MinHeight(28).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(3).
-					Children(func() {
-						ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Grow(1).MinWidth(0).Children(func() {
-							ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
-								ui.Icon(c, iconSearch).Size(13, 13).TextColor(pal.muted)
-								ui.Text(c, "搜索文章").Font(macPlanetFont).FontSize(12).TextColor(pal.muted).NoWrap()
-							})
-							display.Hotkey(c, "mod+k", display.HotkeyProps{
-								Variant: display.HotkeyOutlined,
-								Size:    theme.Small,
-							})
-						})
-					}).Clicked() {
+		// Trailing group: document/mode actions + global search button.
+		ui.Row(c).AlignItems(ui.Center).Gap(6).Shrink(0).Children(func() {
+			a.viewDetailToolbarActions(c)
+			if a.mode != viewOverview {
+				ui.Box(c).Width(1).Height(16).Background(pal.line)
+				if macIconButton(c, "tb-search", iconSearch, 28, 15, pal.secondary, "搜索文章") {
 					a.openGlobalSearch()
 				}
-			})
-
-			// Trailing: context-aware primary actions (padded safely left of bar.Right).
-			ui.Row(c).AlignItems(ui.Center).Gap(6).Shrink(0).Children(func() {
-				a.viewTitleBarActions(c)
-			})
+			}
 		})
 	})
 
-	// Seamless divider: sidebar flows uninterrupted; workspace gets a crisp 1px hairline when not on Overview.
-	ui.Row(c).Height(1).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-		if !a.sidebarCollapsed {
-			ui.Box(c).Width(228).Height(1).Background(pal.sidebar)
-			ui.Box(c).Width(1).Height(1).Background(pal.line)
-		}
-		if a.mode != viewOverview {
-			ui.Box(c).Grow(1).Height(1).Background(pal.line)
-		} else {
-			ui.Box(c).Grow(1).Height(1).Background(pal.canvas)
-		}
-	})
-}
-
-func (a *App) titleBarContextTitle() string {
-	switch a.mode {
-	case viewSite:
-		if a.editing {
-			return "撰写文章"
-		}
-		if site := a.currentSite(); site != nil {
-			return fallbackTitle(site.Name)
-		}
-	case viewToday:
-		return "今天"
-	case viewUnread:
-		return "未读"
-	case viewStarred:
-		return "收藏"
-	case viewSubscription:
-		if sub := a.currentSubscription(); sub != nil {
-			return subscriptionTitle(*sub)
-		}
+	if showBottomBorder {
+		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
 	}
-	return ""
 }
 
-func (a *App) viewTitleBarActions(c *ui.Context) {
+func (a *App) viewDetailToolbarActions(c *ui.Context) {
 	pal := a.pal
 
-	// Site workspace (both editor & reader): keep site-level quick icons accessible
-	// even when the middle posts list is collapsed, while keeping document actions on the right.
 	if a.mode == viewSite {
-		site := a.currentSite()
-		if site != nil && a.postsCollapsed {
-			siteID := site.ID
-			if macIconButton(c, "site-new-post", iconEdit, 26, 15, pal.secondary, "+ 写文章") {
-				a.guardUnsaved(func() { a.startNewDraft(siteID) })
-			}
-			if macIconButton(c, "site-settings", iconSettings, 26, 15, pal.secondary, "站点设置") {
-				a.openSiteSettings(*site)
-			}
-			if macIconButton(c, "site-integrations", iconMore, 26, 15, pal.secondary, "扩展") {
-				a.openIntegrationsModal(*site)
-			}
-			ui.Box(c).Width(1).Height(16).Background(pal.line)
-		}
-
 		if a.editing {
 			if a.isEditorDirty() {
 				display.Tag(c, "未保存", display.TagProps{Color: display.TagWarning, Size: theme.Small})
@@ -188,7 +184,7 @@ func (a *App) viewTitleBarActions(c *ui.Context) {
 			return
 		}
 
-		if site != nil {
+		if site := a.currentSite(); site != nil {
 			if ghostIconButton(c, "site-publish", "发布站点", "发布站点", pal) {
 				a.triggerPublishSite(*site)
 			}
@@ -201,7 +197,6 @@ func (a *App) viewTitleBarActions(c *ui.Context) {
 		return
 	}
 
-	// Subscription reading mode actions.
 	if a.mode == viewToday || a.mode == viewUnread || a.mode == viewStarred || a.mode == viewSubscription {
 		if a.mode == viewSubscription {
 			if sub := a.currentSubscription(); sub != nil {
@@ -253,7 +248,23 @@ func (a *App) viewTitleBarActions(c *ui.Context) {
 		return
 	}
 
-	// Overview (Dashboard) mode actions (Mac Planet #007aff primary button).
+	// Overview (Dashboard) mode actions: compact search pill + Mac Planet blue 写文章 button.
+	if interactiveRow(c, "tb-search", "搜索文章", pal.subtle, pal.hover, pal.active).
+		Width(208).MinHeight(28).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(3).
+		Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Grow(1).MinWidth(0).Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+					ui.Icon(c, iconSearch).Size(13, 13).TextColor(pal.muted)
+					ui.Text(c, "搜索文章").Font(macPlanetFont).FontSize(12).TextColor(pal.muted).NoWrap()
+				})
+				display.Hotkey(c, "mod+k", display.HotkeyProps{
+					Variant: display.HotkeyOutlined,
+					Size:    theme.Small,
+				})
+			})
+		}).Clicked() {
+		a.openGlobalSearch()
+	}
 	if macPrimaryButtonSmall(c, "dash-compose", "写文章", pal) {
 		a.handleDashboardCompose()
 	}
