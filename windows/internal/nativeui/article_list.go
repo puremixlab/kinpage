@@ -31,6 +31,14 @@ func (a *App) matchesSiteFilter(art store.Article) bool {
 		return art.IsIncludedInNavigation
 	case listFilterPinned:
 		return art.Pinned != nil
+	case listFilterStarred:
+		if !art.Starred {
+			return false
+		}
+		if a.starTypeFilter >= 0 {
+			return art.StarType == a.starTypeFilter
+		}
+		return true
 	default:
 		return true
 	}
@@ -156,6 +164,8 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 						summary:     excerptText(item.Content, 80),
 						dateText:    formatRelativeDate(item.Modified),
 						selected:    selected,
+						starred:     item.Starred,
+						starType:    item.StarType,
 						pinned:      item.Pinned != nil,
 						isPage:      item.ArticleType == 1,
 						navWeight:   navWeight,

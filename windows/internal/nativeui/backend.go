@@ -2,6 +2,7 @@ package nativeui
 
 import (
 	"context"
+	"time"
 
 	"windows/internal/applog"
 	"windows/internal/ipfs"
@@ -32,6 +33,7 @@ type Backend interface {
 	ApplyPresetAvatar(siteID, key string) (store.Site, error)
 	SetSaveRoundAvatar(siteID string, round bool) (store.Site, error)
 	RemoveSite(siteID string) error
+	SetSiteArchived(siteID string, archived bool) (store.Site, error)
 	RemovedSites() ([]store.Site, error)
 	RestoreSite(siteID string) (store.Site, error)
 	PermanentlyDeleteSite(siteID string) error
@@ -92,6 +94,11 @@ type Backend interface {
 	SetDraftHeroImage(siteID, draftID, name string) (store.Draft, error)
 	SetArticlePinned(siteID, articleID string, pinned bool) (store.Article, error)
 	UpdateArticleSettings(siteID, articleID, slug string, articleType int, externalLink string, inNavigation bool, weight int) (store.Article, error)
+	UpdateArticleDate(siteID, articleID string, created time.Time) (store.Article, error)
+	SetArticleStar(siteID, articleID string, starred bool, starType int) (store.Article, error)
+	MoveArticle(fromSiteID, articleID, toSiteID string) (store.Article, error)
+	ExportArticle(ctx context.Context, siteID, articleID string) (string, error)
+	ImportArticle(ctx context.Context, siteID string) (store.Article, error)
 	DeleteArticle(siteID, articleID string) error
 	QuickPost(siteID, title, content, attachmentName, attachmentBase64 string) (store.Article, error)
 	Subscriptions() ([]store.Subscription, error)
@@ -100,6 +107,7 @@ type Backend interface {
 	UpdateSubscription(oldAddress, newAddress, customTitle string) (store.Subscription, error)
 	Unfollow(address string) error
 	StarSubscription(address, key string, starred bool) error
+	SetSubscriptionStar(address, key string, starred bool, starType int) error
 	SetSubscriptionRead(address, key string, read bool) error
 	MarkSubscriptionRead(address string) error
 	SearchArticles(query string) ([]store.SearchResult, error)

@@ -924,6 +924,95 @@ func (l *Library) SetArticlePinned(siteID, articleID string, pinned bool) (store
 	}
 	return s.SetArticlePinned(siteID, articleID, pinned)
 }
+
+func (l *Library) SetSiteArchived(siteID string, archived bool) (store.Site, error) {
+	s, err := l.open()
+	if err != nil {
+		return store.Site{}, err
+	}
+	return s.SetSiteArchived(siteID, archived)
+}
+
+func (l *Library) UpdateArticleDate(siteID, articleID string, created time.Time) (store.Article, error) {
+	s, err := l.open()
+	if err != nil {
+		return store.Article{}, err
+	}
+	return s.UpdateArticleDate(siteID, articleID, created)
+}
+
+func (l *Library) SetArticleStar(siteID, articleID string, starred bool, starType int) (store.Article, error) {
+	s, err := l.open()
+	if err != nil {
+		return store.Article{}, err
+	}
+	return s.SetArticleStar(siteID, articleID, starred, starType)
+}
+
+func (l *Library) SetSubscriptionStar(address, key string, starred bool, starType int) error {
+	s, err := l.open()
+	if err != nil {
+		return err
+	}
+	return s.SetSubscriptionStar(address, key, starred, starType)
+}
+
+func (l *Library) MoveArticle(fromSiteID, articleID, toSiteID string) (store.Article, error) {
+	s, err := l.open()
+	if err != nil {
+		return store.Article{}, err
+	}
+	root, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return store.Article{}, err
+	}
+	return attachments.MoveArticle(root, s, fromSiteID, articleID, toSiteID)
+}
+
+func (l *Library) ExportArticle(ctx context.Context, siteID, articleID string) (string, error) {
+	dirs, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "选择导出文章数据包的目录", Directory: true})
+	if err != nil || len(dirs) == 0 {
+		return "", err
+	}
+	s, err := l.open()
+	if err != nil {
+		return "", err
+	}
+	root, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return "", err
+	}
+	name := articleID
+	if arts, err := s.ListArticles(siteID); err == nil {
+		for _, a := range arts {
+			if a.ID == articleID && strings.TrimSpace(a.Slug) != "" {
+				name = a.Slug
+				break
+			}
+		}
+	}
+	dest := filepath.Join(dirs[0], name+".article.zip")
+	if err := attachments.ExportArticleZip(root, s, siteID, articleID, dest); err != nil {
+		return "", err
+	}
+	return dest, nil
+}
+
+func (l *Library) ImportArticle(ctx context.Context, siteID string) (store.Article, error) {
+	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "选择要导入的文章数据包 (.article.zip)"})
+	if err != nil || len(paths) == 0 {
+		return store.Article{}, err
+	}
+	s, err := l.open()
+	if err != nil {
+		return store.Article{}, err
+	}
+	root, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return store.Article{}, err
+	}
+	return attachments.ImportArticleZip(root, s, siteID, paths[0])
+}
 func (l *Library) SaveArticleWithTags(siteID, articleID, title, content, tagsJSON string) (store.Article, error) {
 	s, err := l.open()
 	if err != nil {

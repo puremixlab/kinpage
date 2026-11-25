@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"windows/internal/store"
@@ -47,6 +48,8 @@ func (a *App) viewUnsavedDialog(c *ui.Context) {
 	}
 }
 
+const articleDateInputLayout = "2006-01-02 15:04"
+
 func (a *App) openArticleSettings(art store.Article) {
 	a.articleSettingsID = art.ID
 	a.articleSettingsSlug = art.Slug
@@ -54,6 +57,12 @@ func (a *App) openArticleSettings(art store.Article) {
 	a.articleSettingsExtLink = art.ExternalLink
 	a.articleSettingsInNav = art.IsIncludedInNavigation
 	a.articleSettingsWeight = strconv.Itoa(art.NavigationWeight)
+	dateStr := ""
+	if !art.Created.IsZero() {
+		dateStr = art.Created.Local().Format(articleDateInputLayout)
+	}
+	a.articleSettingsDate = dateStr
+	a.articleSettingsOrigDate = dateStr
 	a.articleSettingsErr = ""
 	a.articleSettingsOpen = true
 }
@@ -67,6 +76,16 @@ func (a *App) viewArticleSettingsModal(c *ui.Context) {
 		CancelText:  "取消",
 	}, pal, func() {
 		macInsetCard(c, pal, func() {
+			macField(c, "发布日期", "", pal, func() {
+				ui.Row(c).Gap(8).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
+					ui.Box(c).Grow(1).MinWidth(0).Children(func() {
+						ui.TextInput(c.Key("art-set-date"), &a.articleSettingsDate).Placeholder("YYYY-MM-DD HH:MM").Label("发布日期").AlignSelf(ui.Stretch)
+					})
+					if macSecondaryButton(c, "art-set-date-now", "设为当前时间", pal) {
+						a.articleSettingsDate = time.Now().Format(articleDateInputLayout)
+					}
+				})
+			})
 			macField(c, "自定义路径 (Slug)", "", pal, func() {
 				ui.TextInput(c.Key("art-set-slug"), &a.articleSettingsSlug).Placeholder("留空使用默认路径").Label("自定义路径").AlignSelf(ui.Stretch)
 			})
@@ -98,6 +117,20 @@ func (a *App) viewArticleSettingsModal(c *ui.Context) {
 			}
 			weight = parsed
 		}
+		var newCreated time.Time
+		dateChanged := strings.TrimSpace(a.articleSettingsDate) != strings.TrimSpace(a.articleSettingsOrigDate)
+		if dateChanged {
+			rawDate := strings.TrimSpace(a.articleSettingsDate)
+			parsedDate, err := time.ParseInLocation(articleDateInputLayout, rawDate, time.Local)
+			if err != nil {
+				parsedDate, err = time.ParseInLocation("2006-01-02", rawDate, time.Local)
+				if err != nil {
+					a.articleSettingsErr = "发布日期格式应为 YYYY-MM-DD HH:MM"
+					return
+				}
+			}
+			newCreated = parsedDate.UTC()
+		}
 		_, err := a.backend.UpdateArticleSettings(
 			a.selectedSiteID,
 			a.articleSettingsID,
@@ -111,9 +144,105 @@ func (a *App) viewArticleSettingsModal(c *ui.Context) {
 			a.articleSettingsErr = err.Error()
 			return
 		}
+		if dateChanged {
+			if _, err := a.backend.UpdateArticleDate(a.selectedSiteID, a.articleSettingsID, newCreated); err != nil {
+				a.articleSettingsErr = err.Error()
+				return
+			}
+		}
 		a.articleSettingsOpen = false
 		a.Reload()
 		a.setStatus("文章设置已更新")
+	}
+}
+
+func (a *App) hasOtherActiveSite(excludeSiteID string) bool {
+	for _, s := range a.sites {
+		if !s.Archived && s.ID != excludeSiteID {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *App) openMoveArticleSheet(art store.Article) {
+	a.moveArticleID = art.ID
+	a.moveArticleTitle = art.Title
+	a.moveArticleFromSiteID = art.SiteID
+	a.moveArticleTargetSiteID = ""
+	for _, s := range a.sites {
+		if !s.Archived && s.ID != art.SiteID {
+			a.moveArticleTargetSiteID = s.ID
+			break
+		}
+	}
+	a.moveArticleErr = ""
+	a.moveArticleOpen = true
+}
+
+func (a *App) viewMoveArticleSheet(c *ui.Context) {
+	pal := a.pal
+	if macSheet(c, &a.moveArticleOpen, macSheetProps{
+		Title:       "移动文章",
+		Width:       420,
+		PrimaryText: "移动",
+		CancelText:  "取消",
+	}, pal, func() {
+		ui.Text(c, fmt.Sprintf("将“%s”移动到目标站点：", fallbackTitle(a.moveArticleTitle))).
+			Font(macPlanetFont).FontSize(13).TextColor(pal.secondary)
+		macInsetCard(c, pal, func() {
+			for _, s := range a.sites {
+				if s.Archived || s.ID == a.moveArticleFromSiteID {
+					continue
+				}
+				targetID := s.ID
+				active := a.moveArticleTargetSiteID == targetID
+				bg, fg := ui.Transparent, pal.ink
+				if active {
+					bg, fg = pal.accent, ui.Hex("#ffffff")
+				}
+				btn := ui.ButtonBase(c.Key("move-target-"+targetID)).Label(fallbackTitle(s.Name)).
+					AlignSelf(ui.Stretch).Padding(8, 10, 8, 10).Radius(6).Background(bg).
+					Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+				if !active && btn.Hovered() {
+					btn.Background(pal.hover)
+				}
+				btn.Children(func() {
+					ui.Text(c, fallbackTitle(s.Name)).Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(fg)
+				})
+				if btn.Clicked() {
+					a.moveArticleTargetSiteID = targetID
+				}
+			}
+		})
+		if a.moveArticleErr != "" {
+			ui.Text(c, a.moveArticleErr).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+		}
+	}) {
+		if a.moveArticleTargetSiteID == "" {
+			a.moveArticleErr = "请选择目标站点"
+			return
+		}
+		if a.backend == nil {
+			return
+		}
+		if _, err := a.backend.MoveArticle(a.moveArticleFromSiteID, a.moveArticleID, a.moveArticleTargetSiteID); err != nil {
+			a.moveArticleErr = err.Error()
+			return
+		}
+		targetName := a.moveArticleTargetSiteID
+		for _, s := range a.sites {
+			if s.ID == a.moveArticleTargetSiteID {
+				targetName = fallbackTitle(s.Name)
+				break
+			}
+		}
+		if a.selectedReadID == a.moveArticleID {
+			a.selectedReadID = ""
+		}
+		a.moveArticleOpen = false
+		a.Reload()
+		a.setStatus("文章已移动至「" + targetName + "」")
 	}
 }
 

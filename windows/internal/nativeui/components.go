@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/lobehub/lobe-mygo/pkg/action"
 	"github.com/lobehub/lobe-mygo/pkg/lucide"
+	"windows/internal/store"
 )
 
 // smartFeedIcon renders a macOS-style 18px solid colored icon inside a 22px slot.
@@ -42,6 +43,37 @@ func toolbarIconBtnColored(c *ui.Context, key string, icon *ui.SVG, color ui.Col
 	return b
 }
 
+type starTypeOption struct {
+	id    int
+	label string
+}
+
+var allStarTypes = []starTypeOption{
+	{store.StarTypeDefault, "星标"},
+	{store.StarTypeTodo, "待办"},
+	{store.StarTypeDone, "已完成"},
+	{store.StarTypeSparkles, "灵感"},
+	{store.StarTypeHeart, "喜爱"},
+	{store.StarTypePlan, "计划"},
+}
+
+func starTypeVisual(t int, pal macPalette) (*ui.SVG, ui.Color) {
+	switch t {
+	case store.StarTypeTodo:
+		return lucide.Circle(), pal.orange
+	case store.StarTypeDone:
+		return lucide.CircleCheck(), pal.green
+	case store.StarTypeSparkles:
+		return lucide.Sparkles(), ui.Hex("#af52de")
+	case store.StarTypeHeart:
+		return lucide.Heart(), pal.danger
+	case store.StarTypePlan:
+		return lucide.Calendar(), pal.accent
+	default:
+		return iconStarSolid, pal.yellow
+	}
+}
+
 type articleRowProps struct {
 	key         string
 	ariaLabel   string
@@ -51,6 +83,7 @@ type articleRowProps struct {
 	sourceLabel string
 	selected    bool
 	starred     bool
+	starType    int
 	unread      bool
 	pinned      bool
 	isDraft     bool
@@ -91,11 +124,11 @@ func articleRow(c *ui.Context, p articleRowProps, pal macPalette) ui.Element {
 				ui.Box(c).Width(18).PaddingY(3).Center().Shrink(0).Children(func() {
 					switch {
 					case p.starred:
-						starCol := pal.yellow
+						starIcon, starCol := starTypeVisual(p.starType, pal)
 						if p.selected {
 							starCol = ui.Hex("#ffffff")
 						}
-						ui.Icon(c, iconStarSolid).Size(12, 12).TextColor(starCol)
+						ui.Icon(c, starIcon).Size(12, 12).TextColor(starCol)
 					case p.unread:
 						dotCol := pal.accent
 						if p.selected {

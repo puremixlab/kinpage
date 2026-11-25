@@ -81,6 +81,8 @@ type App struct {
 	postSearchQuery   string
 	listSearchOpen    bool
 	listFilter        listFilterKind
+	starTypeFilter    int // -1 = all star types, 0..5 = specific store.StarType
+	archivedExpanded  bool
 
 	// Unsaved draft navigation guard.
 	unsavedDialogOpen bool
@@ -93,14 +95,24 @@ type App struct {
 	createSiteError string
 
 	// Article settings modal state.
-	articleSettingsOpen    bool
-	articleSettingsID      string
-	articleSettingsSlug    string
-	articleSettingsType    int
-	articleSettingsExtLink string
-	articleSettingsInNav   bool
-	articleSettingsWeight  string
-	articleSettingsErr     string
+	articleSettingsOpen     bool
+	articleSettingsID       string
+	articleSettingsSlug     string
+	articleSettingsType     int
+	articleSettingsExtLink  string
+	articleSettingsInNav    bool
+	articleSettingsWeight   string
+	articleSettingsDate     string
+	articleSettingsOrigDate string
+	articleSettingsErr      string
+
+	// Move article sheet state.
+	moveArticleOpen         bool
+	moveArticleID           string
+	moveArticleTitle        string
+	moveArticleFromSiteID   string
+	moveArticleTargetSiteID string
+	moveArticleErr          string
 
 	// Delete article confirmation dialog state.
 	deleteArticleOpen  bool
@@ -210,6 +222,7 @@ func New(backend Backend) *App {
 		sidebarWidth:     228,
 		editorSplitRatio: 50,
 		trendHoverPoint:  -1,
+		starTypeFilter:   -1,
 		speaker:          newDefaultSpeaker(),
 		openExternal:     openBrowserFile,
 		imgLoader:        newImageLoader(),

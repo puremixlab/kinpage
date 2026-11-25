@@ -82,6 +82,7 @@ func (a *App) View(c *ui.Context) {
 	a.viewCreateSiteModal(c)
 	a.viewComposePickerModal(c)
 	a.viewArticleSettingsModal(c)
+	a.viewMoveArticleSheet(c)
 	a.viewQuickPostModal(c)
 	a.viewDeleteArticleDialog(c)
 	a.viewFollowModal(c)

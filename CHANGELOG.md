@@ -6,6 +6,7 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ### Added
 
+- Added macOS Planet content management parity features: custom article publish date editing in Article Settings, moving articles (with attachments and automatic slug deduplication) across sites, portable `.article.zip` single-article export and import (supporting macOS `.planetarticle` layouts with Zip Slip protection), multi-type article and subscription stars (`星标`/`待办`/`已完成`/`灵感`/`喜爱`/`计划`) with star-type list filtering, and non-destructive site archiving/unarchiving with a collapsible sidebar section.
 - Added a writing activity overview to the dashboard: a GitHub-style contribution heatmap of daily writing actions (create/edit an article or draft) with day/week/cumulative granularity switches, an inline summary of the past year's actions and the current writing streak, and a daily trend chart for the last 7 or 30 days with separate article and draft series.
 
 ### Changed

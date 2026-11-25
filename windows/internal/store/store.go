@@ -71,6 +71,7 @@ type Site struct {
 	NextArticleNumber          int                `json:"nextArticleNumber,omitempty"`
 	Imported                   bool               `json:"imported,omitempty"`
 	TagsUnsupported            bool               `json:"tagsUnsupported,omitempty"`
+	Archived                   bool               `json:"archived,omitempty"`
 	Removed                    bool               `json:"removed,omitempty"`
 	DeletionPending            bool               `json:"deletionPending,omitempty"`
 	ContentRevision            uint64             `json:"contentRevision,omitempty"`
@@ -173,6 +174,8 @@ type Article struct {
 	HeroImage              string            `json:"heroImage,omitempty"`
 	HeroImageManual        bool              `json:"heroImageManual,omitempty"`
 	Pinned                 *time.Time        `json:"pinned,omitempty"`
+	Starred                bool              `json:"starred,omitempty"`
+	StarType               int               `json:"starType,omitempty"`
 }
 
 // Draft is private local work and is never included in publication snapshots.
@@ -1320,28 +1323,7 @@ func (s *Store) SetSubscriptionError(address, message string) error {
 
 // SetSubscriptionStarred persists the state without replacing refreshed content.
 func (s *Store) SetSubscriptionStarred(address, key string, starred bool) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if key == "" {
-		return errors.New("文章标识无效")
-	}
-	next := s.data
-	next.Subscriptions = append([]Subscription{}, s.data.Subscriptions...)
-	for i, sub := range next.Subscriptions {
-		if sub.URL == address {
-			sub.Feed.Items = append([]feeds.Item{}, sub.Feed.Items...)
-			for j := range sub.Feed.Items {
-				if feeds.ItemKey(sub.Feed.Items[j]) == key {
-					sub.Feed.Items[j].Starred = starred
-					sub.Feed.Items[j].Key = key
-					next.Subscriptions[i] = sub
-					return s.write(next)
-				}
-			}
-			return errors.New("订阅文章不存在")
-		}
-	}
-	return errors.New("订阅不存在")
+	return s.SetSubscriptionStar(address, key, starred, StarTypeDefault)
 }
 
 // SetSubscriptionRead changes local reading state without replacing feed data.
