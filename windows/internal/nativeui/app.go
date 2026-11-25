@@ -134,6 +134,14 @@ type App struct {
 	relatedResults        []store.SearchResult
 	relatedErr            string
 
+	// Batch 3A modals state.
+	siteSettings siteSettingsState
+	publishModal publishModalState
+	ipfsModal    ipfsModalState
+	offlineModal offlineModalState
+	foldersModal foldersModalState
+	removedSites removedSitesState
+
 	// Feedback status.
 	statusText  string
 	statusIsErr bool
@@ -472,6 +480,12 @@ func (a *App) View(c *ui.Context) {
 	a.viewUnfollowDialog(c)
 	a.viewGlobalSearchModal(c)
 	a.viewRelatedArticlesModal(c)
+	a.viewSiteSettingsModal(c)
+	a.viewPublishModal(c)
+	a.viewIPFSModal(c)
+	a.viewOfflineModal(c)
+	a.viewFoldersModal(c)
+	a.viewRemovedSitesModal(c)
 	a.viewUnsavedDialog(c)
 }
 
@@ -479,7 +493,10 @@ func (a *App) anyModalOpen() bool {
 	return a.createSiteOpen || a.composePickerOpen || a.articleSettingsOpen ||
 		a.quickPostOpen || a.deleteArticleOpen || a.unsavedDialogOpen ||
 		a.followModalOpen || a.editSubOpen || a.unfollowOpen ||
-		a.searchModalOpen || a.relatedModalOpen
+		a.searchModalOpen || a.relatedModalOpen ||
+		a.siteSettings.open || a.siteSettings.removeConfirm ||
+		a.publishModal.open || a.ipfsModal.open || a.offlineModal.open ||
+		a.foldersModal.open || a.removedSites.open
 }
 
 func (a *App) viewStatusBar(c *ui.Context) {
@@ -602,12 +619,28 @@ func (a *App) viewSidebar(c *ui.Context) {
 		})
 
 		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
-		ui.Row(c).Padding(10).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).Shrink(0).Children(func() {
-			ui.Text(c, "MyGo GPU 模式").FontSize(11).TextColor(t.TextMuted)
-			if ui.Button(c.Key("sidebar-refresh"), "刷新").Clicked() {
-				a.Reload()
-				a.setStatus("已刷新数据")
-			}
+		ui.Column(c).Padding(10).Gap(6).Shrink(0).Children(func() {
+			ui.Row(c).Gap(4).Wrap().Children(func() {
+				if ui.Button(c.Key("sys-ipfs"), "IPFS").Clicked() {
+					a.openIPFSModal()
+				}
+				if ui.Button(c.Key("sys-offline"), "离线存储").Clicked() {
+					a.openOfflineModal()
+				}
+				if ui.Button(c.Key("sys-folders"), "文件夹").Clicked() {
+					a.openFoldersModal()
+				}
+				if ui.Button(c.Key("sys-trash"), "回收站").Clicked() {
+					a.openRemovedSitesModal()
+				}
+			})
+			ui.Row(c).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
+				ui.Text(c, "MyGo GPU 模式").FontSize(11).TextColor(t.TextMuted)
+				if ui.Button(c.Key("sidebar-refresh"), "刷新").Clicked() {
+					a.Reload()
+					a.setStatus("已刷新数据")
+				}
+			})
 		})
 	})
 }
@@ -644,6 +677,14 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 				ui.Text(c, fallbackTitle(site.Name)).Bold().FontSize(14)
 				if ui.PrimaryButton(c.Key("site-new-post"), "+ 写文章").Clicked() {
 					a.guardUnsaved(func() { a.startNewDraft(siteID) })
+				}
+			})
+			ui.Row(c).Gap(6).Children(func() {
+				if ui.Button(c.Key("site-publish"), "发布站点").Grow(1).Clicked() {
+					a.triggerPublishSite(*site)
+				}
+				if ui.Button(c.Key("site-settings"), "站点设置").Clicked() {
+					a.openSiteSettings(*site)
 				}
 			})
 			ui.SearchField(c.Key("post-search"), &a.postSearchQuery).Placeholder("筛选文章或草稿…").AlignSelf(ui.Stretch)

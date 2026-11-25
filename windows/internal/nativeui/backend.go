@@ -3,6 +3,10 @@ package nativeui
 import (
 	"context"
 
+	"windows/internal/ipfs"
+	"windows/internal/offline"
+	"windows/internal/publisher"
+	"windows/internal/siteimage"
 	"windows/internal/store"
 )
 
@@ -14,6 +18,30 @@ type Backend interface {
 	WritingActivity() ([]store.DailyActivity, error)
 	Sites() ([]store.Site, error)
 	CreateSite(name, about string) (store.Site, error)
+	UpdateSiteDetails(siteID, name, about string, doNotIndex bool, slug, author string) (store.Site, error)
+	UpdateSiteProfile(siteID, profileJSON string) (store.Site, error)
+	UpdateSiteCustomCode(siteID, customCodeJSON string) (store.Site, error)
+	UpdatePodcastSettings(siteID, language string, explicit bool, categoriesJSON string) (store.Site, error)
+	SelectSiteAvatar(ctx context.Context, siteID string) (store.Site, error)
+	RemoveSiteAvatar(siteID string) (store.Site, error)
+	PresetAvatars() []siteimage.PresetAvatar
+	ApplyPresetAvatar(siteID, key string) (store.Site, error)
+	SetSaveRoundAvatar(siteID string, round bool) (store.Site, error)
+	RemoveSite(siteID string) error
+	RemovedSites() ([]store.Site, error)
+	RestoreSite(siteID string) (store.Site, error)
+	PermanentlyDeleteSite(siteID string) error
+	PublishSite(siteID string) (publisher.Result, error)
+	IPFSStatus() (ipfs.KuboStatus, error)
+	SetIPFSEnabled(enabled bool) error
+	IPFSRepoSize() (int64, error)
+	IPFSGarbageCollect() error
+	OfflineMediaUsage() (offline.Usage, error)
+	CleanupOfflineMedia() (offline.Usage, error)
+	PublishedFolders() ([]store.PublishedFolder, error)
+	AddPublishedFolder(ctx context.Context, name string, autoPublish bool) (store.PublishedFolder, error)
+	PublishFolder(folderID string) (store.PublishedFolder, error)
+	RemovePublishedFolder(folderID string) error
 	Articles(siteID string) ([]store.Article, error)
 	Drafts(siteID string) ([]store.Draft, error)
 	SaveDraft(siteID, draftID, articleID, title, content string) (store.Draft, error)

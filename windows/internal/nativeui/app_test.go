@@ -11,15 +11,25 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"windows/internal/feeds"
+	"windows/internal/ipfs"
+	"windows/internal/offline"
+	"windows/internal/publisher"
+	"windows/internal/siteimage"
 	"windows/internal/store"
 )
 
 type fakeBackend struct {
 	sites         []store.Site
+	removedSites  []store.Site
 	articles      []store.Article
 	drafts        []store.Draft
 	activity      []store.DailyActivity
 	subscriptions []store.Subscription
+	folders       []store.PublishedFolder
+	ipfsStatus    ipfs.KuboStatus
+	ipfsRepoSize  int64
+	offlineUsage  offline.Usage
+	gcCount       int
 	nextID        int
 	nextFile      string
 }
@@ -68,6 +78,214 @@ func (f *fakeBackend) CreateSite(name, about string) (store.Site, error) {
 	s := store.Site{ID: fmt.Sprintf("site-%d", f.nextID), Name: name, About: about, Created: time.Now()}
 	f.sites = append(f.sites, s)
 	return s, nil
+}
+
+func (f *fakeBackend) UpdateSiteDetails(siteID, name, about string, doNotIndex bool, slug, author string) (store.Site, error) {
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].Name = name
+			f.sites[i].About = about
+			f.sites[i].DoNotIndex = doNotIndex
+			f.sites[i].Slug = slug
+			f.sites[i].AuthorName = author
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
+}
+
+func (f *fakeBackend) UpdateSiteProfile(siteID, profileJSON string) (store.Site, error) {
+	var p store.SiteProfile
+	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
+		return store.Site{}, err
+	}
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].Domain = p.Domain
+			f.sites[i].TwitterUsername = p.TwitterUsername
+			f.sites[i].GithubUsername = p.GithubUsername
+			f.sites[i].TelegramUsername = p.TelegramUsername
+			f.sites[i].MastodonUsername = p.MastodonUsername
+			f.sites[i].DiscordLink = p.DiscordLink
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
+}
+
+func (f *fakeBackend) UpdateSiteCustomCode(siteID, customCodeJSON string) (store.Site, error) {
+	var cfg store.SiteCustomCode
+	if err := json.Unmarshal([]byte(customCodeJSON), &cfg); err != nil {
+		return store.Site{}, err
+	}
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].CustomCodeHeadEnabled = cfg.HeadEnabled
+			f.sites[i].CustomCodeHead = cfg.Head
+			f.sites[i].CustomCodeBodyStartEnabled = cfg.BodyStartEnabled
+			f.sites[i].CustomCodeBodyStart = cfg.BodyStart
+			f.sites[i].CustomCodeBodyEndEnabled = cfg.BodyEndEnabled
+			f.sites[i].CustomCodeBodyEnd = cfg.BodyEnd
+			f.sites[i].PublishAsIPNS = cfg.PublishAsIPNS
+			f.sites[i].PrewarmNewPost = cfg.PrewarmNewPost
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
+}
+
+func (f *fakeBackend) UpdatePodcastSettings(siteID, language string, explicit bool, categoriesJSON string) (store.Site, error) {
+	var cats []string
+	if err := json.Unmarshal([]byte(categoriesJSON), &cats); err != nil {
+		return store.Site{}, err
+	}
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].PodcastLanguage = language
+			f.sites[i].PodcastExplicit = explicit
+			f.sites[i].PodcastCategories = cats
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
+}
+
+func (f *fakeBackend) SelectSiteAvatar(_ context.Context, siteID string) (store.Site, error) {
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].AvatarPNG = "fake-png"
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
+}
+
+func (f *fakeBackend) RemoveSiteAvatar(siteID string) (store.Site, error) {
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].AvatarPNG = ""
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
+}
+
+func (f *fakeBackend) PresetAvatars() []siteimage.PresetAvatar {
+	return []siteimage.PresetAvatar{{Key: "earth", Title: "地球"}}
+}
+
+func (f *fakeBackend) ApplyPresetAvatar(siteID, key string) (store.Site, error) {
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].AvatarPNG = "preset-" + key
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
+}
+
+func (f *fakeBackend) SetSaveRoundAvatar(siteID string, round bool) (store.Site, error) {
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].SaveRoundAvatar = round
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
+}
+
+func (f *fakeBackend) RemoveSite(siteID string) error {
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.removedSites = append(f.removedSites, f.sites[i])
+			f.sites = append(f.sites[:i], f.sites[i+1:]...)
+			return nil
+		}
+	}
+	return nil
+}
+
+func (f *fakeBackend) RemovedSites() ([]store.Site, error) {
+	return append([]store.Site(nil), f.removedSites...), nil
+}
+
+func (f *fakeBackend) RestoreSite(siteID string) (store.Site, error) {
+	for i := range f.removedSites {
+		if f.removedSites[i].ID == siteID {
+			s := f.removedSites[i]
+			f.removedSites = append(f.removedSites[:i], f.removedSites[i+1:]...)
+			f.sites = append(f.sites, s)
+			return s, nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("removed site not found")
+}
+
+func (f *fakeBackend) PermanentlyDeleteSite(siteID string) error {
+	for i := range f.removedSites {
+		if f.removedSites[i].ID == siteID {
+			f.removedSites = append(f.removedSites[:i], f.removedSites[i+1:]...)
+			return nil
+		}
+	}
+	return nil
+}
+
+func (f *fakeBackend) PublishSite(siteID string) (publisher.Result, error) {
+	return publisher.Result{CID: "bafy-test-cid", IPNS: "k51-test-ipns", Revision: 3}, nil
+}
+
+func (f *fakeBackend) IPFSStatus() (ipfs.KuboStatus, error) { return f.ipfsStatus, nil }
+func (f *fakeBackend) SetIPFSEnabled(enabled bool) error {
+	f.ipfsStatus.Disabled = !enabled
+	f.ipfsStatus.Running = enabled
+	return nil
+}
+func (f *fakeBackend) IPFSRepoSize() (int64, error) { return f.ipfsRepoSize, nil }
+func (f *fakeBackend) IPFSGarbageCollect() error    { f.gcCount++; return nil }
+
+func (f *fakeBackend) OfflineMediaUsage() (offline.Usage, error) { return f.offlineUsage, nil }
+func (f *fakeBackend) CleanupOfflineMedia() (offline.Usage, error) {
+	u := f.offlineUsage
+	u.ReclaimedBytes = u.ReclaimableBytes
+	u.ReclaimableBytes = 0
+	u.ReclaimableFiles = 0
+	f.offlineUsage = u
+	return u, nil
+}
+
+func (f *fakeBackend) PublishedFolders() ([]store.PublishedFolder, error) {
+	return append([]store.PublishedFolder(nil), f.folders...), nil
+}
+
+func (f *fakeBackend) AddPublishedFolder(_ context.Context, name string, autoPublish bool) (store.PublishedFolder, error) {
+	f.nextID++
+	if name == "" {
+		name = "共享目录"
+	}
+	folder := store.PublishedFolder{ID: fmt.Sprintf("fld-%d", f.nextID), Name: name, Path: `D:\share`, AutoPublish: autoPublish}
+	f.folders = append(f.folders, folder)
+	return folder, nil
+}
+
+func (f *fakeBackend) PublishFolder(folderID string) (store.PublishedFolder, error) {
+	for i := range f.folders {
+		if f.folders[i].ID == folderID {
+			f.folders[i].LastCID = "bafy-folder"
+			return f.folders[i], nil
+		}
+	}
+	return store.PublishedFolder{}, fmt.Errorf("folder not found")
+}
+
+func (f *fakeBackend) RemovePublishedFolder(folderID string) error {
+	for i := range f.folders {
+		if f.folders[i].ID == folderID {
+			f.folders = append(f.folders[:i], f.folders[i+1:]...)
+			return nil
+		}
+	}
+	return nil
 }
 
 func (f *fakeBackend) Articles(siteID string) ([]store.Article, error) {
