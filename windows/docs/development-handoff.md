@@ -34,7 +34,7 @@
 
 | 范围 | 位置 |
 | --- | --- |
-| 应用入口 | [Go 主程序](../main.go)、[TypeScript 界面](../src/main.ts) |
+| 应用入口 | [Go 主程序](../main.go)、原 TypeScript 界面 `windows/src/main.ts`（已迁移至 Native UI） |
 | 发布与 Kubo | [publisher](../internal/publisher)、[ipfs](../internal/ipfs) |
 | 备份、迁移与页面生成 | [backup](../internal/backup)、[migration](../internal/migration)、[sitegen](../internal/sitegen) |
 | 签名更新与安装 | [updates](../internal/updates)、[清单签名工具](../cmd/update-manifest)、[升级与恢复说明](safe-upgrade.md) |

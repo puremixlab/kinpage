@@ -24,7 +24,7 @@ bun run check
 Pop-Location
 ```
 
-检查顺序为文档检查、Go 格式、`go vet`、前端测试、禁用结果缓存的 Go 测试、TypeScript 检查和 Vite 生产构建。任一步失败都会以非零状态退出。格式检查覆盖 Git 已跟踪和未忽略的新 Go 文件，不会自动改写代码；按提示对具体文件运行 `gofmt -w`。也可从根目录运行 `powershell -NoProfile -File scripts/check.ps1`。
+检查顺序为文档检查、Go 格式、`go vet`、工具与发布脚本测试，以及禁用结果缓存的 Go 测试。任一步失败都会以非零状态退出。格式检查覆盖 Git 已跟踪和未忽略的新 Go 文件，不会自动改写代码；按提示对具体文件运行 `gofmt -w`。也可从根目录运行 `powershell -NoProfile -File scripts/check.ps1`。
 
 检查需要 Git、Go 和 Bun；工具版本及 WebView2 要求见 [README](../README.md)。安装器构建与可选 Kubo、在线、模板测试独立执行，见 [Windows 指南](../windows/README.md)。本地默认检查通过不代表这些集成已经通过验收。
 

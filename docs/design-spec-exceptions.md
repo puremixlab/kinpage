@@ -19,15 +19,15 @@
 
 ## 最小规范到实现映射
 
-颜色角色定义在 [design-tokens.css](../windows/src/design-tokens.css)。2026-11-09 现代化批次后，style/layout/fluent 三代旧样式中的灰阶、蓝灰与旧蓝强调色已迁移到 `--pw-*` 语义角色（旧 `--ink/--muted/--line/--selection/--brand` 等别名也指向石墨角色）；保留的功能色包括 IPFS 流量图表蓝/红、站点图标四色底、导入警告琥珀、错误提示底色、阴影与禁用灰。下表映射现有角色与主要使用处。
+颜色角色原定义在 `windows/src/design-tokens.css`（已随旧版 WebView 前端移除，仅作历史记录）。2026-11-09 现代化批次后，style/layout/fluent 三代旧样式中的灰阶、蓝灰与旧蓝强调色已迁移到 `--pw-*` 语义角色（旧 `--ink/--muted/--line/--selection/--brand` 等别名也指向石墨角色）；保留的功能色包括 IPFS 流量图表蓝/红、站点图标四色底、导入警告琥珀、错误提示底色、阴影与禁用灰。下表映射现有角色与主要使用处。
 
 | 规范角色或规则 | 当前 token / 组件 | 范围与限制 |
 | --- | --- | --- |
-| 页面、表面、强调与选中 | `--pw-canvas`、`--pw-sidebar`、`--pw-card`；`--pw-brand` / `--pw-accent`；`--pw-selection` | [导航](../windows/src/navigation.css)、[概览](../windows/src/dashboard.css)及[写作界面](../windows/src/refinement.css)使用浅色石墨配方。 |
+| 页面、表面、强调与选中 | `--pw-canvas`、`--pw-sidebar`、`--pw-card`；`--pw-brand` / `--pw-accent`；`--pw-selection` | `windows/src/navigation.css`、`windows/src/dashboard.css` 及 `windows/src/refinement.css` 使用浅色石墨配方。 |
 | 主、次、辅助文字 | `--pw-ink`、`--pw-secondary`、`--pw-muted` | 占位文字使用辅助角色；选中行的辅助信息使用更深的次文字角色。不同背景和状态仍须分别检查对比度。 |
 | 装饰线与必要边界 | `--pw-line: #e5e1da`；`--pw-control-line: #857a6e` | 前者用于轻分隔；本批涉及的输入、选择、次按钮与视图切换边界使用后者。不能把装饰线直接当作必要控件边界。 |
 | 错误、成功、警告 | `--pw-danger: #a13f45`；`--pw-success: #426f58`；`--pw-warning: #946537` | 错误与危险操作读取 danger；`--pw-green`、`--pw-amber` 保留为兼容别名。状态仍需文字或形状线索。 |
-| 焦点与选中态 | `--focus` 映射 `--pw-accent`；控件通常使用 2px outline 与 2px offset | 主内容贴边焦点采用内偏移，见[第一批无障碍记录](../windows/docs/design-spec-a11y-batch1.md)。侧栏、文章、草稿、视图切换和[模板选择](../windows/src/layout.css)另有条线或下划线，不能仅以底色表达选中。 |
+| 焦点与选中态 | `--focus` 映射 `--pw-accent`；控件通常使用 2px outline 与 2px offset | 主内容贴边焦点采用内偏移，见[第一批无障碍记录](../windows/docs/design-spec-a11y-batch1.md)。侧栏、文章、草稿、视图切换和 `windows/src/layout.css` 模板选择另有条线或下划线，不能仅以底色表达选中。 |
 | 字体、圆角与尺度 | `--pw-font`；`--control-radius: 8px`、`--dialog-radius: 16px`；`--text-xs…3xl`、`--radius-sm…dialog`、`--space-1…8`、`--duration-fast`、`--ease-standard` | 系统字体有中文回退；longhand 字号、单值圆角与单值 gap/margin 已读取阶梯 token；`font:` 简写、控件 padding、复合值与展示级字号仍多为组件字面值。 |
 | 布局、层级与动效 | 导航、概览、写作样式中的媒体/容器查询、局部 z-index 和 120ms transition | 尚无统一断点配置、层级和缓动 token；上表记录原因与影响，不将这些缺口标为完成。 |
 
@@ -35,7 +35,7 @@
 
 分支 `fix/design-modernize`，经维护者确认保持纯石墨方向（不引入新强调色），布局结构不变。四个批次：A 补齐字号/圆角/间距/动效 token 并让旧别名指向石墨角色；B 将 style/layout/fluent 残留色迁移到语义 token；C 将 longhand 字号与单值圆角收敛到阶梯（9–10px 提升到 11px 下限）；D 将单值 gap/margin 收敛到间距 token、650 字重归并为 600、侧栏与概览过渡读取动效 token。控件 padding 与导航密度保留。
 
-回归覆盖：[design-tokens.test.ts](../windows/tests/design-tokens.test.ts) 锁定别名解析与阶梯落地，[color-cascade.test.ts](../windows/tests/color-cascade.test.ts) 锁定关键可见表面的石墨色。全套前端测试与 `bun run check` 通过；真实浏览器（生产构建预览）核验了侧栏、菜单、空状态等计算样式。应用内浏览器面板未提供可见视口，多宽度截图与横向溢出实测未执行；WebView2、Narrator、200% 缩放与高对比度仍未实机验证，边界与下文一致。
+回归覆盖：`windows/tests/design-tokens.test.ts` 锁定别名解析与阶梯落地，`windows/tests/color-cascade.test.ts` 锁定关键可见表面的石墨色。全套前端测试与 `bun run check` 通过；真实浏览器（生产构建预览）核验了侧栏、菜单、空状态等计算样式。应用内浏览器面板未提供可见视口，多宽度截图与横向溢出实测未执行；WebView2、Narrator、200% 缩放与高对比度仍未实机验证，边界与下文一致。
 
 ## 验收边界
 

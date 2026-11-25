@@ -27,13 +27,12 @@ $env:GOFLAGS = '-mod=vendor'
 $env:GOOS = 'windows'
 $env:GOARCH = 'amd64'
 $env:CGO_ENABLED = '0'
-bun run build:web
 # 如需本地 IPFS 节点，下载并校验固定版本的 Kubo：
 powershell -NoProfile -File scripts/prepare-kubo.ps1
 bunx mygo build -platform windows/amd64 -skip-build-command -skip-installer -o .mygo/rebuilt
 ```
 
-程序输出为 `.mygo/rebuilt/windows-amd64/Planet Windows.exe`，包含重新构建的前端；`-skip-build-command` 避免再次执行面向发行包的材料收集，`-skip-installer` 仅生成独立程序和资源。该路径不需要发布者签名密钥，不会安装程序，也不会替换已有安装。它不能代替正式安装包的签名、许可或原生安装验收；需要对外分发修改版时，另行完成这些检查并清楚标识修改。
+程序输出为 `.mygo/rebuilt/windows-amd64/Planet Windows.exe`；`-skip-build-command` 避免再次执行面向发行包的材料收集，`-skip-installer` 仅生成独立程序和资源。该路径不需要发布者签名密钥，不会安装程序，也不会替换已有安装。它不能代替正式安装包的签名、许可或原生安装验收；需要对外分发修改版时，另行完成这些检查并清楚标识修改。
 
 `-mod=vendor` 使 Go 使用包内 `windows/vendor/` 源码。不要在修改后运行 `go mod vendor`，该命令会从模块缓存重建 vendor 并覆盖修改。增加新的依赖或包时，应先更新依赖及 vendor，再进行所需修改。Go vendoring 的范围和行为见 [Go Modules Reference](https://go.dev/ref/mod#go-mod-vendor)。
 

@@ -12,6 +12,11 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 - Refactored the Native UI (`windows/internal/nativeui`) to match the macOS Planet three-column layout: streamlined the sidebar header (toggle, AI assistant, and `⋯` tools menu without brand text), unified Smart Feeds with solid color icons, swapped the sidebar bottom bar to IPFS status popover on the left and a `+` New/Follow menu on the right, replaced the permanent list search bar with a filter menu and `Ctrl+F` toggleable search, unified article/draft/subscription rows with relative dates and outlined badges, converted detail and dashboard toolbars to icon-only macOS actions, removed the duplicate reader header action row, added native right-click context menus, top-attached macOS sheets, keyboard shortcuts (`Ctrl+N`, `Ctrl+D`, `Ctrl+E`, `Ctrl+F`), and persisted resizable sidebar/list widths.
 - Swapped the sidebar bottom bar order so the settings menu sits on the left and the IPFS node status button is pinned to the right edge, with the tools popup opening rightward within the sidebar.
+- Streamlined the shared quality checks (`bun run check` / Windows CI) to run documentation checks, `gofmt`, `go vet`, tooling/release Bun tests, and uncached Go tests, removing legacy TypeScript/Vite frontend checks and builds.
+
+### Removed
+
+- Removed the legacy WebView frontend (`windows/src/`, `--legacy-webview` / `PLANET_LEGACY_WEBVIEW`), its 29 `happy-dom` UI tests, and unused frontend dependencies (`mygo-runtime`, `happy-dom`, `vite`, `typescript`); the app now launches exclusively in Native UI while retaining sandboxed WebView2 for template previews and subscription original webpage viewing.
 
 ## [0.0.1-alpha.6] - 2026-11-21
 
