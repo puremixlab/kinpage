@@ -3279,6 +3279,9 @@ func main() {
 		var nativeApp *nativeui.App
 		if useNativeUI(os.Args[1:]) {
 			nativeApp = nativeui.New(library)
+			if root, err := mygo.App.Path(mygo.PathUserData); err == nil {
+				nativeApp.EnablePrefsPersistence(filepath.Join(root, "nativeui-layout.json"))
+			}
 			opts.TitleBarStyle = mygo.TitleBarHidden
 			opts.Content = ui.View(nativeApp.View)
 		} else {

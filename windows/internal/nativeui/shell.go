@@ -96,6 +96,7 @@ func (a *App) View(c *ui.Context) {
 	a.viewIntegrationsModal(c)
 	a.viewToolsModal(c)
 	a.viewUnsavedDialog(c)
+	a.maybeSaveLayoutPrefs()
 }
 
 func (a *App) viewStatusBar(c *ui.Context) {

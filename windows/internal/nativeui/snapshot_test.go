@@ -110,4 +110,22 @@ func TestNativeUIRenderSnapshots(t *testing.T) {
 	app.openSubscriptionView(viewSubscription, "https://river.example/rss")
 	tt.Frame()
 	savePNG(t, outDir, "04-subscription.png", tt)
+
+	// Dark mode site reader snapshot.
+	app.selectSite("s1")
+	tt.SetDark(true)
+	tt.Frame()
+	savePNG(t, outDir, "05-site-reader-dark.png", tt)
+
+	// Light mode macSheet snapshot.
+	tt.SetDark(false)
+	app.createSiteOpen = true
+	tt.Frame()
+	savePNG(t, outDir, "06-sheet-create-site.png", tt)
+	app.createSiteOpen = false
+
+	// IPFS status popover snapshot.
+	app.openIPFSModal()
+	tt.Frame()
+	savePNG(t, outDir, "07-ipfs-popover.png", tt)
 }

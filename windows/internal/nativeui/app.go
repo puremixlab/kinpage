@@ -167,6 +167,8 @@ type App struct {
 	settingsMenuOpen bool
 	sidebarCollapsed bool
 	postsCollapsed   bool
+	prefsPath        string
+	lastSavedPrefs   layoutPrefs
 
 	// Feedback status.
 	statusText  string
