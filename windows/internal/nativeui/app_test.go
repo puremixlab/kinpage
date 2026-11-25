@@ -973,4 +973,45 @@ func TestNativeUIUnifiedTitleBarToggles(t *testing.T) {
 	if app.postsCollapsed {
 		t.Fatal("expected postsCollapsed to be false")
 	}
+
+	// Create and save a draft, then verify site settings and new draft remain accessible
+	// both with posts list expanded and collapsed.
+	if err := tt.Click("+ 写文章"); err != nil {
+		t.Fatalf("failed to start first draft: %v", err)
+	}
+	app.editorTitle = "第一篇草稿"
+	tt.Frame()
+	if err := tt.Click("保存草稿"); err != nil {
+		t.Fatalf("failed to save first draft: %v", err)
+	}
+	if !app.editing || app.activeDraftID == "" {
+		t.Fatalf("expected active saved draft, editing=%v id=%q", app.editing, app.activeDraftID)
+	}
+	if err := tt.Click("站点设置"); err != nil {
+		t.Fatalf("expected 站点设置 accessible while editing draft: %v", err)
+	}
+	if !app.siteSettings.open {
+		t.Fatal("expected site settings modal to open from editor view")
+	}
+	app.siteSettings.open = false
+	tt.Frame()
+
+	// Start a second new draft directly after saving the first draft.
+	if err := tt.Click("+ 写文章"); err != nil {
+		t.Fatalf("expected + 写文章 accessible after saving draft: %v", err)
+	}
+	if !app.editing || app.activeDraftID != "" || app.editorTitle != "" {
+		t.Fatalf("expected fresh draft after clicking + 写文章, editing=%v id=%q title=%q", app.editing, app.activeDraftID, app.editorTitle)
+	}
+
+	// Even with posts list collapsed in editor mode, 站点设置 & + 写文章 stay accessible in titlebar.
+	if err := tt.Click("切换文章列表"); err != nil {
+		t.Fatalf("failed to collapse posts list in editor: %v", err)
+	}
+	if err := tt.Click("站点设置"); err != nil {
+		t.Fatalf("expected 站点设置 accessible when posts list collapsed in editor: %v", err)
+	}
+	if !app.siteSettings.open {
+		t.Fatal("expected site settings modal to open while posts list collapsed")
+	}
 }

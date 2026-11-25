@@ -776,10 +776,24 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 	query := strings.ToLower(strings.TrimSpace(a.postSearchQuery))
 
 	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
-		// Slim 38px list header (primary site actions live in the unified top titlebar).
-		ui.Row(c).Height(38).PaddingX(14).Gap(6).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.subtle).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink).Grow(1).NoWrap()
-			ui.Text(c, fmt.Sprintf("%d 篇", len(a.articles)+len(a.drafts))).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
+		// 42px site list header: site identity + always-available site-level actions
+		// (+ 写文章, 站点设置, 扩展) so editing a draft never hides site controls.
+		ui.Row(c).Height(42).PaddingX(12).Gap(6).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.subtle).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(6).Grow(1).MinWidth(0).Children(func() {
+				ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink).NoWrap()
+				ui.Text(c, fmt.Sprintf("%d", len(a.articles)+len(a.drafts))).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
+			})
+			ui.Row(c).Gap(2).AlignItems(ui.Center).Shrink(0).Children(func() {
+				if macIconButton(c, "site-new-post", iconEdit, 26, 15, pal.secondary, "+ 写文章") {
+					a.guardUnsaved(func() { a.startNewDraft(siteID) })
+				}
+				if macIconButton(c, "site-settings", iconSettings, 26, 15, pal.secondary, "站点设置") {
+					a.openSiteSettings(*site)
+				}
+				if macIconButton(c, "site-integrations", iconMore, 26, 15, pal.secondary, "扩展") {
+					a.openIntegrationsModal(*site)
+				}
+			})
 		})
 		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
 

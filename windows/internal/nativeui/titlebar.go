@@ -111,42 +111,47 @@ func (a *App) viewTitleBar(c *ui.Context) {
 func (a *App) viewTitleBarActions(c *ui.Context) {
 	pal := a.pal
 
-	// Editor mode actions.
-	if a.mode == viewSite && a.editing {
-		saveStateText := "草稿已保存（未发布）"
-		if a.isEditorDirty() {
-			saveStateText = "有未保存更改"
-		}
-		ui.Text(c, saveStateText).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
-		if action.Button(c.Key("editor-save"), "保存草稿", action.ButtonProps{Variant: action.Default, Size: theme.Small}).Clicked() {
-			a.saveCurrentDraft()
-		}
-		if action.Button(c.Key("editor-publish"), "发布", action.ButtonProps{Variant: action.Primary, Size: theme.Small}).Clicked() {
-			a.publishCurrentDraft()
-		}
-		if a.activeDraftID != "" {
-			if ghostIconButton(c, "editor-delete", "删除", "删除草稿", pal) {
-				a.deleteCurrentDraft()
-			}
-		}
-		return
-	}
-
-	// Site reader mode actions.
+	// Site workspace (both editor & reader): keep site-level quick icons accessible
+	// even when the middle posts list is collapsed, while keeping document actions on the right.
 	if a.mode == viewSite {
-		if site := a.currentSite(); site != nil {
+		site := a.currentSite()
+		if site != nil && a.postsCollapsed {
 			siteID := site.ID
-			if ghostIconButton(c, "site-new-post", "+ 写文章", "+ 写文章", pal) {
+			if macIconButton(c, "site-new-post", iconEdit, 26, 15, pal.secondary, "+ 写文章") {
 				a.guardUnsaved(func() { a.startNewDraft(siteID) })
-			}
-			if ghostIconButton(c, "site-publish", "发布站点", "发布站点", pal) {
-				a.triggerPublishSite(*site)
 			}
 			if macIconButton(c, "site-settings", iconSettings, 26, 15, pal.secondary, "站点设置") {
 				a.openSiteSettings(*site)
 			}
 			if macIconButton(c, "site-integrations", iconMore, 26, 15, pal.secondary, "扩展") {
 				a.openIntegrationsModal(*site)
+			}
+			ui.Box(c).Width(1).Height(16).Background(pal.line)
+		}
+
+		if a.editing {
+			saveStateText := "草稿已保存（未发布）"
+			if a.isEditorDirty() {
+				saveStateText = "有未保存更改"
+			}
+			ui.Text(c, saveStateText).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
+			if action.Button(c.Key("editor-save"), "保存草稿", action.ButtonProps{Variant: action.Default, Size: theme.Small}).Clicked() {
+				a.saveCurrentDraft()
+			}
+			if action.Button(c.Key("editor-publish"), "发布", action.ButtonProps{Variant: action.Primary, Size: theme.Small}).Clicked() {
+				a.publishCurrentDraft()
+			}
+			if a.activeDraftID != "" {
+				if ghostIconButton(c, "editor-delete", "删除", "删除草稿", pal) {
+					a.deleteCurrentDraft()
+				}
+			}
+			return
+		}
+
+		if site != nil {
+			if ghostIconButton(c, "site-publish", "发布站点", "发布站点", pal) {
+				a.triggerPublishSite(*site)
 			}
 			if art := a.currentArticle(); art != nil {
 				if action.Button(c.Key("reader-edit"), "编辑文章", action.ButtonProps{Variant: action.Primary, Size: theme.Small}).Clicked() {
