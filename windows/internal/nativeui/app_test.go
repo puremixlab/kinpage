@@ -10,10 +10,13 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"windows/internal/applog"
 	"windows/internal/feeds"
 	"windows/internal/ipfs"
+	"windows/internal/localapi"
 	"windows/internal/offline"
 	"windows/internal/publisher"
+	"windows/internal/services"
 	"windows/internal/siteimage"
 	"windows/internal/store"
 	"windows/internal/templateinstall"
@@ -35,6 +38,10 @@ type fakeBackend struct {
 	xConfigured   bool
 	tgConfigured  bool
 	aggSynced     int
+	aiConfig      services.AIConfig
+	apiStatus     localapi.Status
+	ipnsKeys      []ipfs.KeyInfo
+	appLogs       []applog.Entry
 	nextID        int
 	nextFile      string
 }
@@ -381,6 +388,45 @@ func (f *fakeBackend) UpdateSiteWeb3(siteID, web3JSON string) (store.Site, error
 	}
 	return store.Site{}, fmt.Errorf("site not found")
 }
+
+func (f *fakeBackend) AIConfig() (services.AIConfig, error) { return f.aiConfig, nil }
+func (f *fakeBackend) ConfigureAI(baseURL, model, token string) (services.AIConfig, error) {
+	f.aiConfig = services.AIConfig{BaseURL: baseURL, Model: model, HasKey: token != ""}
+	return f.aiConfig, nil
+}
+func (f *fakeBackend) ProbeAI(_ string) (services.AIProbeResult, error) {
+	return services.AIProbeResult{OllamaDetected: true, Models: []string{"qwen2.5", "llama3"}}, nil
+}
+func (f *fakeBackend) AskAI(prompt, _, _, _ string) (string, error) {
+	return "**回复**：" + prompt, nil
+}
+func (f *fakeBackend) LocalAPIStatus() (localapi.Status, error) { return f.apiStatus, nil }
+func (f *fakeBackend) ConfigureLocalAPI(enabled bool, port int, authEnabled bool, username, passcode string) (localapi.Status, error) {
+	f.apiStatus = localapi.Status{Running: enabled, Enabled: enabled, Port: port, AuthEnabled: authEnabled, Username: username, HasPasscode: passcode != ""}
+	return f.apiStatus, nil
+}
+func (f *fakeBackend) ClearLocalAPILogs() { f.apiStatus.Logs = nil }
+func (f *fakeBackend) ListIPNSKeys() ([]ipfs.KeyInfo, error) {
+	return append([]ipfs.KeyInfo(nil), f.ipnsKeys...), nil
+}
+func (f *fakeBackend) ExportIPNSKey(_ context.Context, name string) (string, error) {
+	return `D:\keys\` + name + ".key", nil
+}
+func (f *fakeBackend) ImportIPNSKey(_ context.Context, name string) (string, error) {
+	k := ipfs.KeyInfo{Name: name, ID: "k51-" + name}
+	f.ipnsKeys = append(f.ipnsKeys, k)
+	return k.ID, nil
+}
+func (f *fakeBackend) AppLogs(category string) []applog.Entry {
+	var out []applog.Entry
+	for _, e := range f.appLogs {
+		if category == "" || e.Category == category {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+func (f *fakeBackend) ClearAppLogs(_ string) { f.appLogs = nil }
 
 func (f *fakeBackend) Articles(siteID string) ([]store.Article, error) {
 	var out []store.Article

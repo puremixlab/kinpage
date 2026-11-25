@@ -3,9 +3,12 @@ package nativeui
 import (
 	"context"
 
+	"windows/internal/applog"
 	"windows/internal/ipfs"
+	"windows/internal/localapi"
 	"windows/internal/offline"
 	"windows/internal/publisher"
+	"windows/internal/services"
 	"windows/internal/siteimage"
 	"windows/internal/store"
 	"windows/internal/templateinstall"
@@ -64,6 +67,18 @@ type Backend interface {
 	UpdateSiteAggregation(siteID, sourcesText string) (store.Site, error)
 	SyncSiteAggregation(siteID string) (int, error)
 	UpdateSiteWeb3(siteID, web3JSON string) (store.Site, error)
+	AIConfig() (services.AIConfig, error)
+	ConfigureAI(baseURL, model, token string) (services.AIConfig, error)
+	ProbeAI(baseURL string) (services.AIProbeResult, error)
+	AskAI(prompt, contextTitle, contextBody, historyJSON string) (string, error)
+	LocalAPIStatus() (localapi.Status, error)
+	ConfigureLocalAPI(enabled bool, port int, authEnabled bool, username, passcode string) (localapi.Status, error)
+	ClearLocalAPILogs()
+	ListIPNSKeys() ([]ipfs.KeyInfo, error)
+	ExportIPNSKey(ctx context.Context, name string) (string, error)
+	ImportIPNSKey(ctx context.Context, name string) (string, error)
+	AppLogs(category string) []applog.Entry
+	ClearAppLogs(category string)
 	Articles(siteID string) ([]store.Article, error)
 	Drafts(siteID string) ([]store.Draft, error)
 	SaveDraft(siteID, draftID, articleID, title, content string) (store.Draft, error)

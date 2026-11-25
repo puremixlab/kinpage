@@ -142,8 +142,9 @@ type App struct {
 	foldersModal foldersModalState
 	removedSites removedSitesState
 
-	// Batch 3B modals state.
+	// Batch 3B & 3C modals state.
 	integrations integrationsModalState
+	toolsModal   toolsModalState
 
 	// Feedback status.
 	statusText  string
@@ -490,6 +491,7 @@ func (a *App) View(c *ui.Context) {
 	a.viewFoldersModal(c)
 	a.viewRemovedSitesModal(c)
 	a.viewIntegrationsModal(c)
+	a.viewToolsModal(c)
 	a.viewUnsavedDialog(c)
 }
 
@@ -500,7 +502,8 @@ func (a *App) anyModalOpen() bool {
 		a.searchModalOpen || a.relatedModalOpen ||
 		a.siteSettings.open || a.siteSettings.removeConfirm ||
 		a.publishModal.open || a.ipfsModal.open || a.offlineModal.open ||
-		a.foldersModal.open || a.removedSites.open || a.integrations.open
+		a.foldersModal.open || a.removedSites.open || a.integrations.open ||
+		a.toolsModal.open
 }
 
 func (a *App) viewStatusBar(c *ui.Context) {
@@ -636,6 +639,12 @@ func (a *App) viewSidebar(c *ui.Context) {
 				}
 				if ui.Button(c.Key("sys-trash"), "回收站").Clicked() {
 					a.openRemovedSitesModal()
+				}
+				if ui.Button(c.Key("sys-ai"), "AI 助手").Clicked() {
+					a.openToolsModal(toolsTabAI)
+				}
+				if ui.Button(c.Key("sys-tools"), "工具箱").Clicked() {
+					a.openToolsModal(toolsTabAPI)
 				}
 			})
 			ui.Row(c).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
