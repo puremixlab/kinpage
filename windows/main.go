@@ -2459,6 +2459,9 @@ func (l *Library) PublishSite(siteID string) (publisher.Result, error) {
 		if e = services.PinPublished(root, siteID, result.CID, services.NewClient()); e != nil {
 			result.PinnableWarning += " 站点已发布，但 Filebase 固定请求未完成：" + e.Error()
 		}
+		if e = services.SyncDWebServices(root, siteID, result.CID, nil); e != nil {
+			result.PinnableWarning += " 站点已发布，但 dWebServices.xyz 同步未完成：" + e.Error()
+		}
 		if warning := l.autoDeploy(root, *site, articles); warning != "" {
 			result.PinnableWarning += " IPNS 已发布，但外部发布未完成：" + warning
 		}

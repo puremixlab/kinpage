@@ -128,6 +128,15 @@ func Render(dir string, site store.Site, articles []store.Article) error {
 	if err := os.WriteFile(filepath.Join(dir, "robots.txt"), []byte(robots), 0600); err != nil {
 		return err
 	}
+	if strings.TrimSpace(site.FarcasterManifestJSON) != "" {
+		wellKnownDir := filepath.Join(dir, ".well-known")
+		if err := os.MkdirAll(wellKnownDir, 0700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(wellKnownDir, "farcaster.json"), []byte(site.FarcasterManifestJSON), 0600); err != nil {
+			return err
+		}
+	}
 	items := append([]store.Article{}, articles...)
 	sortSiteArticles(items)
 	type publicArticle struct {

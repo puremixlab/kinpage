@@ -60,6 +60,7 @@ type Site struct {
 	AcceptsDonationETHAddress  string             `json:"acceptsDonationETHAddress,omitempty"`
 	JuiceboxEnabled            bool               `json:"juiceboxEnabled,omitempty"`
 	JuiceboxProjectID          int                `json:"juiceboxProjectID,omitempty"`
+	FarcasterManifestJSON      string             `json:"farcasterManifestJson,omitempty"`
 	AvatarPNG                  string             `json:"avatarPng,omitempty"`
 	Created                    time.Time          `json:"created"`
 	IPNS                       string             `json:"ipns,omitempty"`

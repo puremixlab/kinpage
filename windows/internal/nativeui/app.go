@@ -173,6 +173,10 @@ type App struct {
 	openIPFSResOpen  bool
 	openIPFSResInput string
 	openIPFSResErr   string
+	tipModalOpen     bool
+	tipRecipient     string
+	tipAmount        string
+	tipErr           string
 	externalDirty    atomic.Bool
 
 	// Batch 3B & 3C modals state.
@@ -572,7 +576,7 @@ func (a *App) anyModalOpen() bool {
 		a.searchModalOpen || a.relatedModalOpen ||
 		a.siteSettings.open || a.siteSettings.removeConfirm ||
 		a.publishModal.open || a.ipfsModal.open || a.offlineModal.open ||
-		a.openIPFSResOpen || a.foldersModal.open || a.removedSites.open ||
+		a.openIPFSResOpen || a.tipModalOpen || a.foldersModal.open || a.removedSites.open ||
 		a.toolsModal.open || a.templatePreview.open
 }
 

@@ -97,6 +97,7 @@ func (a *App) View(c *ui.Context) {
 	a.viewPublishModal(c)
 	a.viewOfflineModal(c)
 	a.viewOpenIPFSResourceSheet(c)
+	a.viewTipCreatorSheet(c)
 	a.viewFoldersModal(c)
 	a.viewRemovedSitesModal(c)
 	a.viewToolsModal(c)

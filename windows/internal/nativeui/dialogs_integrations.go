@@ -55,6 +55,8 @@ type integrationsModalState struct {
 	filebaseBucket    string
 	filebaseToken     string
 	pinnableEndpoint  string
+	dwebDomain        string
+	dwebToken         string
 
 	// X sync.
 	xAPIKey       string
@@ -76,6 +78,7 @@ type integrationsModalState struct {
 	web3ETH        string
 	web3Juicebox   bool
 	web3JuiceboxID string
+	web3Farcaster  string
 }
 
 type templatePreviewState struct {
@@ -446,6 +449,29 @@ func (a *App) viewIntServices(c *ui.Context) {
 			}
 		})
 	})
+	macInsetCard(c, pal, func() {
+		ui.Text(c, "dWebServices.xyz 托管 IPNS").Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink)
+		ui.Row(c).Gap(16).AlignSelf(ui.Stretch).Children(func() {
+			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
+				macField(c, "域名", "", pal, func() {
+					ui.TextInput(c.Key("srv-dweb-dom"), &m.dwebDomain).Placeholder("example.eth").AlignSelf(ui.Stretch)
+				})
+			})
+			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
+				macField(c, "API Key", "", pal, func() {
+					ui.TextInput(c.Key("srv-dweb-tok"), &m.dwebToken).Password().AlignSelf(ui.Stretch)
+				})
+			})
+		})
+		if macSecondaryButton(c, "srv-dweb-save", "保存 dWebServices", pal) {
+			if err := a.backend.ConfigureService(m.siteID, "dwebservices", strings.TrimSpace(m.dwebDomain), strings.TrimSpace(m.dwebToken)); err != nil {
+				m.err = err.Error()
+			} else {
+				m.err = ""
+				m.msg = "已保存 dWebServices.xyz 配置"
+			}
+		}
+	})
 }
 
 func (a *App) viewIntX(c *ui.Context) {
@@ -581,6 +607,11 @@ func (a *App) viewIntWeb3(c *ui.Context) {
 			})
 		})
 	})
+	macInsetCard(c, pal, func() {
+		macField(c, "Farcaster Mini App (.well-known/farcaster.json)", "", pal, func() {
+			ui.TextArea(c.Key("w3-farcaster"), &m.web3Farcaster).Placeholder(`{"accountAssociation":{...}}`).Lines(3, 6).AlignSelf(ui.Stretch)
+		})
+	})
 	if macPrimaryButtonSmall(c, "w3-save", "保存 Web3 设置", pal) {
 		jbID := 0
 		if s := strings.TrimSpace(m.web3JuiceboxID); s != "" {
@@ -597,6 +628,7 @@ func (a *App) viewIntWeb3(c *ui.Context) {
 			AcceptsDonationETHAddress: strings.TrimSpace(m.web3ETH),
 			JuiceboxEnabled:           m.web3Juicebox,
 			JuiceboxProjectID:         jbID,
+			FarcasterManifestJSON:     strings.TrimSpace(m.web3Farcaster),
 		})
 		if _, err := a.backend.UpdateSiteWeb3(m.siteID, string(raw)); err != nil {
 			m.err = err.Error()

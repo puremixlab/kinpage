@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/json"
 	"errors"
 	"regexp"
 	"strings"
@@ -12,6 +13,7 @@ type SiteWeb3Settings struct {
 	AcceptsDonationETHAddress string `json:"acceptsDonationETHAddress"`
 	JuiceboxEnabled           bool   `json:"juiceboxEnabled"`
 	JuiceboxProjectID         int    `json:"juiceboxProjectID"`
+	FarcasterManifestJSON     string `json:"farcasterManifestJson,omitempty"`
 }
 
 var ethAddressPattern = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)
@@ -19,11 +21,15 @@ var ethAddressPattern = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)
 func (s *Store) UpdateSiteWeb3(siteID string, cfg SiteWeb3Settings) (Site, error) {
 	cfg.AcceptsDonationETHAddress = strings.TrimSpace(cfg.AcceptsDonationETHAddress)
 	cfg.AcceptsDonationMessage = strings.TrimSpace(cfg.AcceptsDonationMessage)
+	cfg.FarcasterManifestJSON = strings.TrimSpace(cfg.FarcasterManifestJSON)
 	if cfg.AcceptsDonationETHAddress != "" && !ethAddressPattern.MatchString(cfg.AcceptsDonationETHAddress) && !strings.HasSuffix(strings.ToLower(cfg.AcceptsDonationETHAddress), ".eth") {
 		return Site{}, errors.New("以太坊捐赠地址格式无效，请输入 0x 地址或 .eth 域名")
 	}
 	if cfg.JuiceboxProjectID < 0 {
 		return Site{}, errors.New("Juicebox 项目 ID 须为非负整数")
+	}
+	if cfg.FarcasterManifestJSON != "" && !json.Valid([]byte(cfg.FarcasterManifestJSON)) {
+		return Site{}, errors.New("Farcaster Mini App JSON 格式无效")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -42,6 +48,7 @@ func (s *Store) UpdateSiteWeb3(siteID string, cfg SiteWeb3Settings) (Site, error
 		site.AcceptsDonationETHAddress = cfg.AcceptsDonationETHAddress
 		site.JuiceboxEnabled = cfg.JuiceboxEnabled
 		site.JuiceboxProjectID = cfg.JuiceboxProjectID
+		site.FarcasterManifestJSON = cfg.FarcasterManifestJSON
 		site.ContentRevision++
 		site.PublishPending = true
 		if err := s.write(next); err != nil {

@@ -64,6 +64,9 @@ func (a *App) viewSidebarHeader(c *ui.Context) {
 			if m.Item("打开 IPFS 资源…").Shortcut(ui.Ctrl, ui.KeyO).Chosen() {
 				a.openIPFSResourceModal()
 			}
+			if m.Item("打赏创作者 (ETH)…").Chosen() {
+				a.openTipModal("")
+			}
 			m.Separator()
 			if m.Item("已发布文件夹").Chosen() {
 				a.openFoldersModal()

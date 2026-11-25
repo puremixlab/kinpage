@@ -63,6 +63,7 @@ type Server struct {
 	backend  Backend
 	server   *http.Server
 	listener net.Listener
+	root     string
 	running  bool
 	port     int
 	logs     []LogEntry
@@ -213,6 +214,7 @@ func (srv *Server) Sync(root string) error {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	srv.listener = ln
+	srv.root = root
 	srv.server = httpSrv
 	srv.running = true
 	srv.port = actualPort
@@ -337,8 +339,16 @@ func (srv *Server) dispatch(w http.ResponseWriter, r *http.Request) {
 	if path == "" {
 		path = "/"
 	}
+	if path == "/app" || strings.HasPrefix(path, "/app/") {
+		srv.handleWebClient(w, r)
+		return
+	}
 	if path == "/v0/ping" && r.Method == http.MethodGet {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "pong"})
+		return
+	}
+	if path == "/v0/id" && r.Method == http.MethodGet {
+		srv.handleID(w)
 		return
 	}
 	s, err := srv.backend.OpenStore()
@@ -457,6 +467,19 @@ func (srv *Server) dispatch(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusOK, current)
 			return
 		}
+	}
+	if len(parts) >= 2 && parts[1] == "public" {
+		site, ok := findSite(s, siteID)
+		if !ok {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "Planet not found"})
+			return
+		}
+		rel := ""
+		if len(parts) > 2 {
+			rel = strings.Join(parts[2:], "/")
+		}
+		srv.handleSitePublic(w, r, site.ID, rel)
+		return
 	}
 	if len(parts) == 2 && parts[1] == "publish" && r.Method == http.MethodPost {
 		current, ok := findSite(s, siteID)
