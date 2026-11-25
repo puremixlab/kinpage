@@ -97,6 +97,13 @@ type App struct {
 	quickPostContent string
 	quickPostErr     string
 
+	// Dashboard interaction state.
+	activityMode        int
+	trendRange          int
+	trendHoverPoint     int
+	articleFilterSiteID string
+	composePickerOpen   bool
+
 	// Feedback status.
 	statusText  string
 	statusIsErr bool
@@ -116,6 +123,7 @@ func New(backend Backend) *App {
 		editorState:      &editor.State{Buffer: buf, SoftWrap: true, Placeholder: "使用 Markdown 开始写作…", Label: "Markdown 正文编辑器"},
 		postsPanelWidth:  260,
 		editorSplitRatio: 50,
+		trendHoverPoint:  -1,
 	}
 	a.Reload()
 	return a
@@ -412,6 +420,7 @@ func (a *App) View(c *ui.Context) {
 	})
 
 	a.viewCreateSiteModal(c)
+	a.viewComposePickerModal(c)
 	a.viewArticleSettingsModal(c)
 	a.viewQuickPostModal(c)
 	a.viewDeleteArticleDialog(c)
@@ -419,7 +428,7 @@ func (a *App) View(c *ui.Context) {
 }
 
 func (a *App) anyModalOpen() bool {
-	return a.createSiteOpen || a.articleSettingsOpen || a.quickPostOpen || a.deleteArticleOpen || a.unsavedDialogOpen
+	return a.createSiteOpen || a.composePickerOpen || a.articleSettingsOpen || a.quickPostOpen || a.deleteArticleOpen || a.unsavedDialogOpen
 }
 
 func (a *App) viewStatusBar(c *ui.Context) {
@@ -504,78 +513,6 @@ func (a *App) viewSidebar(c *ui.Context) {
 	})
 }
 
-func (a *App) viewDashboard(c *ui.Context) {
-	t := c.Theme()
-	ui.Scroll(c).TrackScroll(&a.dashboardScroll).Grow(1).MinHeight(0).Children(func() {
-		ui.Column(c).Padding(24).Gap(20).AlignSelf(ui.Stretch).Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-				ui.Column(c).Gap(4).Children(func() {
-					ui.Text(c, "写作总览").Bold().FontSize(22)
-					ui.Text(c, "MyGo 原生 GPU 界面 · 直连本地 Store").FontSize(12).TextColor(t.TextMuted)
-				})
-				ui.Row(c).Gap(8).Children(func() {
-					if ui.Button(c.Key("dash-quick-post"), "快捷发文").Clicked() {
-						a.openQuickPost()
-					}
-					if ui.PrimaryButton(c.Key("dash-compose"), "写文章").Clicked() {
-						a.startNewDraft(a.selectedSiteID)
-					}
-				})
-			})
-
-			ui.Row(c).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-				statCard(c, "站点", fmt.Sprintf("%d", a.dashboard.SiteCount))
-				statCard(c, "已发布文章", fmt.Sprintf("%d", a.dashboard.ArticleCount))
-				statCard(c, "本地草稿", fmt.Sprintf("%d", a.dashboard.DraftCount))
-				statCard(c, "未读订阅", fmt.Sprintf("%d", a.dashboard.UnreadCount))
-			})
-
-			a.viewActivityHeatmap(c)
-
-			if a.dashboard.SiteCount == 0 {
-				ui.Column(c).Padding(24).Gap(10).Background(t.Surface).Border(1, t.Border).Radius(8).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, "还没有创建站点").Bold().FontSize(15)
-					ui.Text(c, "创建一个站点后即可体验原生 Markdown 编辑器与实时分屏预览。").FontSize(12).TextColor(t.TextMuted)
-					if ui.PrimaryButton(c.Key("dash-create-first"), "创建第一个站点").Clicked() {
-						a.createSiteOpen = true
-					}
-				})
-				return
-			}
-
-			ui.Row(c).Gap(16).AlignSelf(ui.Stretch).AlignItems(ui.Start).Children(func() {
-				ui.Column(c).Grow(1).MinWidth(0).Padding(16).Gap(8).Background(t.Surface).Border(1, t.Border).Radius(8).Children(func() {
-					ui.Text(c, "最近草稿").Bold().FontSize(14)
-					if len(a.dashboard.RecentDrafts) == 0 {
-						ui.Text(c, "暂无本地草稿").FontSize(12).TextColor(t.TextMuted)
-					}
-					for _, d := range a.dashboard.RecentDrafts {
-						siteID, draftID := d.SiteID, d.ID
-						label := fmt.Sprintf("%s  ·  %s", fallbackTitle(d.Title), fallbackTitle(d.SiteName))
-						if ui.Button(c.Key("dash-draft-"+draftID), label).AlignSelf(ui.Stretch).Clicked() {
-							a.openDraftByID(siteID, draftID)
-						}
-					}
-				})
-
-				ui.Column(c).Grow(1).MinWidth(0).Padding(16).Gap(8).Background(t.Surface).Border(1, t.Border).Radius(8).Children(func() {
-					ui.Text(c, "最近文章").Bold().FontSize(14)
-					if len(a.dashboard.RecentArticles) == 0 {
-						ui.Text(c, "暂无已发布文章").FontSize(12).TextColor(t.TextMuted)
-					}
-					for _, art := range a.dashboard.RecentArticles {
-						siteID, artID := art.SiteID, art.ID
-						label := fmt.Sprintf("%s  ·  %s", fallbackTitle(art.Title), fallbackTitle(art.SiteName))
-						if ui.Button(c.Key("dash-art-"+artID), label).AlignSelf(ui.Stretch).Clicked() {
-							a.openArticleForRead(siteID, artID)
-						}
-					}
-				})
-			})
-		})
-	})
-}
-
 func (a *App) openDraftByID(siteID, draftID string) {
 	a.selectSite(siteID)
 	for _, d := range a.drafts {
@@ -583,71 +520,6 @@ func (a *App) openDraftByID(siteID, draftID string) {
 			a.openDraft(d)
 			return
 		}
-	}
-}
-
-func statCard(c *ui.Context, title, value string) {
-	t := c.Theme()
-	ui.Column(c.Key("stat-"+title)).Grow(1).MinWidth(0).Padding(14).Gap(4).Background(t.Surface).Border(1, t.Border).Radius(8).Children(func() {
-		ui.Text(c, title).FontSize(12).TextColor(t.TextMuted)
-		ui.Text(c, value).Bold().FontSize(22)
-	})
-}
-
-func (a *App) viewActivityHeatmap(c *ui.Context) {
-	t := c.Theme()
-	counts := make(map[string]int, len(a.activity))
-	totalActions := 0
-	for _, item := range a.activity {
-		n := item.Articles + item.Drafts
-		counts[item.Date] = n
-		totalActions += n
-	}
-
-	const weeks = 16
-	today := time.Now()
-	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.Local)
-	endOffset := int(time.Saturday - today.Weekday())
-	endDay := today.AddDate(0, 0, endOffset)
-	startDay := endDay.AddDate(0, 0, -(weeks*7 - 1))
-
-	ui.Column(c).Padding(16).Gap(10).Background(t.Surface).Border(1, t.Border).Radius(8).AlignSelf(ui.Stretch).Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, "写作活跃度（近 16 周）").Bold().FontSize(14)
-			ui.Text(c, fmt.Sprintf("累计 %d 次写作记录", totalActions)).FontSize(12).TextColor(t.TextMuted)
-		})
-		ui.Row(c).Gap(4).Children(func() {
-			for w := range weeks {
-				ui.Column(c.Key(fmt.Sprintf("hm-w-%d", w))).Gap(4).Children(func() {
-					for d := range 7 {
-						day := startDay.AddDate(0, 0, w*7+d)
-						key := day.Format("2006-01-02")
-						n := counts[key]
-						color := heatmapColor(n, t.Dark)
-						ui.Box(c.Key("hm-"+key)).Size(14, 14).Radius(3).Background(color)
-					}
-				})
-			}
-		})
-	})
-}
-
-func heatmapColor(count int, dark bool) ui.Color {
-	if count <= 0 {
-		if dark {
-			return ui.Hex("#27272a")
-		}
-		return ui.Hex("#ebedf0")
-	}
-	switch {
-	case count == 1:
-		return ui.Hex("#9be9a8")
-	case count <= 3:
-		return ui.Hex("#40c463")
-	case count <= 5:
-		return ui.Hex("#30a14e")
-	default:
-		return ui.Hex("#216e39")
 	}
 }
 
