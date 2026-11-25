@@ -42,13 +42,18 @@ func (a *App) viewSidebarHeader(c *ui.Context) {
 
 	ui.Row(c).Height(h).Shrink(0).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).
 		Background(pal.sidebar).Padding(0, 8, 0, leftPad).DragWindow().Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(2).Children(func() {
-			if toolbarIconBtn(c, "tb-toggle-sidebar", lucide.PanelLeftClose(), "收起侧边栏").Clicked() {
-				a.sidebarCollapsed = true
-			}
-			if toolbarIconBtn(c, "tb-ai-sparkles", lucide.Sparkles(), "AI 助手").Clicked() {
-				a.openToolsModal(toolsTabAI)
-			}
+		ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+			ui.Box(c).Size(24, 24).Center().Shrink(0).Children(func() {
+				ui.Icon(c, iconPlanet).Size(18, 18).TextColor(pal.ink)
+			})
+			ui.Row(c).AlignItems(ui.Center).Gap(2).Children(func() {
+				if toolbarIconBtn(c, "tb-toggle-sidebar", lucide.PanelLeftClose(), "收起侧边栏").Clicked() {
+					a.sidebarCollapsed = true
+				}
+				if toolbarIconBtn(c, "tb-ai-sparkles", lucide.Sparkles(), "AI 助手").Clicked() {
+					a.openToolsModal(toolsTabAI)
+				}
+			})
 		})
 
 		toolbarIconBtn(c, "tb-sidebar-more", lucide.Ellipsis(), "更多工具").Menu(func(m *ui.Menu) {
