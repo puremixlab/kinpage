@@ -42,6 +42,10 @@ type Backend interface {
 	SetIPFSEnabled(enabled bool) error
 	IPFSRepoSize() (int64, error)
 	IPFSGarbageCollect() error
+	ResolveIPFSResourceURL(input string) (string, error)
+	RebuildSite(siteID string, quick bool) (int, error)
+	PreventSleep() bool
+	SetPreventSleep(enabled bool) error
 	OfflineMediaUsage() (offline.Usage, error)
 	CleanupOfflineMedia() (offline.Usage, error)
 	PublishedFolders() ([]store.PublishedFolder, error)

@@ -12,7 +12,7 @@ import (
 func (a *App) View(c *ui.Context) {
 	a.pal = applyMacPlanetTheme(c)
 	a.editorState.Theme = paperEditorTheme(c, a.pal)
-	if !a.loaded {
+	if !a.loaded || a.externalDirty.Swap(false) {
 		a.Reload()
 	}
 
@@ -22,6 +22,9 @@ func (a *App) View(c *ui.Context) {
 		}
 		if c.Shortcut(ui.Ctrl, ui.KeyK) {
 			a.openGlobalSearch()
+		}
+		if c.Shortcut(ui.Ctrl, ui.KeyO) {
+			a.openIPFSResourceModal()
 		}
 		if c.Shortcut(ui.Ctrl, ui.KeyN) {
 			a.guardUnsaved(func() { a.startNewDraft(a.selectedSiteID) })
@@ -93,6 +96,7 @@ func (a *App) View(c *ui.Context) {
 	a.viewSiteSettingsModal(c)
 	a.viewPublishModal(c)
 	a.viewOfflineModal(c)
+	a.viewOpenIPFSResourceSheet(c)
 	a.viewFoldersModal(c)
 	a.viewRemovedSitesModal(c)
 	a.viewToolsModal(c)

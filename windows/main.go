@@ -74,6 +74,7 @@ type Library struct {
 	telegramAPI         services.TelegramAPI
 	apiMu               sync.Mutex
 	apiServer           *localapi.Server
+	activePublishes     atomic.Int32
 }
 
 func (l *Library) ensureAPIServer() *localapi.Server {
@@ -923,6 +924,99 @@ func (l *Library) SetArticlePinned(siteID, articleID string, pinned bool) (store
 		return store.Article{}, err
 	}
 	return s.SetArticlePinned(siteID, articleID, pinned)
+}
+
+func (l *Library) ActivePublishCount() int {
+	return int(l.activePublishes.Load())
+}
+
+func (l *Library) PreventSleep() bool {
+	s, err := l.open()
+	if err != nil {
+		return false
+	}
+	return s.PreventSleep()
+}
+
+func (l *Library) SetPreventSleep(enabled bool) error {
+	s, err := l.open()
+	if err != nil {
+		return err
+	}
+	if err := services.SetPreventSleep(enabled); err != nil {
+		return err
+	}
+	return s.SetPreventSleep(enabled)
+}
+
+func (l *Library) ResolveIPFSResourceURL(input string) (string, error) {
+	st, err := l.IPFSStatus()
+	if err != nil {
+		return "", err
+	}
+	return ipfs.ResolveResourceURL(st.Gateway, input)
+}
+
+func (l *Library) RebuildSite(siteID string, quick bool) (int, error) {
+	l.publicMu.Lock()
+	defer l.publicMu.Unlock()
+	s, err := l.open()
+	if err != nil {
+		return 0, err
+	}
+	sites, err := s.ListSites()
+	if err != nil {
+		return 0, err
+	}
+	var selected *store.Site
+	for i := range sites {
+		if sites[i].ID == siteID {
+			selected = &sites[i]
+			break
+		}
+	}
+	if selected == nil {
+		return 0, errors.New("站点不存在")
+	}
+	articles, err := s.ListArticles(siteID)
+	if err != nil {
+		return 0, err
+	}
+	root, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return 0, err
+	}
+	outDir := filepath.Join(root, "sites", siteID)
+	templateDir, err := l.templatePath(*selected)
+	if err != nil {
+		return 0, err
+	}
+	if quick {
+		if err := sitegen.RenderIndexOnly(outDir, *selected, articles, templateDir); err != nil {
+			return 0, err
+		}
+		return len(articles), nil
+	}
+	enriched, err := attachments.EnrichMedia(root, *selected, articles)
+	if err != nil {
+		return 0, err
+	}
+	if templateDir != "" {
+		if err := sitegen.RenderWithTemplate(outDir, *selected, enriched, templateDir); err != nil {
+			return 0, err
+		}
+	} else {
+		if err := sitegen.Render(outDir, *selected, enriched); err != nil {
+			return 0, err
+		}
+	}
+	if err := attachments.CopyToSite(root, outDir, enriched); err != nil {
+		return 0, err
+	}
+	if err := sitegen.WriteAliases(outDir, enriched); err != nil {
+		return 0, err
+	}
+	return len(enriched), nil
 }
 
 func (l *Library) SetSiteArchived(siteID string, archived bool) (store.Site, error) {
@@ -2191,6 +2285,8 @@ func (l *Library) SubscriptionPreview(address, key string) (string, error) {
 
 // PublishSite publishes the saved snapshot; Kubo is started only on request.
 func (l *Library) PublishSite(siteID string) (publisher.Result, error) {
+	l.activePublishes.Add(1)
+	defer l.activePublishes.Add(-1)
 	l.publicMu.Lock()
 	defer l.publicMu.Unlock()
 	s, err := l.open()
@@ -2278,6 +2374,7 @@ func (l *Library) PublishSite(siteID string) (publisher.Result, error) {
 		return result, fmt.Errorf("IPNS 已发布到 %s，但保存本地状态失败：%w", result.IPNS, err)
 	}
 	l.scheduleProvide(result.CID)
+	services.SendDesktopNotification("Planet 发布完成", site.Name+" 已发布到 IPNS")
 	if site.ShouldPrewarmNewPost() && result.CID != "" {
 		l.schedulePrewarm(*site, result.CID)
 	}
@@ -3337,6 +3434,7 @@ func main() {
 	maintenanceCtx, cancelMaintenance := context.WithCancel(context.Background())
 	var maintenance sync.WaitGroup
 	defer func() {
+		_ = services.SetPreventSleep(false)
 		library.closeAPIServer()
 		library.closeUpdates()
 		cancelMaintenance()
@@ -3349,9 +3447,19 @@ func main() {
 		if root, err := mygo.App.Path(mygo.PathUserData); err == nil {
 			_ = library.ensureAPIServer().Sync(root)
 		}
+		if library.PreventSleep() {
+			_ = services.SetPreventSleep(true)
+		}
 		maintenance.Add(1)
 		go func() { defer maintenance.Done(); library.maintainPublished(maintenanceCtx) }()
 		nativeApp := nativeui.New(library)
+		if s, err := library.open(); err == nil {
+			maintenance.Add(1)
+			go func() {
+				defer maintenance.Done()
+				s.WatchExternalChanges(maintenanceCtx, 2*time.Second, nativeApp.MarkDirtyExternal)
+			}()
+		}
 		if root, err := mygo.App.Path(mygo.PathUserData); err == nil {
 			nativeApp.EnablePrefsPersistence(filepath.Join(root, "nativeui-layout.json"))
 		}
@@ -3379,7 +3487,11 @@ func main() {
 			}
 			go func() {
 				defer closing.Store(false)
-				result, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: win, Type: mygo.MessageQuestion, Title: "关闭 Planet", Message: "确定关闭窗口？", Detail: "尚未保存的文章更改将会丢失。", Buttons: []string{"取消", "关闭"}, DefaultButton: 0, CancelButton: 0})
+				detail := "尚未保存的文章更改将会丢失。"
+				if library.ActivePublishCount() > 0 {
+					detail = "当前正在进行 IPNS 发布，强制关闭可能导致发布中断或站点无法解析。"
+				}
+				result, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: win, Type: mygo.MessageQuestion, Title: "关闭 Planet", Message: "确定关闭窗口？", Detail: detail, Buttons: []string{"取消", "关闭"}, DefaultButton: 0, CancelButton: 0})
 				if err == nil && result.Button == 1 {
 					nativeApp.Close()
 					win.Destroy()

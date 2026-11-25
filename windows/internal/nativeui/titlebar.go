@@ -60,6 +60,9 @@ func (a *App) viewSidebarHeader(c *ui.Context) {
 			if m.Item("快捷发文").Shortcut(ui.Ctrl, ui.KeyD).Chosen() {
 				a.openQuickPost()
 			}
+			if m.Item("打开 IPFS 资源…").Shortcut(ui.Ctrl, ui.KeyO).Chosen() {
+				a.openIPFSResourceModal()
+			}
 			m.Separator()
 			if m.Item("已发布文件夹").Chosen() {
 				a.openFoldersModal()
@@ -81,6 +84,18 @@ func (a *App) viewSidebarHeader(c *ui.Context) {
 				a.openToolsModal(toolsTabLogs)
 			}
 			m.Separator()
+			preventSleep := a.backend != nil && a.backend.PreventSleep()
+			if m.Item("运行期间防止系统休眠").Radio(preventSleep).Chosen() {
+				if a.backend != nil {
+					if err := a.backend.SetPreventSleep(!preventSleep); err != nil {
+						a.setError("设置防休眠失败：" + err.Error())
+					} else if !preventSleep {
+						a.setStatus("已开启防休眠")
+					} else {
+						a.setStatus("已关闭防休眠")
+					}
+				}
+			}
 			if m.Item("刷新数据").Chosen() {
 				a.Reload()
 				a.setStatus("已刷新数据")

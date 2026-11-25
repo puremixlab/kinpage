@@ -40,6 +40,50 @@ type removedSitesState struct {
 	err   string
 }
 
+func (a *App) openIPFSResourceModal() {
+	a.openIPFSResInput = ""
+	a.openIPFSResErr = ""
+	a.openIPFSResOpen = true
+}
+
+func (a *App) viewOpenIPFSResourceSheet(c *ui.Context) {
+	pal := a.pal
+	if macSheet(c, &a.openIPFSResOpen, macSheetProps{
+		Title:       "打开 IPFS 资源",
+		Width:       480,
+		PrimaryText: "在本地网关打开",
+		CancelText:  "取消",
+	}, pal, func() {
+		macInsetCard(c, pal, func() {
+			macField(c, "CID / IPNS / 去中心化域名", "", pal, func() {
+				ui.TextInput(c.Key("open-ipfs-res-input"), &a.openIPFSResInput).
+					Placeholder("例如 Qm… / bafy… / k51… / planetable.eth").
+					Label("IPFS 资源地址").AutoFocus().AlignSelf(ui.Stretch)
+			})
+		})
+		if a.openIPFSResErr != "" {
+			ui.Text(c, a.openIPFSResErr).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+		}
+	}) {
+		if a.backend == nil {
+			return
+		}
+		targetURL, err := a.backend.ResolveIPFSResourceURL(a.openIPFSResInput)
+		if err != nil {
+			a.openIPFSResErr = err.Error()
+			return
+		}
+		if a.openExternal != nil {
+			if err := a.openExternal(targetURL); err != nil {
+				a.openIPFSResErr = "打开本地网关失败：" + err.Error()
+				return
+			}
+		}
+		a.openIPFSResOpen = false
+		a.setStatus("已在本地网关打开：" + targetURL)
+	}
+}
+
 func (a *App) openIPFSModal() {
 	a.ipfsModal.open = true
 	a.refreshIPFSModal()

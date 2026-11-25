@@ -2,6 +2,7 @@ package nativeui
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -31,6 +32,24 @@ func (a *App) sidebarSiteContextMenu(site store.Site) func(m *ui.Menu) {
 		m.Separator()
 		if m.Item("发布站点").Chosen() {
 			a.triggerPublishSite(site)
+		}
+		if m.Item("快速重建 (仅首页)").Chosen() {
+			if a.backend != nil {
+				if n, err := a.backend.RebuildSite(site.ID, true); err != nil {
+					a.setError("快速重建失败：" + err.Error())
+				} else {
+					a.setStatus(fmt.Sprintf("已完成首页快速重建（%d 篇文章）", n))
+				}
+			}
+		}
+		if m.Item("全量重建站点").Chosen() {
+			if a.backend != nil {
+				if n, err := a.backend.RebuildSite(site.ID, false); err != nil {
+					a.setError("全量重建失败：" + err.Error())
+				} else {
+					a.setStatus(fmt.Sprintf("已完成全量重建（%d 篇文章）", n))
+				}
+			}
 		}
 		archiveLabel := "归档站点"
 		if site.Archived {

@@ -34,6 +34,8 @@ type fakeBackend struct {
 	ipfsRepoSize  int64
 	offlineUsage  offline.Usage
 	gcCount       int
+	preventSleep  bool
+	rebuildCalls  []string
 	deployCalls   []string
 	xConfigured   bool
 	tgConfigured  bool
@@ -255,6 +257,25 @@ func (f *fakeBackend) SetIPFSEnabled(enabled bool) error {
 }
 func (f *fakeBackend) IPFSRepoSize() (int64, error) { return f.ipfsRepoSize, nil }
 func (f *fakeBackend) IPFSGarbageCollect() error    { f.gcCount++; return nil }
+func (f *fakeBackend) ResolveIPFSResourceURL(input string) (string, error) {
+	return ipfs.ResolveResourceURL("http://127.0.0.1:8080", input)
+}
+func (f *fakeBackend) RebuildSite(siteID string, quick bool) (int, error) {
+	mode := "full"
+	if quick {
+		mode = "quick"
+	}
+	f.rebuildCalls = append(f.rebuildCalls, siteID+":"+mode)
+	n := 0
+	for _, a := range f.articles {
+		if a.SiteID == siteID {
+			n++
+		}
+	}
+	return n, nil
+}
+func (f *fakeBackend) PreventSleep() bool           { return f.preventSleep }
+func (f *fakeBackend) SetPreventSleep(v bool) error { f.preventSleep = v; return nil }
 
 func (f *fakeBackend) OfflineMediaUsage() (offline.Usage, error) { return f.offlineUsage, nil }
 func (f *fakeBackend) CleanupOfflineMedia() (offline.Usage, error) {

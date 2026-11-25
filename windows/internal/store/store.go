@@ -198,6 +198,7 @@ type Draft struct {
 type data struct {
 	Version          int                        `json:"version"`
 	IPFSDisabled     bool                       `json:"ipfsDisabled,omitempty"`
+	PreventSleep     bool                       `json:"preventSleep,omitempty"`
 	Sites            []Site                     `json:"sites"`
 	Articles         []Article                  `json:"articles"`
 	Drafts           []Draft                    `json:"drafts,omitempty"`
@@ -380,9 +381,11 @@ type Subscription struct {
 }
 
 type Store struct {
-	mu   sync.Mutex
-	path string
-	data data
+	mu          sync.Mutex
+	path        string
+	data        data
+	lastModTime time.Time
+	lastSize    int64
 }
 
 func (s *Store) IPFSDisabled() bool {
@@ -413,6 +416,10 @@ func Open(dir string) (*Store, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+	if info, statErr := os.Stat(s.path); statErr == nil {
+		s.lastModTime = info.ModTime()
+		s.lastSize = info.Size()
 	}
 	if err := json.Unmarshal(b, &s.data); err != nil {
 		return nil, fmt.Errorf("read library: %w", err)
@@ -647,6 +654,10 @@ func (s *Store) write(next data) error {
 	}
 	if err = os.Rename(tmp, s.path); err != nil {
 		return err
+	}
+	if info, statErr := os.Stat(s.path); statErr == nil {
+		s.lastModTime = info.ModTime()
+		s.lastSize = info.Size()
 	}
 	s.data = next
 	return nil
