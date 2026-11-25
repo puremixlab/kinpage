@@ -3,6 +3,7 @@ package nativeui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
@@ -39,6 +40,19 @@ func feedItemKey(item feeds.Item) string {
 		return item.Link
 	}
 	return item.Title
+}
+
+func (a *App) totalTodayCount() int {
+	today := time.Now().Format("2006-01-02")
+	n := 0
+	for _, s := range a.subscriptions {
+		for _, item := range s.Feed.Items {
+			if strings.HasPrefix(item.Published, today) {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 func (a *App) totalUnreadCount() int {
@@ -88,6 +102,9 @@ func (a *App) visibleSubscriptionItems() []subItemEntry {
 		}
 		stitle := subscriptionTitle(s)
 		for _, item := range s.Feed.Items {
+			if a.mode == viewToday && !strings.HasPrefix(item.Published, time.Now().Format("2006-01-02")) {
+				continue
+			}
 			if a.mode == viewUnread && item.Read {
 				continue
 			}
@@ -158,6 +175,8 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 	pal := a.pal
 	heading := "订阅阅读"
 	switch a.mode {
+	case viewToday:
+		heading = "今天"
 	case viewUnread:
 		heading = "未读"
 	case viewStarred:
@@ -171,23 +190,30 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 	items := a.visibleSubscriptionItems()
 
 	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
-		ui.Column(c).PaddingX(14).PaddingY(12).Gap(8).Shrink(0).Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-				ui.Text(c, heading).Bold().FontSize(15).TextColor(pal.ink).NoWrap()
-				ui.Text(c, fmt.Sprintf("%d 篇", len(items))).FontSize(12).TextColor(pal.muted).NoWrap()
-			})
+		// Exact 52px header + 32px subtle caption bar (mac-planet.css:565-625).
+		ui.Row(c).Height(52).PaddingX(14).Gap(6).AlignItems(ui.Center).Justify(ui.SpaceBetween).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+			ui.Text(c, heading).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).Grow(1).NoWrap()
 			if a.mode == viewSubscription {
 				if sub := a.currentSubscription(); sub != nil {
 					subURL := sub.URL
-					ui.Row(c).Gap(4).Wrap().Children(func() {
-						if ghostIconButton(c, "sub-refresh", "刷新", "刷新", pal) {
-							if _, err := a.backend.RefreshSubscription(subURL); err != nil {
-								a.setError("刷新订阅失败：" + err.Error())
-							} else {
-								a.Reload()
-								a.setStatus("已刷新订阅")
-							}
+					if ghostIconButton(c, "sub-refresh", "刷新", "刷新", pal) {
+						if _, err := a.backend.RefreshSubscription(subURL); err != nil {
+							a.setError("刷新订阅失败：" + err.Error())
+						} else {
+							a.Reload()
+							a.setStatus("已刷新订阅")
 						}
+					}
+				}
+			}
+		})
+		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+
+		ui.Row(c).MinHeight(32).PaddingX(10).Gap(4).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.subtle).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+			if a.mode == viewSubscription {
+				if sub := a.currentSubscription(); sub != nil {
+					subURL := sub.URL
+					ui.Row(c).Gap(2).AlignItems(ui.Center).Children(func() {
 						if ghostIconButton(c, "sub-mark-all", "全部已读", "全部已读", pal) {
 							if err := a.backend.MarkSubscriptionRead(subURL); err != nil {
 								a.setError("标记已读失败：" + err.Error())
@@ -210,15 +236,17 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 						}
 					})
 				}
+			} else {
+				ui.Text(c, "文章").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.secondary).PaddingX(4)
 			}
-			ui.SearchField(c.Key("sub-search"), &a.subSearchQuery).Placeholder("筛选订阅文章…").AlignSelf(ui.Stretch)
+			ui.Text(c, fmt.Sprintf("%d 篇", len(items))).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).PaddingX(4).NoWrap()
 		})
-		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+		hairlineH(c, pal)
 
 		ui.Scroll(c).TrackScroll(&a.postsListScroll).Grow(1).MinHeight(0).Children(func() {
-			ui.Column(c).Padding(8).Gap(2).Children(func() {
+			ui.Column(c).PaddingX(8).PaddingY(6).Gap(0).Children(func() {
 				if len(items) == 0 {
-					ui.Text(c, "暂无符合条件的订阅内容").FontSize(12).TextColor(pal.muted).PaddingX(8).PaddingY(12)
+					ui.Text(c, "暂无符合条件的订阅内容").Font(macPlanetFont).FontSize(12).TextColor(pal.muted).PaddingX(14).PaddingY(12)
 				}
 				for _, entry := range items {
 					subURL, key := entry.subURL, entry.effective
@@ -238,39 +266,44 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 					if strings.TrimSpace(rawBody) == "" {
 						rawBody = entry.item.Description
 					}
-					snippet := excerptText(htmlToReadableMarkdown(rawBody), 48)
+					snippet := excerptText(htmlToReadableMarkdown(rawBody), 56)
+					// Dedicated 22px left unread gutter so all titles align vertically.
 					if ui.Button(c.Key("subitem-"+subURL+"-"+key), "").Label(title).AlignSelf(ui.Stretch).
-						Background(cardBg).Border(0, ui.Color{}).Radius(8).PaddingX(12).PaddingY(10).
+						Background(cardBg).Border(0, ui.Color{}).Radius(7).Padding(10, 12, 10, 6).
 						Children(func() {
-							ui.Column(c).Gap(4).AlignSelf(ui.Stretch).Children(func() {
-								ui.Row(c).AlignItems(ui.Center).Gap(6).AlignSelf(ui.Stretch).Children(func() {
+							ui.Row(c).AlignItems(ui.Start).Gap(0).AlignSelf(ui.Stretch).Children(func() {
+								ui.Box(c).Width(16).PaddingY(5).Center().Shrink(0).Children(func() {
 									if !entry.item.Read {
 										dotColor := pal.accent
 										if selected {
 											dotColor = ui.Hex("#ffffff")
 										}
-										ui.Box(c).Size(6, 6).Radius(3).Background(dotColor).Shrink(0)
+										ui.Box(c).Size(7, 7).Radius(3.5).Background(dotColor)
 									}
-									if entry.item.Starred {
-										ui.Text(c, "★").FontSize(11).TextColor(ui.Hex("#f5b800")).Shrink(0)
-									}
-									ui.Text(c, title).Bold().FontSize(13).TextColor(titleColor).Grow(1).NoWrap()
 								})
-								if snippet != "" {
-									ui.Text(c, snippet).FontSize(12).TextColor(excerptColor)
-								}
-								ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-									ui.Text(c, entry.subTitle).FontSize(11).TextColor(metaColor).NoWrap()
-									if entry.item.Published != "" {
-										ui.Text(c, entry.item.Published).FontSize(11).TextColor(metaColor).NoWrap()
+								ui.Column(c).Gap(3).Grow(1).MinWidth(0).Children(func() {
+									ui.Row(c).AlignItems(ui.Center).Gap(4).AlignSelf(ui.Stretch).Children(func() {
+										if entry.item.Starred {
+											ui.Icon(c, iconStar).Size(12, 12).TextColor(pal.yellow).Shrink(0)
+										}
+										ui.Text(c, title).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(titleColor).MaxLines(2).Ellipsis("…").Grow(1)
+									})
+									if snippet != "" {
+										ui.Text(c, snippet).Font(macPlanetFont).FontSize(12).TextColor(excerptColor).MaxLines(2).Ellipsis("…")
 									}
+									ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
+										ui.Text(c, entry.subTitle).Font(macPlanetFont).FontSize(11).TextColor(metaColor).NoWrap()
+										if entry.item.Published != "" {
+											ui.Text(c, entry.item.Published).Font(macPlanetFont).FontSize(11).TextColor(metaColor).NoWrap()
+										}
+									})
 								})
 							})
 						}).Clicked() {
 						a.selectSubItem(subURL, key)
 					}
 					if !selected {
-						ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+						ui.Box(c).Padding(0, 12, 0, 22).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
 					}
 				}
 			})

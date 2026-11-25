@@ -37,30 +37,30 @@ func (a *App) viewDashboard(c *ui.Context) {
 	ui.Scroll(c).TrackScroll(&a.dashboardScroll).Grow(1).MinHeight(0).Background(pal.canvas).Children(func() {
 		ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(32).PaddingY(24).Children(func() {
 			ui.Column(c).AlignSelf(ui.Stretch).MaxWidth(1160).Gap(20).Children(func() {
-				// Top 52px header matching workspace-dashboard.png.
+				// Top 52px header matching workspace-dashboard.png & mac-planet.css:896-905.
 				ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).MinHeight(52).AlignSelf(ui.Stretch).Children(func() {
 					ui.Column(c).Gap(3).Children(func() {
-						ui.Text(c, "写作台").Bold().FontSize(24).TextColor(pal.ink)
-						ui.Text(c, "继续上次的思路，也开始新的记录。").FontSize(12).TextColor(pal.secondary)
+						ui.Text(c, "写作台").Font(macPlanetFont).FontSize(22).FontWeight(700).LetterSpacing(-0.015).TextColor(pal.ink)
+						ui.Text(c, "继续上次的思路，也开始新的记录。").Font(macPlanetFont).FontSize(12).TextColor(pal.secondary)
 					})
-					ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-						if ui.Button(c.Key("dash-search"), "").Label("搜索文章").Width(200).
-							Background(pal.canvas).Border(1, pal.line).Radius(6).PaddingX(12).PaddingY(7).
+					ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
+						if ui.Button(c.Key("dash-search"), "").Label("搜索文章").Width(212).MinHeight(34).
+							Background(pal.canvas).Border(0.5, pal.controlLine).Radius(6).PaddingX(14).PaddingY(6).
 							Children(func() {
 								ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-									ui.Text(c, "搜索文章").FontSize(12).TextColor(pal.muted)
-									ui.Text(c, "🔍").FontSize(12).TextColor(pal.muted)
+									ui.Text(c, "搜索文章").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+									ui.Icon(c, iconSearch).Size(15, 15).TextColor(pal.muted)
 								})
 							}).Clicked() {
 							a.openGlobalSearch()
 						}
-						if ui.PrimaryButton(c.Key("dash-compose"), "写文章").PaddingX(18).PaddingY(7).Clicked() {
+						if macPrimaryButton(c, "dash-compose", "写文章", pal) {
 							a.handleDashboardCompose()
 						}
 					})
 				})
 
-				// Lightweight horizontal metrics bar (no heavy KPI boxes).
+				// Lightweight horizontal metrics bar (0.5px hairline).
 				ui.Column(c).AlignSelf(ui.Stretch).Gap(10).Children(func() {
 					ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
 						ui.Row(c).Gap(24).AlignItems(ui.Center).Children(func() {
@@ -71,30 +71,30 @@ func (a *App) viewDashboard(c *ui.Context) {
 								metricInline(c, fmt.Sprintf("%d", a.dashboard.UnreadCount), "条未读", pal)
 							}
 						})
-						ui.Text(c, "所有站点").FontSize(12).TextColor(pal.muted)
+						ui.Text(c, "所有站点").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 					})
-					ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+					hairlineH(c, pal)
 				})
 
 				if a.dashboard.SiteCount == 0 {
-					ui.Column(c).Padding(36).Gap(12).Background(pal.subtle).Radius(10).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-						ui.Text(c, "还没有创建站点").Bold().FontSize(16).TextColor(pal.ink)
-						ui.Text(c, "创建一个站点后即可开始本地写作、管理草稿与发布到 IPFS。").FontSize(13).TextColor(pal.secondary)
-						if ui.PrimaryButton(c.Key("dash-create-first"), "创建第一个站点").Clicked() {
+					ui.Column(c).Padding(36).Gap(12).Background(pal.subtle).Border(0.5, pal.line).Radius(10).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
+						ui.Text(c, "还没有创建站点").Font(macPlanetFont).FontSize(16).FontWeight(600).TextColor(pal.ink)
+						ui.Text(c, "创建一个站点后即可开始本地写作、管理草稿与发布到 IPFS。").Font(macPlanetFont).FontSize(13).TextColor(pal.secondary)
+						if macPrimaryButton(c, "dash-create-first", "创建第一个站点", pal) {
 							a.createSiteOpen = true
 						}
 					})
 					return
 				}
 
-				// Two-column Mac Planet dashboard: left main (1fr) + right sites column (264px).
+				// Two-column Mac Planet dashboard: left main (1fr) + right sites column (244px).
 				ui.Row(c).Gap(28).AlignSelf(ui.Stretch).AlignItems(ui.Start).Children(func() {
 					ui.Column(c).Grow(1).MinWidth(0).Gap(24).Children(func() {
 						a.viewDashboardDrafts(c)
 						a.viewDashboardArticles(c)
 						a.viewActivitySection(c)
 					})
-					ui.Column(c).Width(264).Shrink(0).Gap(18).Children(func() {
+					ui.Column(c).Width(244).Shrink(0).Gap(18).Children(func() {
 						a.viewDashboardSites(c)
 						a.viewDashboardNoteCard(c)
 					})
@@ -119,32 +119,26 @@ func (a *App) viewDashboardDrafts(c *ui.Context) {
 			ui.Text(c, "暂无本地草稿，点击右上角“写文章”开始新记录。").FontSize(12).TextColor(pal.muted).PaddingY(12)
 			return
 		}
-		for i, d := range a.dashboard.RecentDrafts {
+		for _, d := range a.dashboard.RecentDrafts {
 			siteID, draftID := d.SiteID, d.ID
 			title := fallbackTitle(d.Title)
 			siteName := fallbackTitle(d.SiteName)
-			bg := ui.Color{}
-			if i == 0 {
-				bg = pal.selection
-			}
 			label := fmt.Sprintf("%s  ·  %s", title, siteName)
-			if ui.Button(c.Key("dash-draft-"+draftID), "").Label(label).AlignSelf(ui.Stretch).
-				Background(bg).Border(0, ui.Color{}).Radius(6).PaddingX(12).PaddingY(10).
+			if ui.Button(c.Key("dash-draft-"+draftID), "").Label(label).AlignSelf(ui.Stretch).MinHeight(58).
+				Background(ui.Color{}).Border(0, ui.Color{}).Radius(6).PaddingX(12).PaddingY(10).
 				Children(func() {
 					ui.Row(c).AlignItems(ui.Center).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-						ui.Text(c, "✎").FontSize(14).TextColor(pal.secondary).Shrink(0)
+						ui.Icon(c, iconEdit).Size(17, 17).TextColor(pal.secondary).Shrink(0)
 						ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-							ui.Text(c, title).Bold().FontSize(14).TextColor(pal.ink).NoWrap()
-							ui.Text(c, siteName+"  |  已保存在本地").FontSize(12).TextColor(pal.muted).NoWrap()
+							ui.Text(c, title).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).NoWrap()
+							ui.Text(c, siteName+"   |   已保存在本地").Font(macPlanetFont).FontSize(12).TextColor(pal.muted).NoWrap()
 						})
-						ui.Text(c, formatShortDate(d.Modified)).FontSize(12).TextColor(pal.muted).Shrink(0).NoWrap()
+						ui.Text(c, formatShortDate(d.Modified)).Font(macPlanetFont).FontSize(12).TextColor(pal.muted).Shrink(0).NoWrap()
 					})
 				}).Clicked() {
 				a.openDraftByID(siteID, draftID)
 			}
-			if i > 0 {
-				ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
-			}
+			hairlineH(c, pal)
 		}
 	})
 }
@@ -195,19 +189,19 @@ func (a *App) viewDashboardArticles(c *ui.Context) {
 			title := fallbackTitle(art.Title)
 			siteName := fallbackTitle(art.SiteName)
 			label := fmt.Sprintf("%s  ·  %s", title, siteName)
-			if ui.Button(c.Key("dash-art-"+artID), "").Label(label).AlignSelf(ui.Stretch).
+			if ui.Button(c.Key("dash-art-"+artID), "").Label(label).AlignSelf(ui.Stretch).MinHeight(54).
 				Background(ui.Color{}).Border(0, ui.Color{}).Radius(6).PaddingX(12).PaddingY(10).
 				Children(func() {
 					ui.Row(c).AlignItems(ui.Center).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-						ui.Text(c, "▤").FontSize(13).TextColor(pal.muted).Shrink(0)
-						ui.Text(c, title).Bold().FontSize(14).TextColor(pal.ink).Grow(1).NoWrap()
-						ui.Text(c, siteName).FontSize(12).TextColor(pal.secondary).Shrink(0).NoWrap()
-						ui.Text(c, formatShortDate(art.Modified)).FontSize(12).TextColor(pal.muted).Width(64).Shrink(0).NoWrap()
+						ui.Icon(c, iconFile).Size(17, 17).TextColor(pal.muted).Shrink(0)
+						ui.Text(c, title).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).Grow(1).NoWrap()
+						ui.Text(c, siteName).Font(macPlanetFont).FontSize(12).TextColor(pal.secondary).Shrink(0).NoWrap()
+						ui.Text(c, formatShortDate(art.Modified)).Font(macPlanetFont).FontSize(12).TextColor(pal.muted).Width(64).Shrink(0).NoWrap()
 					})
 				}).Clicked() {
 				a.openArticleForRead(siteID, artID)
 			}
-			ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+			hairlineH(c, pal)
 		}
 		if shown == 0 {
 			ui.Text(c, "暂无匹配的已发布文章").FontSize(12).TextColor(pal.muted).PaddingY(12)
@@ -244,16 +238,16 @@ func (a *App) viewDashboardSites(c *ui.Context) {
 	pal := a.pal
 	ui.Column(c).AlignSelf(ui.Stretch).Gap(4).Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, "站点状态").Bold().FontSize(15).TextColor(pal.ink)
-			if ghostIconButton(c, "dash-sites-add", "+", "新建站点", pal) {
+			ui.Text(c, "站点状态").Font(macPlanetFont).FontSize(15).FontWeight(600).TextColor(pal.ink)
+			if macIconButton(c, "dash-sites-add", iconPlus, 28, 15, pal.muted, "新建站点") {
 				a.newSiteName = ""
 				a.newSiteAbout = ""
 				a.createSiteError = ""
 				a.createSiteOpen = true
 			}
 		})
-		for _, s := range a.dashboard.Sites {
-			site := s
+		for i, s := range a.dashboard.Sites {
+			idx, site := i, s
 			statusLabel := "尚未发布"
 			statusColor := pal.muted
 			if site.PublishPending {
@@ -263,34 +257,42 @@ func (a *App) viewDashboardSites(c *ui.Context) {
 				statusLabel = "已发布"
 				statusColor = pal.green
 			}
+			var fullSite store.Site
+			fullSite.Name = site.Name
+			for _, candidate := range a.sites {
+				if candidate.ID == site.ID {
+					fullSite = candidate
+					break
+				}
+			}
 			if ui.Button(c.Key("dash-site-row-"+site.ID), "").Label(fallbackTitle(site.Name)).AlignSelf(ui.Stretch).
 				Background(ui.Color{}).Border(0, ui.Color{}).Radius(6).PaddingX(8).PaddingY(10).
 				Children(func() {
 					ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {
 						ui.Row(c).AlignItems(ui.Center).Gap(8).AlignSelf(ui.Stretch).Children(func() {
-							avatarCircle(c, site.Name, 26)
-							ui.Text(c, fallbackTitle(site.Name)).Bold().FontSize(14).TextColor(pal.ink).Grow(1).NoWrap()
-							ui.Text(c, "›").FontSize(15).TextColor(pal.muted)
+							a.siteAvatar(c, fullSite, idx, 28)
+							ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).Grow(1).NoWrap()
+							ui.Icon(c, iconArrow).Size(14, 14).TextColor(pal.muted)
 						})
 						ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
-							ui.Box(c).Size(6, 6).Radius(3).Background(statusColor)
-							ui.Text(c, statusLabel).FontSize(12).TextColor(statusColor)
+							ui.Box(c).Size(5, 5).Radius(2.5).Background(statusColor)
+							ui.Text(c, statusLabel).Font(macPlanetFont).FontSize(12).TextColor(statusColor)
 						})
-						ui.Text(c, fmt.Sprintf("%d 篇文章，%d 篇草稿", site.ArticleCount, site.DraftCount)).FontSize(12).TextColor(pal.muted)
+						ui.Text(c, fmt.Sprintf("%d 篇文章，%d 篇草稿", site.ArticleCount, site.DraftCount)).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 					})
 				}).Clicked() {
 				a.selectSite(site.ID)
 			}
-			ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+			hairlineH(c, pal)
 		}
 	})
 }
 
 func (a *App) viewDashboardNoteCard(c *ui.Context) {
 	pal := a.pal
-	ui.Column(c).Padding(16).Gap(6).Background(pal.subtle).Radius(8).AlignSelf(ui.Stretch).Children(func() {
-		ui.Text(c, "写好之后，再分享出去").Bold().FontSize(13).TextColor(pal.ink)
-		ui.Text(c, "私密草稿只保存在本地。保存并发布后，站点内容才会更新。").FontSize(12).TextColor(pal.secondary)
+	ui.Column(c).Padding(16).Gap(6).Background(pal.subtle).Border(0.5, pal.line).Radius(10).AlignSelf(ui.Stretch).Children(func() {
+		ui.Text(c, "写好之后，再分享出去").Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(pal.ink)
+		ui.Text(c, "私密草稿只保存在本地。保存并发布后，站点内容才会更新。").Font(macPlanetFont).FontSize(12).TextColor(pal.secondary)
 	})
 }
 
@@ -304,22 +306,22 @@ func (a *App) viewActivitySection(c *ui.Context) {
 		totalActions += n
 	}
 
-	ui.Column(c).Padding(16).Gap(14).Background(pal.canvas).Border(1, pal.line).Radius(8).AlignSelf(ui.Stretch).Children(func() {
+	ui.Column(c).Padding(16).Gap(14).Background(pal.canvas).Border(0.5, pal.line).Radius(8).AlignSelf(ui.Stretch).Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
 			ui.Column(c).Gap(2).Children(func() {
-				ui.Text(c, "写作活跃度").Bold().FontSize(14).TextColor(pal.ink)
-				ui.Text(c, fmt.Sprintf("累计 %d 次写作记录", totalActions)).FontSize(12).TextColor(pal.muted)
+				ui.Text(c, "写作活跃度").Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink)
+				ui.Text(c, fmt.Sprintf("累计 %d 次写作记录", totalActions)).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 			})
-			ui.Segmented(c.Key("activity-mode"), &a.activityMode, "按日", "按周", "累计").Label("热力图粒度")
+			macSegmented(c, "activity-mode", &a.activityMode, []string{"按日", "按周", "累计"}, pal)
 		})
 
 		a.viewHeatmapGrid(c, counts)
 
-		ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(pal.line)
+		hairlineH(c, pal)
 
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, "写作趋势").Bold().FontSize(13).TextColor(pal.ink)
-			ui.Segmented(c.Key("trend-range"), &a.trendRange, "30 天", "90 天", "1 年").Label("趋势图时间范围")
+			ui.Text(c, "写作趋势").Font(macPlanetFont).FontSize(13).FontWeight(500).TextColor(pal.ink)
+			macSegmented(c, "trend-range", &a.trendRange, []string{"30 天", "90 天", "1 年"}, pal)
 		})
 
 		a.viewActivityTrendChart(c, counts)

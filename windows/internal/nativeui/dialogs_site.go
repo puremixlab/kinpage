@@ -89,158 +89,192 @@ func (a *App) openSiteSettings(site store.Site) {
 }
 
 func (a *App) viewSiteSettingsModal(c *ui.Context) {
-	t := c.Theme()
+	pal := a.pal
 	st := &a.siteSettings
 	ui.Modal(c, &st.open, func() {
-		ui.Column(c).Width(560).Gap(12).Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-				ui.Text(c, "站点设置").Bold().FontSize(16)
-				ui.Segmented(c.Key("site-set-tab"), &st.tab, "基本", "资料与头像", "自定义代码", "播客").Label("站点设置分类")
-			})
-
-			switch st.tab {
-			case siteSettingsTabBasic:
-				ui.Form(c, func() {
-					ui.Field(c, "站点名称", func() {
-						ui.TextInput(c.Key("ss-name"), &st.name).Label("站点名称").AlignSelf(ui.Stretch)
-					})
-					ui.Field(c, "简介", func() {
-						ui.TextArea(c.Key("ss-about"), &st.about).Lines(2, 4).Label("站点简介").AlignSelf(ui.Stretch)
-					})
-					ui.Field(c, "路径别名 (Slug)", func() {
-						ui.TextInput(c.Key("ss-slug"), &st.slug).Label("站点路径别名").AlignSelf(ui.Stretch)
-					})
-					ui.Field(c, "作者名", func() {
-						ui.TextInput(c.Key("ss-author"), &st.author).Label("作者名").AlignSelf(ui.Stretch)
-					})
-					ui.Field(c, "搜索引擎", func() {
-						ui.Checkbox(c.Key("ss-noindex"), &st.doNotIndex, "禁止搜索引擎收录 (noindex)")
-					})
-				})
-
-			case siteSettingsTabProfile:
-				ui.Form(c, func() {
-					ui.Field(c, "自定义域名", func() {
-						ui.TextInput(c.Key("ss-domain"), &st.domain).Placeholder("example.com").Label("自定义域名").AlignSelf(ui.Stretch)
-					})
-					ui.Field(c, "Twitter / X", func() {
-						ui.TextInput(c.Key("ss-twitter"), &st.twitter).Label("Twitter 用户名").AlignSelf(ui.Stretch)
-					})
-					ui.Field(c, "GitHub", func() {
-						ui.TextInput(c.Key("ss-github"), &st.github).Label("GitHub 用户名").AlignSelf(ui.Stretch)
-					})
-					ui.Field(c, "Telegram", func() {
-						ui.TextInput(c.Key("ss-telegram"), &st.telegram).Label("Telegram 用户名").AlignSelf(ui.Stretch)
-					})
-					ui.Field(c, "Mastodon", func() {
-						ui.TextInput(c.Key("ss-mastodon"), &st.mastodon).Label("Mastodon").AlignSelf(ui.Stretch)
-					})
-					ui.Field(c, "Discord", func() {
-						ui.TextInput(c.Key("ss-discord"), &st.discord).Label("Discord 链接").AlignSelf(ui.Stretch)
-					})
-				})
-				ui.Box(c).Height(1).AlignSelf(ui.Stretch).Background(t.Border)
-				ui.Row(c).Gap(8).AlignItems(ui.Center).Wrap().Children(func() {
-					ui.Text(c, "站点头像").FontSize(12).Bold().TextColor(t.TextMuted)
-					if ui.Button(c.Key("ss-avatar-pick"), "选择本地图片").Clicked() {
-						if _, err := a.backend.SelectSiteAvatar(context.Background(), st.siteID); err != nil {
-							st.err = err.Error()
-						} else {
-							st.err = ""
-							a.Reload()
-							a.setStatus("已更新站点头像")
-						}
-					}
-					if ui.Button(c.Key("ss-avatar-rm"), "移除头像").Clicked() {
-						if _, err := a.backend.RemoveSiteAvatar(st.siteID); err != nil {
-							st.err = err.Error()
-						} else {
-							st.err = ""
-							a.Reload()
-							a.setStatus("已移除站点头像")
-						}
-					}
-					prevRound := st.roundAvatar
-					ui.Checkbox(c.Key("ss-avatar-round"), &st.roundAvatar, "圆形裁切")
-					if st.roundAvatar != prevRound {
-						if _, err := a.backend.SetSaveRoundAvatar(st.siteID, st.roundAvatar); err != nil {
-							st.err = err.Error()
-						} else {
-							a.Reload()
-						}
-					}
-				})
-				if presets := a.backend.PresetAvatars(); len(presets) > 0 {
-					ui.Row(c).Gap(6).Wrap().Children(func() {
-						for i, p := range presets {
-							if i >= 8 {
-								break
-							}
-							key, title := p.Key, p.Title
-							if title == "" {
-								title = key
-							}
-							if ui.Button(c.Key("ss-preset-"+key), title).Clicked() {
-								if _, err := a.backend.ApplyPresetAvatar(st.siteID, key); err != nil {
-									st.err = err.Error()
-								} else {
-									st.err = ""
-									a.Reload()
-									a.setStatus("已应用预设头像：" + title)
-								}
-							}
-						}
-					})
+		// Wide 820x580 two-column macOS Preferences layout matching mac-planet.css:1040-1050.
+		ui.Row(c).Width(820).Height(560).Background(pal.canvas).Radius(12).Clip().Children(func() {
+			// Left 200px sidebar navigation.
+			ui.Column(c).Width(200).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Padding(14).Gap(4).Children(func() {
+				ui.Text(c, "站点设置").Font(macPlanetFont).FontSize(15).FontWeight(600).TextColor(pal.ink).PaddingX(8).PaddingY(6)
+				tabs := []struct {
+					idx   int
+					label string
+				}{
+					{siteSettingsTabBasic, "基本"},
+					{siteSettingsTabProfile, "资料与头像"},
+					{siteSettingsTabCustomCode, "自定义代码"},
+					{siteSettingsTabPodcast, "播客"},
 				}
-
-			case siteSettingsTabCustomCode:
-				ui.Column(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
-					ui.Checkbox(c.Key("ss-head-on"), &st.headEnabled, "启用 <head> 自定义代码")
-					if st.headEnabled {
-						ui.TextArea(c.Key("ss-head"), &st.head).Lines(2, 4).Label("Head 代码").AlignSelf(ui.Stretch)
+				for _, tab := range tabs {
+					tIdx, tLbl := tab.idx, tab.label
+					if sidebarNavRow(c, fmt.Sprintf("ss-nav-%d", tIdx), tLbl, st.tab == tIdx, 0, nil, pal) {
+						st.tab = tIdx
+						st.err = ""
 					}
-					ui.Checkbox(c.Key("ss-bs-on"), &st.bodyStartOn, "启用 <body> 开头自定义代码")
-					if st.bodyStartOn {
-						ui.TextArea(c.Key("ss-bs"), &st.bodyStart).Lines(2, 4).Label("Body 开头代码").AlignSelf(ui.Stretch)
-					}
-					ui.Checkbox(c.Key("ss-be-on"), &st.bodyEndOn, "启用 <body> 结尾自定义代码")
-					if st.bodyEndOn {
-						ui.TextArea(c.Key("ss-be"), &st.bodyEnd).Lines(2, 4).Label("Body 结尾代码").AlignSelf(ui.Stretch)
-					}
-					ui.Row(c).Gap(16).Children(func() {
-						ui.Checkbox(c.Key("ss-ipns"), &st.publishIPNS, "发布到 IPNS")
-						ui.Checkbox(c.Key("ss-prewarm"), &st.prewarmPost, "新文章发布后预热网关")
-					})
-				})
-
-			case siteSettingsTabPodcast:
-				ui.Form(c, func() {
-					ui.Field(c, "播客语言", func() {
-						ui.TextInput(c.Key("ss-pod-lang"), &st.podcastLang).Placeholder("zh-cn / en").Label("播客语言").Width(180)
-					})
-					ui.Field(c, "内容分级", func() {
-						ui.Checkbox(c.Key("ss-pod-exp"), &st.podcastExp, "包含成人/敏感内容 (Explicit)")
-					})
-					ui.Field(c, "播客分类", func() {
-						ui.TextInput(c.Key("ss-pod-cats"), &st.podcastCats).Placeholder("Technology, News（逗号分隔）").Label("播客分类").AlignSelf(ui.Stretch)
-					})
-				})
-			}
-
-			if st.err != "" {
-				ui.Text(c, st.err).FontSize(12).TextColor(t.Danger)
-			}
-
-			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-				if ui.Button(c.Key("ss-remove-site"), "移入回收站").Clicked() {
+				}
+				ui.Spacer(c)
+				if ui.Button(c.Key("ss-remove-site"), "").Label("移入回收站").AlignSelf(ui.Stretch).
+					Background(ui.Color{}).Border(0, ui.Color{}).Radius(6).PaddingX(8).PaddingY(6).
+					Children(func() {
+						ui.Text(c, "移入回收站").Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+					}).Clicked() {
 					st.removeSiteName = st.name
 					st.removeConfirm = true
 				}
-				ui.Row(c).Gap(8).Children(func() {
-					if ui.Button(c.Key("ss-cancel"), "取消").Clicked() {
+			})
+			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.line)
+
+			// Right form pane + #f7f7f9 footer bar.
+			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
+					ui.Column(c).Padding(22).Gap(14).AlignSelf(ui.Stretch).Children(func() {
+						switch st.tab {
+						case siteSettingsTabBasic:
+							ui.Text(c, "基本设置").Font(macPlanetFont).FontSize(16).FontWeight(600).TextColor(pal.ink)
+							ui.Form(c, func() {
+								ui.Field(c, "站点名称", func() {
+									ui.TextInput(c.Key("ss-name"), &st.name).Label("站点名称").AlignSelf(ui.Stretch)
+								})
+								ui.Field(c, "简介", func() {
+									ui.TextArea(c.Key("ss-about"), &st.about).Lines(2, 4).Label("站点简介").AlignSelf(ui.Stretch)
+								})
+								ui.Field(c, "路径别名 (Slug)", func() {
+									ui.TextInput(c.Key("ss-slug"), &st.slug).Label("站点路径别名").AlignSelf(ui.Stretch)
+								})
+								ui.Field(c, "作者名", func() {
+									ui.TextInput(c.Key("ss-author"), &st.author).Label("作者名").AlignSelf(ui.Stretch)
+								})
+								ui.Field(c, "搜索引擎", func() {
+									ui.Checkbox(c.Key("ss-noindex"), &st.doNotIndex, "禁止搜索引擎收录 (noindex)")
+								})
+							})
+
+						case siteSettingsTabProfile:
+							ui.Text(c, "公开资料与头像").Font(macPlanetFont).FontSize(16).FontWeight(600).TextColor(pal.ink)
+							ui.Form(c, func() {
+								ui.Field(c, "自定义域名", func() {
+									ui.TextInput(c.Key("ss-domain"), &st.domain).Placeholder("example.com").Label("自定义域名").AlignSelf(ui.Stretch)
+								})
+								ui.Field(c, "Twitter / X", func() {
+									ui.TextInput(c.Key("ss-twitter"), &st.twitter).Label("Twitter 用户名").AlignSelf(ui.Stretch)
+								})
+								ui.Field(c, "GitHub", func() {
+									ui.TextInput(c.Key("ss-github"), &st.github).Label("GitHub 用户名").AlignSelf(ui.Stretch)
+								})
+								ui.Field(c, "Telegram", func() {
+									ui.TextInput(c.Key("ss-telegram"), &st.telegram).Label("Telegram 用户名").AlignSelf(ui.Stretch)
+								})
+								ui.Field(c, "Mastodon", func() {
+									ui.TextInput(c.Key("ss-mastodon"), &st.mastodon).Label("Mastodon").AlignSelf(ui.Stretch)
+								})
+								ui.Field(c, "Discord", func() {
+									ui.TextInput(c.Key("ss-discord"), &st.discord).Label("Discord 链接").AlignSelf(ui.Stretch)
+								})
+							})
+							hairlineH(c, pal)
+							ui.Row(c).Gap(8).AlignItems(ui.Center).Wrap().Children(func() {
+								ui.Text(c, "站点头像").Font(macPlanetFont).FontSize(12).FontWeight(600).TextColor(pal.muted)
+								if macSecondaryButton(c, "ss-avatar-pick", "选择本地图片", pal) {
+									if _, err := a.backend.SelectSiteAvatar(context.Background(), st.siteID); err != nil {
+										st.err = err.Error()
+									} else {
+										st.err = ""
+										a.Reload()
+										a.setStatus("已更新站点头像")
+									}
+								}
+								if macSecondaryButton(c, "ss-avatar-rm", "移除头像", pal) {
+									if _, err := a.backend.RemoveSiteAvatar(st.siteID); err != nil {
+										st.err = err.Error()
+									} else {
+										st.err = ""
+										a.Reload()
+										a.setStatus("已移除站点头像")
+									}
+								}
+								prevRound := st.roundAvatar
+								ui.Checkbox(c.Key("ss-avatar-round"), &st.roundAvatar, "圆形裁切")
+								if st.roundAvatar != prevRound {
+									if _, err := a.backend.SetSaveRoundAvatar(st.siteID, st.roundAvatar); err != nil {
+										st.err = err.Error()
+									} else {
+										a.Reload()
+									}
+								}
+							})
+							if presets := a.backend.PresetAvatars(); len(presets) > 0 {
+								ui.Row(c).Gap(6).Wrap().Children(func() {
+									for i, p := range presets {
+										if i >= 8 {
+											break
+										}
+										key, title := p.Key, p.Title
+										if title == "" {
+											title = key
+										}
+										if macSecondaryButton(c, "ss-preset-"+key, title, pal) {
+											if _, err := a.backend.ApplyPresetAvatar(st.siteID, key); err != nil {
+												st.err = err.Error()
+											} else {
+												st.err = ""
+												a.Reload()
+												a.setStatus("已应用预设头像：" + title)
+											}
+										}
+									}
+								})
+							}
+
+						case siteSettingsTabCustomCode:
+							ui.Text(c, "自定义代码注入").Font(macPlanetFont).FontSize(16).FontWeight(600).TextColor(pal.ink)
+							ui.Column(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
+								ui.Checkbox(c.Key("ss-head-on"), &st.headEnabled, "启用 <head> 自定义代码")
+								if st.headEnabled {
+									ui.TextArea(c.Key("ss-head"), &st.head).Lines(2, 4).Label("Head 代码").AlignSelf(ui.Stretch)
+								}
+								ui.Checkbox(c.Key("ss-bs-on"), &st.bodyStartOn, "启用 <body> 开头自定义代码")
+								if st.bodyStartOn {
+									ui.TextArea(c.Key("ss-bs"), &st.bodyStart).Lines(2, 4).Label("Body 开头代码").AlignSelf(ui.Stretch)
+								}
+								ui.Checkbox(c.Key("ss-be-on"), &st.bodyEndOn, "启用 <body> 结尾自定义代码")
+								if st.bodyEndOn {
+									ui.TextArea(c.Key("ss-be"), &st.bodyEnd).Lines(2, 4).Label("Body 结尾代码").AlignSelf(ui.Stretch)
+								}
+								ui.Row(c).Gap(16).Children(func() {
+									ui.Checkbox(c.Key("ss-ipns"), &st.publishIPNS, "发布到 IPNS")
+									ui.Checkbox(c.Key("ss-prewarm"), &st.prewarmPost, "新文章发布后预热网关")
+								})
+							})
+
+						case siteSettingsTabPodcast:
+							ui.Text(c, "播客设置").Font(macPlanetFont).FontSize(16).FontWeight(600).TextColor(pal.ink)
+							ui.Form(c, func() {
+								ui.Field(c, "播客语言", func() {
+									ui.TextInput(c.Key("ss-pod-lang"), &st.podcastLang).Placeholder("zh-cn / en").Label("播客语言").Width(180)
+								})
+								ui.Field(c, "内容分级", func() {
+									ui.Checkbox(c.Key("ss-pod-exp"), &st.podcastExp, "包含成人/敏感内容 (Explicit)")
+								})
+								ui.Field(c, "播客分类", func() {
+									ui.TextInput(c.Key("ss-pod-cats"), &st.podcastCats).Placeholder("Technology, News（逗号分隔）").Label("播客分类").AlignSelf(ui.Stretch)
+								})
+							})
+						}
+
+						if st.err != "" {
+							ui.Text(c, st.err).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+						}
+					})
+				})
+
+				// Mac Sheet bottom action bar (#f7f7f9 with 0.5px top border).
+				hairlineH(c, pal)
+				ui.Row(c).PaddingX(22).PaddingY(12).Gap(8).Justify(ui.End).Background(pal.footer).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+					if macSecondaryButton(c, "ss-cancel", "取消", pal) {
 						st.open = false
 					}
-					if ui.PrimaryButton(c.Key("ss-save"), "保存站点设置").Clicked() {
+					if macPrimaryButton(c, "ss-save", "保存站点设置", pal) {
 						a.saveSiteSettings()
 					}
 				})
