@@ -177,20 +177,20 @@ func (a *App) viewLinearActivityStrip(c *ui.Context) {
 		totalActions += n
 	}
 
-	// Faithful Option B sleek horizontal activity strip: left summary + compact
-	// mode switch, right-aligned 36-week monochrome heatmap in one compact row.
+	// Faithful Option B horizontal activity strip: left summary, right-aligned
+	// mode switch in the top-right corner above the 36-week monochrome heatmap.
 	ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).
 		Padding(14, 18, 14, 18).Background(paperBg).Radius(8).
 		Border(0.5, paperEdge).Shadow(0, 1, 4, 0, paperShadow).Children(func() {
-		ui.Column(c).Gap(6).Shrink(0).Children(func() {
-			ui.Column(c).Gap(2).Children(func() {
-				ui.Text(c, fmt.Sprintf("近半年写作 %d 次", totalActions)).Font(macPlanetFont).FontSize(13.5).FontWeight(600).TextColor(pal.ink).NoWrap()
-				streakText := "今天也可以写点什么"
-				if streak > 0 {
-					streakText = fmt.Sprintf("连续 %d 天保持记录", streak)
-				}
-				ui.Text(c, streakText).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted).NoWrap()
-			})
+		ui.Column(c).Gap(3).Shrink(0).Children(func() {
+			ui.Text(c, fmt.Sprintf("近半年写作 %d 次", totalActions)).Font(macPlanetFont).FontSize(13.5).FontWeight(600).TextColor(pal.ink).NoWrap()
+			streakText := "今天也可以写点什么"
+			if streak > 0 {
+				streakText = fmt.Sprintf("连续 %d 天保持记录", streak)
+			}
+			ui.Text(c, streakText).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted).NoWrap()
+		})
+		ui.Column(c).Gap(8).AlignItems(ui.End).Children(func() {
 			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 				modes := []struct {
 					id    int
@@ -219,8 +219,8 @@ func (a *App) viewLinearActivityStrip(c *ui.Context) {
 					}
 				}
 			})
+			a.viewHeatmapGrid(c, counts)
 		})
-		a.viewHeatmapGrid(c, counts)
 	})
 }
 
