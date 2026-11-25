@@ -227,8 +227,8 @@ type macSheetProps struct {
 	Danger      bool
 }
 
-// macPreferencesWindow renders a spacious, viewport-responsive macOS Preferences
-// window (centered, up to 960x680, adapting cleanly to smaller viewports).
+// macPreferencesWindow renders a spacious, viewport-responsive macOS Sequoia
+// Preferences window (centered, up to 960x680, adapting cleanly to smaller viewports).
 func macPreferencesWindow(c *ui.Context, open *bool, maxWidth, maxHeight float32, pal macPalette, content func()) {
 	if open == nil || !*open {
 		return
@@ -239,36 +239,78 @@ func macPreferencesWindow(c *ui.Context, open *bool, maxWidth, maxHeight float32
 	if maxHeight <= 0 {
 		maxHeight = 680
 	}
-	dim := ui.RGBA(0, 0, 0, 0.28)
+	dim := ui.RGBA(15, 23, 42, 0.28)
 	if pal.dark {
-		dim = ui.RGBA(0, 0, 0, 0.54)
+		dim = ui.RGBA(0, 0, 0, 0.56)
 	}
 	ui.DialogBase(c, open, func(backdrop, panel ui.Element) {
 		backdrop.Center().Padding(28).Background(dim)
 		panel.WidthPercent(100).MaxWidth(maxWidth).HeightPercent(100).MaxHeight(maxHeight).
-			Radius(14).Background(pal.canvas).Border(0.5, pal.line).
-			Shadow(0, 16, 40, 0, pal.shadowColor).Clip()
+			Radius(14).Background(pal.prefsCanvas).Border(0.5, pal.prefsCardBorder).
+			Shadow(0, 18, 44, 0, pal.shadowColor).Clip()
 		content()
 	})
 }
 
-// macInsetCard renders a macOS Inset Grouped settings card.
+// macInsetCard renders an elevated macOS Sequoia Inset Grouped settings card
+// (#ffffff floating on #f7f8fa canvas in light mode, #23252a on #18191c in dark mode).
 func macInsetCard(c *ui.Context, pal macPalette, content func()) {
-	ui.Column(c).Padding(14, 16, 14, 16).Gap(12).AlignSelf(ui.Stretch).
-		Background(pal.subtle).Border(0.5, pal.line).Radius(10).Children(content)
+	ui.Column(c).Padding(16, 18, 16, 18).Gap(12).AlignSelf(ui.Stretch).
+		Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).Radius(10).
+		Shadow(0, 1, 3, 0, pal.prefsCardShadow).Children(content)
 }
 
 // macField renders a top-aligned settings field with clear label and optional hint.
 func macField(c *ui.Context, label, hint string, pal macPalette, input func()) {
 	ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(8).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, label).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.ink)
+			ui.Text(c, label).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsInk)
 			if hint != "" {
-				ui.Text(c, hint).Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
+				ui.Text(c, hint).Font(macPlanetFont).FontSize(11).TextColor(pal.prefsMuted)
 			}
 		})
 		input()
 	})
+}
+
+// prefsNavRow renders a macOS System Settings sidebar item with a soft-tinted
+// 20x20 rounded-square badge icon and an elevated active pill.
+func prefsNavRow(c *ui.Context, key, label string, selected bool, icon *ui.SVG, tint ui.Color, pal macPalette) bool {
+	rest := ui.Transparent
+	hover := pal.hover
+	active := pal.active
+	if selected {
+		rest = pal.prefsNavActiveBg
+		hover = pal.prefsNavActiveBg
+	}
+	badgeAlpha := float32(0.13)
+	if pal.dark {
+		badgeAlpha = 0.22
+	}
+	b := interactiveRow(c, key, label, rest, hover, active).
+		MinHeight(32).Radius(7).Padding(5, 8, 5, 8)
+	if selected {
+		b.Border(0.5, pal.prefsCardBorder).Shadow(0, 1, 2, 0, pal.prefsNavActiveShadow)
+	}
+	b.Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(9).Grow(1).MinWidth(0).Children(func() {
+			if icon != nil {
+				ui.Box(c).Size(20, 20).Radius(5).Background(tint.Alpha(badgeAlpha)).Center().Shrink(0).Children(func() {
+					ui.Icon(c, icon).Size(12, 12).TextColor(tint)
+				})
+			}
+			txt := ui.Text(c, label).Font(macPlanetFont).FontSize(13).TextColor(pal.prefsInk).Grow(1).NoWrap()
+			if selected {
+				txt.FontWeight(600)
+			}
+		})
+	})
+	return b.Clicked()
+}
+
+// prefsHairlineH renders a subtle 0.5px separator matching the Preferences palette.
+func prefsHairlineH(c *ui.Context, pal macPalette) {
+	ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
 }
 
 // macSheetFrame renders a bare macOS-style top-attached sheet frame (no inner

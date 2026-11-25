@@ -96,22 +96,24 @@ func (a *App) viewToolsModal(c *ui.Context) {
 	pal := a.pal
 	m := &a.toolsModal
 	macPreferencesWindow(c, &m.open, 920, 660, pal, func() {
-		ui.Row(c).Fill().Background(pal.canvas).Children(func() {
-			// Left 208px macOS Preferences sidebar navigation.
-			ui.Column(c).Width(208).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Padding(18, 10, 14, 10).Gap(2).Children(func() {
-				ui.Text(c, "系统工具").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).Padding(0, 10, 6, 10)
+		ui.Row(c).Fill().Background(pal.prefsCanvas).Children(func() {
+			// Left 216px macOS Sequoia sidebar navigation with tinted icons.
+			ui.Column(c).Width(216).Shrink(0).AlignSelf(ui.Stretch).Background(pal.prefsSidebar).Padding(18, 10, 14, 10).Gap(3).Children(func() {
+				ui.Text(c, "系统工具").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.prefsMuted).Padding(0, 10, 6, 10)
 				tabs := []struct {
 					idx   int
 					label string
+					icon  *ui.SVG
+					tint  ui.Color
 				}{
-					{toolsTabAI, "AI 助手"},
-					{toolsTabAPI, "本地 API"},
-					{toolsTabKeys, "密钥管理"},
-					{toolsTabLogs, "应用日志"},
+					{toolsTabAI, "AI 助手", lucide.Sparkles(), ui.Hex("#7c3aed")},
+					{toolsTabAPI, "本地 API", lucide.Terminal(), ui.Hex("#0891b2")},
+					{toolsTabKeys, "密钥管理", lucide.KeyRound(), ui.Hex("#d97706")},
+					{toolsTabLogs, "应用日志", lucide.FileText(), ui.Hex("#64748b")},
 				}
 				for _, tab := range tabs {
 					tIdx, tLbl := tab.idx, tab.label
-					if sidebarNavRow(c, fmt.Sprintf("tools-nav-%d", tIdx), tLbl, m.tab == tIdx, 0, nil, pal) {
+					if prefsNavRow(c, fmt.Sprintf("tools-nav-%d", tIdx), tLbl, m.tab == tIdx, tab.icon, tab.tint, pal) {
 						if m.tab != tIdx {
 							m.tab = tIdx
 							m.err = ""
@@ -121,10 +123,10 @@ func (a *App) viewToolsModal(c *ui.Context) {
 					}
 				}
 			})
-			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.line)
+			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
 
 			// Right form pane + header + footer.
-			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
 				tabMeta := map[int][2]string{
 					toolsTabAI:   {"AI 助手与模型配置", "连接本地 Ollama / LM Studio 或 OpenAI 兼容端点，结合当前文章上下文问答。"},
 					toolsTabAPI:  {"本地 REST API 服务", "在本机回环地址提供 HTTP 接口，供 pn 命令行与外部脚本调用。"},
@@ -132,10 +134,10 @@ func (a *App) viewToolsModal(c *ui.Context) {
 					toolsTabLogs: {"应用运行日志", "按模块筛选查看 Planet、IPFS 与本地 API 的运行记录。"},
 				}
 				meta := tabMeta[m.tab]
-				ui.Row(c).Padding(20, 20, 12, 28).AlignItems(ui.Start).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+				ui.Row(c).Padding(22, 20, 14, 28).AlignItems(ui.Start).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Column(c).Gap(4).Grow(1).MinWidth(0).Children(func() {
-						ui.Text(c, meta[0]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.ink)
-						ui.Text(c, meta[1]).Font(macPlanetFont).FontSize(12.5).TextColor(pal.muted)
+						ui.Text(c, meta[0]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
+						ui.Text(c, meta[1]).Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
 					})
 					if toolbarIconBtn(c, "tools-close-x", lucide.X(), "关闭").Clicked() {
 						m.open = false
@@ -160,8 +162,8 @@ func (a *App) viewToolsModal(c *ui.Context) {
 						}
 					})
 				})
-				hairlineH(c, pal)
-				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.footer).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+				prefsHairlineH(c, pal)
+				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.prefsFooter).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					if macSecondaryButton(c, "tools-close", "关闭", pal) {
 						m.open = false
 					}

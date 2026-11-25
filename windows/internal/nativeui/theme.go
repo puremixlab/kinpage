@@ -50,6 +50,19 @@ type macPalette struct {
 	bottomBg        ui.Color
 	shadowColor     ui.Color
 	popoverShadow   ui.Color
+
+	// Plan A (macOS Sequoia) Settings / Preferences layered tokens.
+	prefsSidebar         ui.Color
+	prefsCanvas          ui.Color
+	prefsCard            ui.Color
+	prefsCardBorder      ui.Color
+	prefsCardShadow      ui.Color
+	prefsFooter          ui.Color
+	prefsNavActiveBg     ui.Color
+	prefsNavActiveShadow ui.Color
+	prefsInk             ui.Color
+	prefsSecondary       ui.Color
+	prefsMuted           ui.Color
 }
 
 func paletteFor(dark bool) macPalette {
@@ -79,11 +92,23 @@ func paletteFor(dark bool) macPalette {
 			yellow:          ui.Hex("#f5b800"),
 			green:           ui.Hex("#34c759"),
 			amber:           ui.Hex("#f0b159"),
-			danger:          ui.Hex("#ff453a"),
+			danger:          ui.Hex("#ff5c5c"),
 			pillBg:          ui.RGBA(255, 255, 255, 0.10),
 			bottomBg:        ui.RGBA(255, 255, 255, 0.025),
 			shadowColor:     ui.RGBA(0, 0, 0, 0.55),
 			popoverShadow:   ui.RGBA(0, 0, 0, 0.45),
+
+			prefsSidebar:         ui.Hex("#1e1f22"),
+			prefsCanvas:          ui.Hex("#18191c"),
+			prefsCard:            ui.Hex("#23252a"),
+			prefsCardBorder:      ui.RGBA(255, 255, 255, 0.08),
+			prefsCardShadow:      ui.RGBA(0, 0, 0, 0.28),
+			prefsFooter:          ui.Hex("#1e1f22"),
+			prefsNavActiveBg:     ui.RGBA(255, 255, 255, 0.09),
+			prefsNavActiveShadow: ui.RGBA(0, 0, 0, 0.22),
+			prefsInk:             ui.Hex("#f3f4f6"),
+			prefsSecondary:       ui.Hex("#d1d5db"),
+			prefsMuted:           ui.Hex("#9ca3af"),
 		}
 	}
 	return macPalette{
@@ -111,11 +136,23 @@ func paletteFor(dark bool) macPalette {
 		yellow:          ui.Hex("#f5b800"),
 		green:           ui.Hex("#34c759"),
 		amber:           ui.Hex("#b25000"),
-		danger:          ui.Hex("#ff3b30"),
+		danger:          ui.Hex("#e5484d"),
 		pillBg:          ui.RGBA(0, 0, 0, 0.065),
 		bottomBg:        ui.RGBA(0, 0, 0, 0.025),
 		shadowColor:     ui.RGBA(0, 0, 0, 0.14),
 		popoverShadow:   ui.RGBA(0, 0, 0, 0.12),
+
+		prefsSidebar:         ui.Hex("#f1f2f5"),
+		prefsCanvas:          ui.Hex("#f7f8fa"),
+		prefsCard:            ui.Hex("#ffffff"),
+		prefsCardBorder:      ui.RGBA(15, 23, 42, 0.08),
+		prefsCardShadow:      ui.RGBA(15, 23, 42, 0.045),
+		prefsFooter:          ui.Hex("#f1f2f5"),
+		prefsNavActiveBg:     ui.Hex("#ffffff"),
+		prefsNavActiveShadow: ui.RGBA(15, 23, 42, 0.07),
+		prefsInk:             ui.Hex("#111827"),
+		prefsSecondary:       ui.Hex("#4b5563"),
+		prefsMuted:           ui.Hex("#6b7280"),
 	}
 }
 

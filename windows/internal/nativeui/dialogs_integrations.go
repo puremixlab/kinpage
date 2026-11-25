@@ -103,18 +103,21 @@ func (a *App) viewIntegrationsModal(c *ui.Context) {
 	pal := a.pal
 	m := &a.integrations
 	macPreferencesWindow(c, &m.open, 940, 680, pal, func() {
-		ui.Row(c).Fill().Background(pal.canvas).Children(func() {
-			// Left 216px macOS Preferences sidebar navigation with grouped sections.
-			ui.Column(c).Width(216).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Padding(18, 10, 14, 10).Gap(14).Children(func() {
-				navGroup := func(heading string, items []struct {
+		ui.Row(c).Fill().Background(pal.prefsCanvas).Children(func() {
+			// Left 220px macOS Sequoia sidebar navigation with grouped tinted icons.
+			ui.Column(c).Width(220).Shrink(0).AlignSelf(ui.Stretch).Background(pal.prefsSidebar).Padding(18, 10, 14, 10).Gap(14).Children(func() {
+				type navSpec struct {
 					idx   int
 					label string
-				}) {
-					ui.Column(c).Gap(2).AlignSelf(ui.Stretch).Children(func() {
-						ui.Text(c, heading).Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).Padding(0, 10, 6, 10)
+					icon  *ui.SVG
+					tint  ui.Color
+				}
+				navGroup := func(heading string, items []navSpec) {
+					ui.Column(c).Gap(3).AlignSelf(ui.Stretch).Children(func() {
+						ui.Text(c, heading).Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.prefsMuted).Padding(0, 10, 6, 10)
 						for _, tab := range items {
 							tIdx, tLbl := tab.idx, tab.label
-							if sidebarNavRow(c, fmt.Sprintf("int-nav-%d", tIdx), tLbl, m.tab == tIdx, 0, nil, pal) {
+							if prefsNavRow(c, fmt.Sprintf("int-nav-%d", tIdx), tLbl, m.tab == tIdx, tab.icon, tab.tint, pal) {
 								m.tab = tIdx
 								m.err = ""
 								m.msg = ""
@@ -122,43 +125,37 @@ func (a *App) viewIntegrationsModal(c *ui.Context) {
 						}
 					})
 				}
-				navGroup("外观与发布", []struct {
-					idx   int
-					label string
-				}{
-					{intTabTemplates, "模板"},
-					{intTabDeploy, "部署"},
-					{intTabServices, "服务"},
+				navGroup("外观与发布", []navSpec{
+					{intTabTemplates, "模板", lucide.LayoutGrid(), ui.Hex("#0d9488")},
+					{intTabDeploy, "部署", lucide.Upload(), ui.Hex("#0284c7")},
+					{intTabServices, "服务", lucide.Activity(), ui.Hex("#d97706")},
 				})
-				navGroup("内容同步与扩展", []struct {
-					idx   int
-					label string
-				}{
-					{intTabX, "X 同步"},
-					{intTabTelegram, "Telegram"},
-					{intTabAggregate, "聚合"},
-					{intTabWeb3, "Web3"},
+				navGroup("内容同步与扩展", []navSpec{
+					{intTabX, "X 同步", lucide.Share2(), ui.Hex("#475569")},
+					{intTabTelegram, "Telegram", lucide.Send(), ui.Hex("#0ea5e9")},
+					{intTabAggregate, "聚合", lucide.Rss(), ui.Hex("#ea580c")},
+					{intTabWeb3, "Web3", lucide.Wallet(), ui.Hex("#7c3aed")},
 				})
 				ui.Spacer(c)
 				if site := a.findSiteByID(m.siteID); site != nil {
-					hairlineH(c, pal)
+					prefsHairlineH(c, pal)
 					ui.Row(c).Padding(8, 8, 2, 8).Gap(10).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
 						a.siteAvatar(c, *site, 0, 28)
 						ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-							ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.ink).MaxLines(1).Ellipsis("…")
+							ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsInk).MaxLines(1).Ellipsis("…")
 							tpl := m.templateName
 							if tpl == "" {
 								tpl = "默认模板"
 							}
-							ui.Text(c, tpl).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).MaxLines(1).Ellipsis("…")
+							ui.Text(c, tpl).Font(macPlanetFont).FontSize(11).TextColor(pal.prefsMuted).MaxLines(1).Ellipsis("…")
 						})
 					})
 				}
 			})
-			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.line)
+			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
 
 			// Right form pane + header + footer.
-			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
 				tabMeta := map[int][2]string{
 					intTabTemplates: {"模板选择与设置", "选择内置模板或导入本地目录，并微调模板参数。"},
 					intTabDeploy:    {"SSH / Cloudflare 部署", "配置静态站点的自动化外部部署目标。"},
@@ -169,10 +166,10 @@ func (a *App) viewIntegrationsModal(c *ui.Context) {
 					intTabWeb3:      {"Web3 与捐赠", "配置以太坊打赏地址与 Juicebox 项目支持。"},
 				}
 				meta := tabMeta[m.tab]
-				ui.Row(c).Padding(20, 20, 12, 28).AlignItems(ui.Start).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+				ui.Row(c).Padding(22, 20, 14, 28).AlignItems(ui.Start).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Column(c).Gap(4).Grow(1).MinWidth(0).Children(func() {
-						ui.Text(c, meta[0]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.ink)
-						ui.Text(c, meta[1]).Font(macPlanetFont).FontSize(12.5).TextColor(pal.muted)
+						ui.Text(c, meta[0]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
+						ui.Text(c, meta[1]).Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
 					})
 					if toolbarIconBtn(c, "int-close-x", lucide.X(), "关闭").Clicked() {
 						m.open = false
@@ -203,8 +200,8 @@ func (a *App) viewIntegrationsModal(c *ui.Context) {
 						}
 					})
 				})
-				hairlineH(c, pal)
-				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.footer).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+				prefsHairlineH(c, pal)
+				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.prefsFooter).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					if macSecondaryButton(c, "int-close", "关闭", pal) {
 						m.open = false
 					}

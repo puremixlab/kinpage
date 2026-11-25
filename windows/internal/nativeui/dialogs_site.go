@@ -93,24 +93,26 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 	pal := a.pal
 	st := &a.siteSettings
 	macPreferencesWindow(c, &st.open, 940, 680, pal, func() {
-		// Responsive two-column macOS Preferences layout matching mac-planet.css:1040-1260.
-		ui.Row(c).Fill().Background(pal.canvas).Children(func() {
-			// Left 216px sidebar navigation + site identity footer.
-			ui.Column(c).Width(216).Shrink(0).AlignSelf(ui.Stretch).Background(pal.sidebar).Padding(18, 10, 14, 10).Gap(12).Children(func() {
-				ui.Column(c).Gap(2).AlignSelf(ui.Stretch).Children(func() {
-					ui.Text(c, "站点设置").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).Padding(0, 10, 6, 10)
+		// Responsive two-column macOS Sequoia Preferences layout.
+		ui.Row(c).Fill().Background(pal.prefsCanvas).Children(func() {
+			// Left 220px cool-tinted sidebar navigation + site identity footer.
+			ui.Column(c).Width(220).Shrink(0).AlignSelf(ui.Stretch).Background(pal.prefsSidebar).Padding(18, 10, 14, 10).Gap(12).Children(func() {
+				ui.Column(c).Gap(3).AlignSelf(ui.Stretch).Children(func() {
+					ui.Text(c, "站点设置").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.prefsMuted).Padding(0, 10, 6, 10)
 					tabs := []struct {
 						idx   int
 						label string
+						icon  *ui.SVG
+						tint  ui.Color
 					}{
-						{siteSettingsTabBasic, "基本"},
-						{siteSettingsTabProfile, "资料与头像"},
-						{siteSettingsTabCustomCode, "自定义代码"},
-						{siteSettingsTabPodcast, "播客"},
+						{siteSettingsTabBasic, "基本", lucide.SlidersHorizontal(), ui.Hex("#2563eb")},
+						{siteSettingsTabProfile, "资料与头像", lucide.User(), ui.Hex("#4f46e5")},
+						{siteSettingsTabCustomCode, "自定义代码", lucide.Code(), ui.Hex("#475569")},
+						{siteSettingsTabPodcast, "播客", lucide.Podcast(), ui.Hex("#7c3aed")},
 					}
 					for _, tab := range tabs {
 						tIdx, tLbl := tab.idx, tab.label
-						if sidebarNavRow(c, fmt.Sprintf("ss-nav-%d", tIdx), tLbl, st.tab == tIdx, 0, nil, pal) {
+						if prefsNavRow(c, fmt.Sprintf("ss-nav-%d", tIdx), tLbl, st.tab == tIdx, tab.icon, tab.tint, pal) {
 							st.tab = tIdx
 							st.err = ""
 						}
@@ -121,17 +123,17 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 
 				// Bottom site identity card + remove site action.
 				ui.Column(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
-					hairlineH(c, pal)
+					prefsHairlineH(c, pal)
 					if site := a.findSiteByID(st.siteID); site != nil {
 						ui.Row(c).Padding(6, 8, 2, 8).Gap(10).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
 							a.siteAvatar(c, *site, 0, 28)
 							ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-								ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.ink).MaxLines(1).Ellipsis("…")
+								ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsInk).MaxLines(1).Ellipsis("…")
 								tpl := site.TemplateName
 								if tpl == "" {
 									tpl = "默认模板"
 								}
-								ui.Text(c, tpl).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).MaxLines(1).Ellipsis("…")
+								ui.Text(c, tpl).Font(macPlanetFont).FontSize(11).TextColor(pal.prefsMuted).MaxLines(1).Ellipsis("…")
 							})
 						})
 					}
@@ -145,10 +147,10 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 					}
 				})
 			})
-			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.line)
+			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
 
-			// Right pane: fixed header + scrollable inset-grouped body + fixed #f7f7f9 footer bar.
-			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+			// Right pane: soft canvas + elevated white inset cards + cool-tinted footer bar.
+			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
 				pageTitle, pageDesc := "基本设置", "配置站点名称、简介、路径别名与搜索引擎收录偏好。"
 				switch st.tab {
 				case siteSettingsTabProfile:
@@ -159,10 +161,10 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 					pageTitle, pageDesc = "播客设置", "配置 RSS 播客频道语言、分类与内容分级标记。"
 				}
 
-				ui.Row(c).Padding(20, 20, 12, 28).AlignItems(ui.Start).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+				ui.Row(c).Padding(22, 20, 14, 28).AlignItems(ui.Start).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Column(c).Gap(4).Grow(1).MinWidth(0).Children(func() {
-						ui.Text(c, pageTitle).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.ink)
-						ui.Text(c, pageDesc).Font(macPlanetFont).FontSize(12.5).TextColor(pal.muted)
+						ui.Text(c, pageTitle).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
+						ui.Text(c, pageDesc).Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
 					})
 					if toolbarIconBtn(c, "ss-close-x", lucide.X(), "关闭").Clicked() {
 						st.open = false
@@ -344,9 +346,9 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 					})
 				})
 
-				// Mac Sheet bottom action bar (#f7f7f9 with 0.5px top border).
-				hairlineH(c, pal)
-				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.footer).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+				// Mac Sheet bottom action bar with 0.5px top border.
+				prefsHairlineH(c, pal)
+				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.prefsFooter).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					if macSecondaryButton(c, "ss-cancel", "取消", pal) {
 						st.open = false
 					}
