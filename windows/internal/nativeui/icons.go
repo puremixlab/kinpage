@@ -39,6 +39,13 @@ var (
 	iconSidebar = ui.MustParseSVG([]byte(`<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 4.5H15M3 9H15M3 13.5H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`))
 
 	iconChevronDown = ui.MustParseSVG([]byte(`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 5.25L7 8.75L10.5 5.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`))
+
+	// Solid macOS Smart Feed icons matching SF Symbols (sun.max.fill, circle.inset.filled, star.fill).
+	iconSunSolid = ui.MustParseSVG([]byte(`<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="9" r="3.6" fill="currentColor"/><path d="M9 1.6V3.5M9 14.5V16.4M1.6 9H3.5M14.5 9H16.4M3.77 3.77L5.11 5.11M12.89 12.89L14.23 14.23M14.23 3.77L12.89 5.11M5.11 12.89L3.77 14.23" stroke="currentColor" stroke-width="1.65" stroke-linecap="round"/></svg>`))
+
+	iconCircleInsetSolid = ui.MustParseSVG([]byte(`<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="9" r="6.75" stroke="currentColor" stroke-width="1.65"/><circle cx="9" cy="9" r="4.1" fill="currentColor"/></svg>`))
+
+	iconStarSolid = ui.MustParseSVG([]byte(`<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 1.9L11.2 6.35L16.1 7.06L12.55 10.52L13.39 15.4L9 13.09L4.61 15.4L5.45 10.52L1.9 7.06L6.8 6.35L9 1.9Z" fill="currentColor"/></svg>`))
 )
 
 // bitmapForDataURL decodes and caches base64 PNG strings (site avatars and

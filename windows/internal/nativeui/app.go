@@ -28,6 +28,17 @@ const (
 	editorPaneView  = 2
 )
 
+type listFilterKind int
+
+const (
+	listFilterAll listFilterKind = iota
+	listFilterPages
+	listFilterNav
+	listFilterPinned
+	listFilterUnread
+	listFilterStarred
+)
+
 // App holds the UI state for the MyGo Native UI shell and editor.
 type App struct {
 	backend Backend
@@ -65,8 +76,11 @@ type App struct {
 	postsListScroll   ui.ScrollState
 	sidebarScroll     ui.ScrollState
 	postsPanelWidth   float32
+	sidebarWidth      float32
 	editorSplitRatio  float32
 	postSearchQuery   string
+	listSearchOpen    bool
+	listFilter        listFilterKind
 
 	// Unsaved draft navigation guard.
 	unsavedDialogOpen bool
@@ -183,6 +197,7 @@ func New(backend Backend) *App {
 			Label:          "Markdown 正文编辑器",
 		},
 		postsPanelWidth:  276,
+		sidebarWidth:     228,
 		editorSplitRatio: 50,
 		trendHoverPoint:  -1,
 		speaker:          newDefaultSpeaker(),
@@ -241,6 +256,9 @@ func (a *App) Reload() {
 	}
 	if subs, err := a.backend.Subscriptions(); err == nil {
 		a.subscriptions = subs
+	}
+	if st, err := a.backend.IPFSStatus(); err == nil {
+		a.ipfsModal.status = st
 	}
 	if a.selectedSiteID != "" {
 		a.loadSiteItems(a.selectedSiteID)
@@ -304,6 +322,8 @@ func (a *App) selectSite(siteID string) {
 	a.activeArticleID = ""
 	a.selectedReadID = ""
 	a.postSearchQuery = ""
+	a.listSearchOpen = false
+	a.listFilter = listFilterAll
 	a.clearStatus()
 	a.loadSiteItems(siteID)
 	if len(a.articles) > 0 {

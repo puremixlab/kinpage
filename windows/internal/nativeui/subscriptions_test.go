@@ -16,8 +16,11 @@ func TestNativeUISubscriptionsFollowStarEditAndUnfollow(t *testing.T) {
 	tt := ui.NewTester(app.View, 1280, 860)
 	tt.Frame()
 
-	// Follow a new subscription.
-	if err := tt.Click("+ 关注"); err != nil {
+	// Follow a new subscription via bottom-bar '+' menu.
+	if err := tt.Click("新建或关注"); err != nil {
+		t.Fatalf("failed to open add menu: %v", err)
+	}
+	if err := tt.ChooseMenuItem("关注站点…"); err != nil {
 		t.Fatalf("failed to open follow modal: %v", err)
 	}
 	app.followAddress = "https://example.com/feed.xml"
@@ -35,15 +38,18 @@ func TestNativeUISubscriptionsFollowStarEditAndUnfollow(t *testing.T) {
 	}
 
 	// Star the item and verify starred view lists it.
-	if err := tt.Click("☆ 星标"); err != nil {
+	if err := tt.Click("星标"); err != nil {
 		t.Fatalf("failed to star subscription item: %v", err)
 	}
 	if !backend.subscriptions[0].Feed.Items[0].Starred {
 		t.Fatal("expected subscription item starred")
 	}
 
-	// Edit subscription custom title.
-	if err := tt.Click("编辑"); err != nil {
+	// Edit subscription custom title via toolbar '订阅操作' menu.
+	if err := tt.Click("订阅操作"); err != nil {
+		t.Fatalf("failed to open subscription actions menu: %v", err)
+	}
+	if err := tt.ChooseMenuItem("编辑订阅…"); err != nil {
 		t.Fatalf("failed to open edit subscription modal: %v", err)
 	}
 	app.editSubTitle = "精选技术周刊"
@@ -56,7 +62,10 @@ func TestNativeUISubscriptionsFollowStarEditAndUnfollow(t *testing.T) {
 	}
 
 	// Unfollow subscription with confirmation dialog.
-	if err := tt.Click("取消关注"); err != nil {
+	if err := tt.Click("订阅操作"); err != nil {
+		t.Fatalf("failed to open subscription actions menu: %v", err)
+	}
+	if err := tt.ChooseMenuItem("取消关注"); err != nil {
 		t.Fatalf("failed to open unfollow confirmation: %v", err)
 	}
 	if !app.unfollowOpen {

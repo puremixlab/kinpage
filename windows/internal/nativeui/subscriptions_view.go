@@ -90,6 +90,8 @@ func (a *App) openSubscriptionView(mode viewMode, subURL string) {
 	a.selectedSubItemSubURL = ""
 	a.selectedSubItemKey = ""
 	a.subSearchQuery = ""
+	a.listSearchOpen = false
+	a.listFilter = listFilterAll
 	a.clearStatus()
 	items := a.visibleSubscriptionItems()
 	if len(items) > 0 {
@@ -113,6 +115,12 @@ func (a *App) visibleSubscriptionItems() []subItemEntry {
 				continue
 			}
 			if a.mode == viewStarred && !item.Starred {
+				continue
+			}
+			if a.listFilter == listFilterUnread && item.Read {
+				continue
+			}
+			if a.listFilter == listFilterStarred && !item.Starred {
 				continue
 			}
 			if query != "" {
@@ -196,18 +204,39 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 	}
 
 	items := a.visibleSubscriptionItems()
+	unreadCount := 0
+	for _, entry := range items {
+		if !entry.item.Read {
+			unreadCount++
+		}
+	}
+	subtitle := fmt.Sprintf("%d 篇文章", len(items))
+	if unreadCount > 0 {
+		subtitle = fmt.Sprintf("%d 未读 · 共 %d 篇", unreadCount, len(items))
+	}
+	if a.listFilter != listFilterAll {
+		subtitle += " · 已筛选"
+	}
 
-	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
-		// Full-height Column 2 integrated 44px header (macOS navigationTitle + navigationSubtitle).
-		a.viewListPaneHeader(c, heading, fmt.Sprintf("%d 篇文章", len(items)))
+	ui.Column(c).Fill().MinWidth(240).Background(pal.canvas).Children(func() {
+		// Full-height Column 2 integrated 44px header (macOS navigationTitle + navigationSubtitle + filter menu).
+		a.viewListPaneHeader(c, heading, subtitle, true)
 
-		ui.Box(c).Padding(8, 10, 4, 10).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-			field.SearchBar(c.Key("sub-filter"), &a.subSearchQuery, field.SearchBarProps{
-				Placeholder: "筛选订阅条目…",
-				Variant:     field.InputFilled,
-				Size:        theme.Small,
+		if a.listSearchOpen {
+			ui.Row(c).Padding(8, 10, 4, 10).Gap(4).AlignItems(ui.Center).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+				ui.Box(c).Grow(1).MinWidth(0).Children(func() {
+					field.SearchBar(c.Key("sub-filter"), &a.subSearchQuery, field.SearchBarProps{
+						Placeholder: "筛选订阅条目…",
+						Variant:     field.InputFilled,
+						Size:        theme.Small,
+					})
+				})
+				if toolbarIconBtn(c, "sub-filter-close", lucide.X(), "关闭筛选").Clicked() {
+					a.listSearchOpen = false
+					a.subSearchQuery = ""
+				}
 			})
-		})
+		}
 
 		ui.Scroll(c).TrackScroll(&a.postsListScroll).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).PaddingX(8).PaddingY(6).Gap(0).Children(func() {
@@ -224,58 +253,30 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 					subURL, key := entry.subURL, entry.effective
 					title := fallbackTitle(entry.item.Title)
 					selected := a.selectedSubItemSubURL == subURL && a.selectedSubItemKey == key
-					restBg, hoverBg := ui.Transparent, pal.hover
-					titleColor := pal.ink
-					excerptColor := pal.secondary
-					metaColor := pal.muted
-					if selected {
-						restBg, hoverBg = pal.listSelected, pal.listSelected
-						titleColor = ui.Hex("#ffffff")
-						excerptColor = pal.listSelMuted
-						metaColor = pal.listSelMuted
-					}
 					rawBody := entry.item.Content
 					if strings.TrimSpace(rawBody) == "" {
 						rawBody = entry.item.Description
 					}
-					snippet := excerptText(htmlToReadableMarkdown(rawBody), 56)
-					// Dedicated 22px left unread gutter so all titles align vertically.
-					if interactiveRow(c, "subitem-"+subURL+"-"+key, title, restBg, hoverBg, pal.active).
-						Radius(7).Padding(10, 12, 10, 6).
-						Children(func() {
-							ui.Row(c).AlignItems(ui.Start).Gap(0).Grow(1).MinWidth(0).Children(func() {
-								ui.Box(c).Width(16).PaddingY(5).Center().Shrink(0).Children(func() {
-									if !entry.item.Read {
-										dotColor := pal.accent
-										if selected {
-											dotColor = ui.Hex("#ffffff")
-										}
-										ui.Box(c).Size(7, 7).Radius(3.5).Background(dotColor)
-									}
-								})
-								ui.Column(c).Gap(3).Grow(1).MinWidth(0).Children(func() {
-									ui.Row(c).AlignItems(ui.Center).Gap(4).AlignSelf(ui.Stretch).Children(func() {
-										if entry.item.Starred {
-											ui.Icon(c, iconStar).Size(12, 12).TextColor(pal.yellow).Shrink(0)
-										}
-										ui.Text(c, title).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(titleColor).MaxLines(2).Ellipsis("…").Grow(1)
-									})
-									if snippet != "" {
-										ui.Text(c, snippet).Font(macPlanetFont).FontSize(12).TextColor(excerptColor).MaxLines(2).Ellipsis("…")
-									}
-									ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-										ui.Text(c, entry.subTitle).Font(macPlanetFont).FontSize(11).TextColor(metaColor).NoWrap()
-										if entry.item.Published != "" {
-											ui.Text(c, entry.item.Published).Font(macPlanetFont).FontSize(11).TextColor(metaColor).NoWrap()
-										}
-									})
-								})
-							})
-						}).Clicked() {
+					sourceLabel := ""
+					if a.mode != viewSubscription {
+						sourceLabel = entry.subTitle
+					}
+					row := articleRow(c, articleRowProps{
+						key:         "subitem-" + subURL + "-" + key,
+						ariaLabel:   title,
+						title:       title,
+						summary:     excerptText(htmlToReadableMarkdown(rawBody), 80),
+						dateText:    formatFeedDate(entry.item.Published),
+						sourceLabel: sourceLabel,
+						selected:    selected,
+						starred:     entry.item.Starred,
+						unread:      !entry.item.Read,
+					}, pal)
+					if row.Clicked() {
 						a.selectSubItem(subURL, key)
 					}
 					if !selected {
-						ui.Box(c).Padding(0, 12, 0, 22).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
+						ui.Box(c).Padding(0, 12, 0, 24).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
 					}
 				}
 			})
@@ -302,7 +303,6 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 			return
 		}
 
-		subURL, key := cur.subURL, cur.effective
 		body := cur.item.Content
 		if strings.TrimSpace(body) == "" {
 			body = cur.item.Description
@@ -312,37 +312,12 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 		ui.Scroll(c).TrackScroll(&a.subReaderScroll).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
 			ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(36).PaddingY(28).Children(func() {
 				ui.Column(c).AlignSelf(ui.Stretch).MaxWidth(740).Gap(12).Children(func() {
-					ui.Text(c, fallbackTitle(cur.item.Title)).Font(macPlanetFont).FontSize(26).FontWeight(700).LetterSpacing(-0.02).TextColor(pal.ink)
+					ui.Text(c, fallbackTitle(cur.item.Title)).Font(macPlanetFont).FontSize(28).FontWeight(700).LetterSpacing(-0.02).TextColor(pal.ink)
 					meta := cur.subTitle
 					if cur.item.Published != "" {
 						meta += "   ·   " + cur.item.Published
 					}
-					ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(8).Wrap().AlignSelf(ui.Stretch).Children(func() {
-						ui.Text(c, meta).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
-						ui.Row(c).Gap(4).AlignItems(ui.Center).Shrink(0).Children(func() {
-							readLabel := "标为未读"
-							if !cur.item.Read {
-								readLabel = "标为已读"
-							}
-							if ghostIconButton(c, "sub-toggle-read", readLabel, readLabel, pal) {
-								if err := a.backend.SetSubscriptionRead(subURL, key, !cur.item.Read); err != nil {
-									a.setError("更新阅读状态失败：" + err.Error())
-								} else {
-									a.Reload()
-								}
-							}
-							speakLabel := "朗读"
-							if a.speaker != nil && a.speaker.Speaking() {
-								speakLabel = "停止朗读"
-							}
-							if ghostIconButton(c, "sub-speak", speakLabel, speakLabel, pal) {
-								a.toggleSpeak(cur.item.Title, mdBody)
-							}
-							if ghostIconButton(c, "sub-related", "相关文章", "相关文章", pal) {
-								a.openRelatedArticles("", "", subURL, key, cur.item.Title)
-							}
-						})
-					})
+					ui.Text(c, meta).Font(macPlanetFont).FontSize(12.5).TextColor(pal.muted)
 					if cur.item.Link != "" {
 						ui.Text(c, cur.item.Link).Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
 					}

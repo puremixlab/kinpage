@@ -835,11 +835,11 @@ func TestNativeUIUnsavedGuardAndArticleActions(t *testing.T) {
 	tt := ui.NewTester(app.View, 1280, 820)
 	tt.Frame()
 
-	// Quick Post via Settings popover.
-	if err := tt.Click("设置"); err != nil {
-		t.Fatalf("failed to open settings menu: %v", err)
+	// Quick Post via sidebar top-right '...' tools menu.
+	if err := tt.Click("更多工具"); err != nil {
+		t.Fatalf("failed to open tools menu: %v", err)
 	}
-	if err := tt.Click("⚡ 快捷发文"); err != nil {
+	if err := tt.ChooseMenuItem("快捷发文"); err != nil {
 		t.Fatalf("failed to open quick post: %v", err)
 	}
 	app.quickPostTitle = "快讯"
@@ -976,7 +976,7 @@ func TestNativeUIUnifiedTitleBarToggles(t *testing.T) {
 
 	// Create and save a draft, then verify site settings and new draft remain accessible
 	// both with posts list expanded and collapsed.
-	if err := tt.Click("+ 写文章"); err != nil {
+	if err := tt.Click("写文章"); err != nil {
 		t.Fatalf("failed to start first draft: %v", err)
 	}
 	app.editorTitle = "第一篇草稿"
@@ -997,11 +997,11 @@ func TestNativeUIUnifiedTitleBarToggles(t *testing.T) {
 	tt.Frame()
 
 	// Start a second new draft directly after saving the first draft.
-	if err := tt.Click("+ 写文章"); err != nil {
-		t.Fatalf("expected + 写文章 accessible after saving draft: %v", err)
+	if err := tt.Click("写文章"); err != nil {
+		t.Fatalf("expected 写文章 accessible after saving draft: %v", err)
 	}
 	if !app.editing || app.activeDraftID != "" || app.editorTitle != "" {
-		t.Fatalf("expected fresh draft after clicking + 写文章, editing=%v id=%q title=%q", app.editing, app.activeDraftID, app.editorTitle)
+		t.Fatalf("expected fresh draft after clicking 写文章, editing=%v id=%q title=%q", app.editing, app.activeDraftID, app.editorTitle)
 	}
 
 	// Even with posts list collapsed in editor mode, 站点设置 & + 写文章 stay accessible in titlebar.

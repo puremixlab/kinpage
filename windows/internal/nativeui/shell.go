@@ -24,13 +24,9 @@ func (a *App) View(c *ui.Context) {
 
 	pal := a.pal
 	// Full-height 3-column macOS NavigationView split geometry:
-	// Column 1 (Sidebar) | Column 2 (ArticleList) | Column 3 (Article/Editor/Dashboard).
-	ui.Row(c).Fill().Background(pal.canvas).Children(func() {
-		if !a.sidebarCollapsed {
-			a.viewSidebar(c)
-			ui.Box(c).Width(1).AlignSelf(ui.Stretch).Background(pal.line)
-		}
-		ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
+	// Column 1 (Sidebar, resizable) | Column 2 (ArticleList) | Column 3 (Article/Editor/Dashboard).
+	renderMain := func() {
+		ui.Column(c).Fill().MinWidth(0).Background(pal.canvas).Children(func() {
 			switch a.mode {
 			case viewToday, viewUnread, viewStarred, viewSubscription:
 				a.viewSubscriptionWorkspace(c)
@@ -44,7 +40,18 @@ func (a *App) View(c *ui.Context) {
 				a.viewDashboardPane(c)
 			}
 		})
-	})
+	}
+	if a.sidebarCollapsed {
+		renderMain()
+	} else {
+		if a.sidebarWidth < 220 {
+			a.sidebarWidth = 228
+		}
+		ui.Split(c.Key("sidebar-split"), &a.sidebarWidth,
+			func() { a.viewSidebar(c) },
+			renderMain,
+		).SplitReset(228).Fill().Background(pal.canvas)
+	}
 
 	a.viewCreateSiteModal(c)
 	a.viewComposePickerModal(c)
@@ -86,7 +93,7 @@ func (a *App) viewStatusBar(c *ui.Context) {
 }
 
 func (a *App) viewDashboardPane(c *ui.Context) {
-	a.viewDetailToolbar(c, false)
+	a.viewDetailToolbar(c, true)
 	if a.statusText != "" {
 		a.viewStatusBar(c)
 	}

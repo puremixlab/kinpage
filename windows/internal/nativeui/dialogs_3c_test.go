@@ -19,10 +19,7 @@ func TestNativeUIToolsModalBatch3C(t *testing.T) {
 	tt := ui.NewTester(app.View, 1280, 900)
 	tt.Frame()
 
-	// 1. Open AI Assistant from Settings popover, probe models, save config, send chat.
-	if err := tt.Click("设置"); err != nil {
-		t.Fatalf("failed to open settings menu: %v", err)
-	}
+	// 1. Open AI Assistant from sidebar Sparkles button, probe models, save config, send chat.
 	if err := tt.Click("AI 助手"); err != nil {
 		t.Fatalf("failed to open AI modal: %v", err)
 	}

@@ -84,10 +84,10 @@ func TestNativeUISiteSettingsAndPublishModal(t *testing.T) {
 		t.Fatalf("expected site moved to trash, live=%d trash=%d", len(backend.sites), len(backend.removedSites))
 	}
 
-	if err := tt.Click("设置"); err != nil {
-		t.Fatalf("failed to open settings menu: %v", err)
+	if err := tt.Click("更多工具"); err != nil {
+		t.Fatalf("failed to open tools menu: %v", err)
 	}
-	if err := tt.Click("回收站"); err != nil {
+	if err := tt.ChooseMenuItem("回收站"); err != nil {
 		t.Fatalf("failed to open trash modal: %v", err)
 	}
 	if err := tt.Click("恢复"); err != nil {
@@ -129,10 +129,10 @@ func TestNativeUIIPFSOfflineAndFoldersModals(t *testing.T) {
 	}
 
 	// Offline storage modal: cleanup.
-	if err := tt.Click("设置"); err != nil {
-		t.Fatalf("failed to open settings menu: %v", err)
+	if err := tt.Click("更多工具"); err != nil {
+		t.Fatalf("failed to open tools menu: %v", err)
 	}
-	if err := tt.Click("离线存储"); err != nil {
+	if err := tt.ChooseMenuItem("离线存储"); err != nil {
 		t.Fatalf("failed to open offline modal: %v", err)
 	}
 	if err := tt.Click("清理可回收空间"); err != nil {
@@ -146,10 +146,10 @@ func TestNativeUIIPFSOfflineAndFoldersModals(t *testing.T) {
 	}
 
 	// Published folders modal: add + publish + remove.
-	if err := tt.Click("设置"); err != nil {
-		t.Fatalf("failed to open settings menu: %v", err)
+	if err := tt.Click("更多工具"); err != nil {
+		t.Fatalf("failed to open tools menu: %v", err)
 	}
-	if err := tt.Click("已发布文件夹"); err != nil {
+	if err := tt.ChooseMenuItem("已发布文件夹"); err != nil {
 		t.Fatalf("failed to open folders modal: %v", err)
 	}
 	app.foldersModal.newName = "图库"

@@ -57,7 +57,7 @@ func (a *App) viewArticleReader(c *ui.Context) {
 						meta = append(meta, fallbackTitle(site.Name))
 					}
 					if !art.Modified.IsZero() {
-						meta = append(meta, formatSlashDate(art.Modified))
+						meta = append(meta, formatReaderDate(art.Modified))
 					}
 					if art.Pinned != nil {
 						meta = append(meta, "已置顶")
@@ -68,38 +68,9 @@ func (a *App) viewArticleReader(c *ui.Context) {
 					if len(art.Tags) > 0 {
 						meta = append(meta, fmt.Sprintf("%d 标签", len(art.Tags)))
 					}
-					ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(8).Wrap().AlignSelf(ui.Stretch).Children(func() {
-						if len(meta) > 0 {
-							ui.Text(c, strings.Join(meta, "   ·   ")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
-						}
-						ui.Row(c).Gap(4).AlignItems(ui.Center).Shrink(0).Children(func() {
-							pinLabel := "置顶"
-							if art.Pinned != nil {
-								pinLabel = "取消置顶"
-							}
-							speakLabel := "朗读"
-							if a.speaker != nil && a.speaker.Speaking() {
-								speakLabel = "停止朗读"
-							}
-							if ghostIconButton(c, "reader-speak", speakLabel, speakLabel, pal) {
-								a.toggleSpeak(art.Title, art.Content)
-							}
-							if ghostIconButton(c, "reader-related", "相关文章", "相关文章", pal) {
-								a.openRelatedArticles(art.SiteID, art.ID, "", "", art.Title)
-							}
-							if ghostIconButton(c, "reader-pin", pinLabel, pinLabel, pal) {
-								a.toggleArticlePinned(*art)
-							}
-							if ghostIconButton(c, "reader-settings", "文章设置", "文章设置", pal) {
-								a.openArticleSettings(*art)
-							}
-							if ghostIconButton(c, "reader-delete", "删除", "删除文章", pal) {
-								a.deleteArticleID = art.ID
-								a.deleteArticleTitle = art.Title
-								a.deleteArticleOpen = true
-							}
-						})
-					})
+					if len(meta) > 0 {
+						ui.Text(c, strings.Join(meta, "   ·   ")).Font(macPlanetFont).FontSize(12.5).TextColor(pal.muted)
+					}
 					hairlineH(c, pal)
 					lobemd.Markdown(c, art.Content, lobemd.MarkdownProps{
 						FontSize:              15,

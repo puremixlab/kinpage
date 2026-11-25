@@ -9,6 +9,7 @@ import (
 	"github.com/lobehub/lobe-mygo/pkg/field"
 	"github.com/lobehub/lobe-mygo/pkg/lucide"
 	"github.com/lobehub/lobe-mygo/pkg/theme"
+	"windows/internal/store"
 )
 
 func (a *App) viewSiteWorkspace(c *ui.Context) {
@@ -22,6 +23,19 @@ func (a *App) viewSiteWorkspace(c *ui.Context) {
 	).SplitReset(276).Grow(1).MinHeight(0).AlignSelf(ui.Stretch)
 }
 
+func (a *App) matchesSiteFilter(art store.Article) bool {
+	switch a.listFilter {
+	case listFilterPages:
+		return art.ArticleType == 1
+	case listFilterNav:
+		return art.IsIncludedInNavigation
+	case listFilterPinned:
+		return art.Pinned != nil
+	default:
+		return true
+	}
+}
+
 func (a *App) viewPostsPanel(c *ui.Context) {
 	pal := a.pal
 	site := a.currentSite()
@@ -31,67 +45,89 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 	siteID := site.ID
 	query := strings.ToLower(strings.TrimSpace(a.postSearchQuery))
 
-	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
-		// Full-height Column 2 integrated 44px header (macOS navigationTitle + navigationSubtitle).
-		a.viewListPaneHeader(c, fallbackTitle(site.Name), fmt.Sprintf("%d 篇文章", len(a.articles)+len(a.drafts)))
+	var filteredDrafts []store.Draft
+	if a.listFilter == listFilterAll {
+		for _, d := range a.drafts {
+			title := fallbackTitle(d.Title)
+			if query != "" && !strings.Contains(strings.ToLower(title), query) {
+				continue
+			}
+			filteredDrafts = append(filteredDrafts, d)
+		}
+	}
 
-		// Live filter SearchBar using lobe-mygo pkg/field.
-		ui.Box(c).Padding(8, 10, 4, 10).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-			field.SearchBar(c.Key("posts-filter"), &a.postSearchQuery, field.SearchBarProps{
-				Placeholder: "筛选本站文章…",
-				Variant:     field.InputFilled,
-				Size:        theme.Small,
+	var filteredArticles []store.Article
+	for _, art := range a.articles {
+		if !a.matchesSiteFilter(art) {
+			continue
+		}
+		title := fallbackTitle(art.Title)
+		if query != "" && !strings.Contains(strings.ToLower(title), query) {
+			continue
+		}
+		filteredArticles = append(filteredArticles, art)
+	}
+
+	totalVisible := len(filteredDrafts) + len(filteredArticles)
+	subtitle := fmt.Sprintf("%d 篇文章", totalVisible)
+	if a.listFilter != listFilterAll {
+		subtitle += " · 已筛选"
+	}
+
+	ui.Column(c).Fill().MinWidth(240).Background(pal.canvas).Children(func() {
+		// Full-height Column 2 integrated 44px header (macOS navigationTitle + navigationSubtitle + filter menu).
+		a.viewListPaneHeader(c, fallbackTitle(site.Name), subtitle, false)
+
+		// Inline list filter bar: hidden by default, toggled via Ctrl+F or filter menu.
+		if a.listSearchOpen {
+			ui.Row(c).Padding(8, 10, 4, 10).Gap(4).AlignItems(ui.Center).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+				ui.Box(c).Grow(1).MinWidth(0).Children(func() {
+					field.SearchBar(c.Key("posts-filter"), &a.postSearchQuery, field.SearchBarProps{
+						Placeholder: "筛选本站文章…",
+						Variant:     field.InputFilled,
+						Size:        theme.Small,
+					})
+				})
+				if toolbarIconBtn(c, "posts-filter-close", lucide.X(), "关闭筛选").Clicked() {
+					a.listSearchOpen = false
+					a.postSearchQuery = ""
+				}
 			})
-		})
+		}
 
 		ui.Scroll(c).TrackScroll(&a.postsListScroll).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).PaddingX(8).PaddingY(6).Gap(0).Children(func() {
-				if len(a.drafts) > 0 {
-					for _, d := range a.drafts {
+				if len(filteredDrafts) > 0 {
+					ui.Text(c, fmt.Sprintf("草稿 (%d)", len(filteredDrafts))).
+						Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).Padding(2, 10, 4, 24)
+					for _, d := range filteredDrafts {
 						draft := d
 						title := fallbackTitle(draft.Title)
-						if query != "" && !strings.Contains(strings.ToLower(title), query) {
-							continue
-						}
 						selected := a.editing && a.activeDraftID == draft.ID
-						restBg, hoverBg := ui.Transparent, pal.hover
-						titleColor := pal.ink
-						excerptColor := pal.secondary
-						metaColor := pal.muted
-						if selected {
-							restBg, hoverBg = pal.listSelected, pal.listSelected
-							titleColor = ui.Hex("#ffffff")
-							excerptColor = pal.listSelMuted
-							metaColor = pal.listSelMuted
-						}
-						snippet := excerptText(draft.Content, 56)
-						if interactiveRow(c, "draft-"+draft.ID, "✎ "+title, restBg, hoverBg, pal.active).
-							Radius(7).Padding(10, 12, 10, 14).
-							Children(func() {
-								ui.Column(c).Gap(3).Grow(1).MinWidth(0).Children(func() {
-									ui.Text(c, title).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(titleColor).MaxLines(2).Ellipsis("…")
-									if snippet != "" {
-										ui.Text(c, snippet).Font(macPlanetFont).FontSize(12).TextColor(excerptColor).MaxLines(2).Ellipsis("…")
-									}
-									ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-										if selected {
-											ui.Text(c, "草稿").Font(macPlanetFont).FontSize(11).TextColor(metaColor)
-										} else {
-											display.Tag(c, "草稿", display.TagProps{Color: display.TagInfo, Size: theme.Small})
-										}
-										ui.Text(c, formatSlashDate(draft.Modified)).Font(macPlanetFont).FontSize(11).TextColor(metaColor)
-									})
-								})
-							}).Clicked() {
+						row := articleRow(c, articleRowProps{
+							key:         "draft-" + draft.ID,
+							ariaLabel:   "✎ " + title,
+							title:       title,
+							summary:     excerptText(draft.Content, 80),
+							dateText:    formatRelativeDate(draft.Modified),
+							selected:    selected,
+							isDraft:     true,
+							attachments: len(draft.Attachments),
+						}, pal)
+						if row.Clicked() {
 							a.guardUnsaved(func() { a.openDraft(draft) })
 						}
 						if !selected {
-							ui.Box(c).Padding(0, 12, 0, 14).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
+							ui.Box(c).Padding(0, 12, 0, 24).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
 						}
+					}
+					if len(filteredArticles) > 0 {
+						ui.Text(c, "已发布").
+							Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).Padding(10, 10, 4, 24)
 					}
 				}
 
-				if len(a.articles) == 0 && len(a.drafts) == 0 {
+				if totalVisible == 0 {
 					ui.Box(c).PaddingY(32).AlignSelf(ui.Stretch).Children(func() {
 						display.Empty(c, display.EmptyProps{
 							Icon:        lucide.FileText(),
@@ -100,45 +136,36 @@ func (a *App) viewPostsPanel(c *ui.Context) {
 						})
 					})
 				}
-				for _, art := range a.articles {
-					artID := art.ID
-					title := fallbackTitle(art.Title)
-					if query != "" && !strings.Contains(strings.ToLower(title), query) {
-						continue
-					}
+
+				for _, art := range filteredArticles {
+					item := art
+					artID := item.ID
+					title := fallbackTitle(item.Title)
 					selected := !a.editing && a.selectedReadID == artID
-					restBg, hoverBg := ui.Transparent, pal.hover
-					titleColor := pal.ink
-					excerptColor := pal.secondary
-					metaColor := pal.muted
-					if selected {
-						restBg, hoverBg = pal.listSelected, pal.listSelected
-						titleColor = ui.Hex("#ffffff")
-						excerptColor = pal.listSelMuted
-						metaColor = pal.listSelMuted
+					navWeight := 0
+					if item.IsIncludedInNavigation {
+						navWeight = item.NavigationWeight
+						if navWeight <= 0 {
+							navWeight = 1
+						}
 					}
-					displayTitle := title
-					if art.Pinned != nil {
-						displayTitle = "📌 " + displayTitle
-					}
-					snippet := excerptText(art.Content, 56)
-					if interactiveRow(c, "article-"+artID, displayTitle, restBg, hoverBg, pal.active).
-						Radius(7).Padding(10, 12, 10, 14).
-						Children(func() {
-							ui.Column(c).Gap(3).Grow(1).MinWidth(0).Children(func() {
-								ui.Text(c, displayTitle).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(titleColor).MaxLines(2).Ellipsis("…")
-								if snippet != "" {
-									ui.Text(c, snippet).Font(macPlanetFont).FontSize(12).TextColor(excerptColor).MaxLines(2).Ellipsis("…")
-								}
-								ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-									ui.Text(c, formatSlashDate(art.Modified)).Font(macPlanetFont).FontSize(11).TextColor(metaColor).NoWrap()
-								})
-							})
-						}).Clicked() {
+					row := articleRow(c, articleRowProps{
+						key:         "article-" + artID,
+						ariaLabel:   title,
+						title:       title,
+						summary:     excerptText(item.Content, 80),
+						dateText:    formatRelativeDate(item.Modified),
+						selected:    selected,
+						pinned:      item.Pinned != nil,
+						isPage:      item.ArticleType == 1,
+						navWeight:   navWeight,
+						attachments: len(item.Attachments),
+					}, pal)
+					if row.Clicked() {
 						a.guardUnsaved(func() { a.openArticleForRead(siteID, artID) })
 					}
 					if !selected {
-						ui.Box(c).Padding(0, 12, 0, 14).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
+						ui.Box(c).Padding(0, 12, 0, 24).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
 					}
 				}
 			})
