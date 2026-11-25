@@ -14,6 +14,8 @@ const (
 	activityModeDaily      = 0
 	activityModeWeekly     = 1
 	activityModeCumulative = 2
+
+	dashboardFilterDrafts = "__drafts__"
 )
 
 var featuredPlanetAddresses = []string{
@@ -146,10 +148,7 @@ func (a *App) viewDashboard(c *ui.Context) {
 				// 1. Sleek full-width monochrome activity strip.
 				a.viewLinearActivityStrip(c)
 
-				// 2. Drafts rendered as tactile memo paper sheets.
-				a.viewDashboardDrafts(c)
-
-				// 3. Site bookmark shelf (unified filter + status dots) + tactile paper-sheet article cards.
+				// 2. Unified site & draft bookmark shelf + 4-column portrait paper card grid (drafts first).
 				a.viewDashboardArticles(c)
 
 				// Minimal quiet footer.
@@ -227,51 +226,27 @@ func (a *App) viewLinearActivityStrip(c *ui.Context) {
 	})
 }
 
-func (a *App) viewDashboardDrafts(c *ui.Context) {
-	if len(a.dashboard.RecentDrafts) == 0 {
-		return
-	}
-	pal := a.pal
-	_, paperBg, paperHover, paperEdge, paperShadow := paperDeskColors(pal)
-
-	ui.Column(c).AlignSelf(ui.Stretch).Gap(8).Children(func() {
-		ui.Text(c, fmt.Sprintf("草稿 · %d", len(a.dashboard.RecentDrafts))).
-			Font(macPlanetFont).FontSize(11.5).FontWeight(600).TextColor(pal.muted)
-		for _, d := range a.dashboard.RecentDrafts {
-			siteID, draftID := d.SiteID, d.ID
-			title := fallbackTitle(d.Title)
-			siteName := fallbackTitle(d.SiteName)
-			label := fmt.Sprintf("%s  ·  %s", title, siteName)
-
-			card := interactiveRow(c, "dash-draft-"+draftID, label, paperBg, paperHover, pal.active).
-				Radius(6).Padding(0, 0, 0, 0).Border(0.5, paperEdge).Shadow(0, 2, 5, 0, paperShadow)
-			card.Children(func() {
-				ui.Row(c).AlignItems(ui.Stretch).Grow(1).MinWidth(0).Children(func() {
-					// Subtle left binding spine like a physical notepad sheet.
-					ui.Box(c).Width(3).Background(pal.ink.Alpha(0.28)).Shrink(0)
-					ui.Column(c).Padding(12, 16, 12, 14).Gap(5).Grow(1).MinWidth(0).Children(func() {
-						ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-							ui.Row(c).AlignItems(ui.Center).Gap(7).Grow(1).MinWidth(0).Children(func() {
-								ui.Icon(c, lucide.PenLine()).Size(13, 13).TextColor(pal.secondary).Shrink(0)
-								ui.Text(c, title).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).MaxLines(1).Ellipsis("…").Grow(1)
-							})
-							ui.Text(c, formatShortDate(d.Modified)).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted).Shrink(0).NoWrap()
-						})
-						ui.Text(c, siteName+" · 本地草稿").Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted).NoWrap()
-					})
-				})
-			})
-			if card.Clicked() {
-				a.openDraftByID(siteID, draftID)
-			}
-		}
-	})
+type dashboardCardItem struct {
+	entry   store.DashboardEntry
+	isDraft bool
 }
 
 func (a *App) viewDashboardArticles(c *ui.Context) {
 	pal := a.pal
 	_, paperBg, paperHover, paperEdge, paperShadow := paperDeskColors(pal)
-	if a.articleFilterSiteID != "" {
+
+	draftPaperBg := ui.Hex("#fbfaf6")
+	draftPaperHover := ui.Hex("#f7f5ee")
+	draftPaperEdge := ui.RGBA(15, 23, 42, 0.14)
+	if pal.dark {
+		draftPaperBg = ui.Hex("#242427")
+		draftPaperHover = ui.Hex("#2a2b2f")
+		draftPaperEdge = ui.RGBA(255, 255, 255, 0.14)
+	}
+
+	if a.articleFilterSiteID == dashboardFilterDrafts && len(a.dashboard.RecentDrafts) == 0 {
+		a.articleFilterSiteID = ""
+	} else if a.articleFilterSiteID != "" && a.articleFilterSiteID != dashboardFilterDrafts {
 		found := false
 		for _, s := range a.dashboard.Sites {
 			if s.ID == a.articleFilterSiteID {
@@ -284,14 +259,22 @@ func (a *App) viewDashboardArticles(c *ui.Context) {
 		}
 	}
 
-	ui.Column(c).AlignSelf(ui.Stretch).Gap(10).Children(func() {
-		// Unified Site Bookmark Shelf: displays sites with avatar & publish-status dot
-		// while acting as the article filter bar (eliminating redundant site blocks).
+	ui.Column(c).AlignSelf(ui.Stretch).Gap(12).Children(func() {
+		// Unified Site & Draft Bookmark Shelf: filters drafts/sites while showing publish status dots.
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(8).AlignSelf(ui.Stretch).Children(func() {
 			ui.Row(c).Gap(6).Wrap().AlignItems(ui.Center).Grow(1).MinWidth(0).Children(func() {
-				a.siteBookmarkChip(c, "art-filter-all", "所有站点", nil, -1, ui.Transparent, a.articleFilterSiteID == "", func() {
+				a.siteBookmarkChip(c, "art-filter-all", "全部", nil, -1, ui.Transparent, a.articleFilterSiteID == "", func() {
 					a.articleFilterSiteID = ""
 				})
+				if len(a.dashboard.RecentDrafts) > 0 {
+					a.draftBookmarkChip(c, fmt.Sprintf("草稿 · %d", len(a.dashboard.RecentDrafts)), a.articleFilterSiteID == dashboardFilterDrafts, func() {
+						if a.articleFilterSiteID == dashboardFilterDrafts {
+							a.articleFilterSiteID = ""
+						} else {
+							a.articleFilterSiteID = dashboardFilterDrafts
+						}
+					})
+				}
 				for i, s := range a.dashboard.Sites {
 					idx, sid := i, s.ID
 					dotColor := pal.muted
@@ -326,61 +309,87 @@ func (a *App) viewDashboardArticles(c *ui.Context) {
 			}
 		})
 
-		// 4-column portrait book-sheet article cards (monochrome paper aesthetic).
-		var filtered []store.DashboardEntry
-		for _, art := range a.dashboard.RecentArticles {
-			if a.articleFilterSiteID != "" && art.SiteID != a.articleFilterSiteID {
+		// Unified 4-column portrait book-sheet cards: drafts pinned first, followed by published articles.
+		var items []dashboardCardItem
+		for _, d := range a.dashboard.RecentDrafts {
+			if a.articleFilterSiteID != "" && a.articleFilterSiteID != dashboardFilterDrafts && d.SiteID != a.articleFilterSiteID {
 				continue
 			}
-			filtered = append(filtered, art)
+			items = append(items, dashboardCardItem{entry: d, isDraft: true})
 		}
-		if len(filtered) == 0 {
-			ui.Column(c).AlignSelf(ui.Stretch).Padding(20).Radius(8).Background(paperBg).Border(0.5, paperEdge).Children(func() {
-				ui.Text(c, "暂无匹配的已发布文章").Font(macPlanetFont).FontSize(12.5).TextColor(pal.muted)
+		if a.articleFilterSiteID != dashboardFilterDrafts {
+			for _, art := range a.dashboard.RecentArticles {
+				if a.articleFilterSiteID != "" && art.SiteID != a.articleFilterSiteID {
+					continue
+				}
+				items = append(items, dashboardCardItem{entry: art, isDraft: false})
+			}
+		}
+		if len(items) == 0 {
+			ui.Column(c).AlignSelf(ui.Stretch).Padding(20).Radius(12).Background(paperBg).Border(0.5, paperEdge).Children(func() {
+				ui.Text(c, "暂无匹配的文章或草稿").Font(macPlanetFont).FontSize(12.5).TextColor(pal.muted)
 			})
 			return
 		}
 
-		badgeBg := ui.RGBA(15, 23, 42, 0.065)
-		badgeFg := pal.secondary
+		artBadgeBg := ui.RGBA(15, 23, 42, 0.065)
+		artBadgeFg := pal.secondary
 		if pal.dark {
-			badgeBg = ui.RGBA(255, 255, 255, 0.09)
-			badgeFg = pal.secondary
+			artBadgeBg = ui.RGBA(255, 255, 255, 0.09)
 		}
 
 		const cols = 4
 		ui.Column(c).AlignSelf(ui.Stretch).Gap(16).Children(func() {
-			for rowStart := 0; rowStart < len(filtered); rowStart += cols {
+			for rowStart := 0; rowStart < len(items); rowStart += cols {
 				ui.Row(c).AlignSelf(ui.Stretch).Gap(16).Children(func() {
 					for col := range cols {
 						idx := rowStart + col
-						if idx >= len(filtered) {
+						if idx >= len(items) {
 							ui.Box(c).Grow(1).MinWidth(0)
 							continue
 						}
-						art := filtered[idx]
-						siteID, artID := art.SiteID, art.ID
-						title := fallbackTitle(art.Title)
-						siteName := fallbackTitle(art.SiteName)
+						item := items[idx]
+						entry := item.entry
+						siteID, itemID := entry.SiteID, entry.ID
+						title := fallbackTitle(entry.Title)
+						siteName := fallbackTitle(entry.SiteName)
 						label := fmt.Sprintf("%s  ·  %s", title, siteName)
 						excerpt := ""
 						if a.articleExcerpts != nil {
-							excerpt = a.articleExcerpts[siteID+":"+artID]
+							prefix := "art:"
+							if item.isDraft {
+								prefix = "draft:"
+							}
+							excerpt = a.articleExcerpts[prefix+siteID+":"+itemID]
+						}
+						if item.isDraft && excerpt == "" {
+							excerpt = "本地草稿，点击继续写作。"
 						}
 
-						card := ui.ButtonBase(c.Key("dash-art-"+artID)).Label(label).
+						cardBg, cardHover, cardEdge := paperBg, paperHover, paperEdge
+						badgeBg, badgeFg := artBadgeBg, artBadgeFg
+						badgeText := siteName
+						cardKey := "dash-art-" + itemID
+						if item.isDraft {
+							cardBg, cardHover, cardEdge = draftPaperBg, draftPaperHover, draftPaperEdge
+							badgeBg, badgeFg = pal.ink, pal.canvas
+							badgeText = "草稿 · " + siteName
+							cardKey = "dash-draft-" + itemID
+						}
+
+						card := ui.ButtonBase(c.Key(cardKey)).Label(label).
 							Grow(1).MinWidth(0).Height(228).Radius(12).
-							Background(paperBg).Border(0.5, paperEdge).
+							Background(cardBg).Border(0.5, cardEdge).
 							Shadow(0, 3, 10, 0, paperShadow).
 							Cursor(ui.CursorPointer).Transition(rowHoverTransition)
 						if card.Hovered() {
-							card.Background(paperHover)
+							card.Background(cardHover)
 						}
 						card.Children(func() {
 							ui.Column(c).Fill().Radius(12).Clip().AlignItems(ui.Start).Children(func() {
-								// Top-left corner bookmark tag (monochrome stone/graphite), clipped cleanly to card corner.
+								// Top-left corner bookmark tag: charcoal for drafts, soft stone for published articles.
 								ui.Box(c).Padding(5, 12, 5, 12).Background(badgeBg).Radius(12, 0, 8, 0).Children(func() {
-									ui.Text(c, siteName).Font(macPlanetFont).FontSize(11).FontWeight(500).TextColor(badgeFg).NoWrap()
+									ui.Text(c, badgeText).Font(macPlanetFont).FontSize(11).FontWeight(500).TextColor(badgeFg).NoWrap()
 								})
 								// Portrait book-sheet typography body.
 								ui.Column(c).Fill().Padding(14, 15, 13, 15).Gap(8).AlignItems(ui.Start).Children(func() {
@@ -393,20 +402,62 @@ func (a *App) viewDashboardArticles(c *ui.Context) {
 									ui.Box(c).Grow(1)
 									ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(paperEdge)
 									ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Padding(4, 0, 0, 0).Children(func() {
-										ui.Icon(c, lucide.FileText()).Size(12, 12).TextColor(pal.muted)
-										ui.Text(c, formatShortDate(art.Modified)).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
+										if item.isDraft {
+											ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
+												ui.Icon(c, lucide.PenLine()).Size(11.5, 11.5).TextColor(pal.secondary)
+												ui.Text(c, "继续写作").Font(macPlanetFont).FontSize(11).FontWeight(500).TextColor(pal.secondary).NoWrap()
+											})
+										} else {
+											ui.Icon(c, lucide.FileText()).Size(12, 12).TextColor(pal.muted)
+										}
+										ui.Text(c, formatShortDate(entry.Modified)).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
 									})
 								})
 							})
 						})
 						if card.Clicked() {
-							a.openArticleForRead(siteID, artID)
+							if item.isDraft {
+								a.openDraftByID(siteID, itemID)
+							} else {
+								a.openArticleForRead(siteID, itemID)
+							}
 						}
 					}
 				})
 			}
 		})
 	})
+}
+
+func (a *App) draftBookmarkChip(c *ui.Context, label string, active bool, onClick func()) {
+	pal := a.pal
+	_, paperBg, _, paperEdge, _ := paperDeskColors(pal)
+	bg := ui.Transparent
+	fg := pal.secondary
+	if active {
+		bg = paperBg
+		fg = pal.ink
+	}
+	btn := ui.ButtonBase(c.Key("art-filter-drafts-btn")).Label(label).
+		Radius(6).Padding(5, 10, 5, 9).Background(bg).
+		Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+	if active {
+		btn.Border(0.5, paperEdge).Shadow(0, 1, 2, 0, pal.prefsNavActiveShadow)
+	} else if btn.Hovered() {
+		btn.Background(pal.hover)
+	}
+	btn.Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
+			ui.Icon(c, lucide.PenLine()).Size(12, 12).TextColor(fg)
+			txt := ui.Text(c, label).Font(macPlanetFont).FontSize(12).TextColor(fg).NoWrap()
+			if active {
+				txt.FontWeight(600)
+			}
+		})
+	})
+	if btn.Clicked() {
+		onClick()
+	}
 }
 
 func (a *App) siteBookmarkChip(c *ui.Context, key, label string, site *store.Site, siteIdx int, dotColor ui.Color, active bool, onClick func()) {

@@ -314,16 +314,28 @@ func (a *App) Reload() {
 }
 
 func (a *App) refreshDashboardExcerpts() {
-	excerpts := make(map[string]string, len(a.dashboard.RecentArticles))
-	seenSites := map[string]bool{}
+	excerpts := make(map[string]string, len(a.dashboard.RecentArticles)+len(a.dashboard.RecentDrafts))
+	seenArtSites := map[string]bool{}
 	for _, entry := range a.dashboard.RecentArticles {
-		if entry.SiteID == "" || seenSites[entry.SiteID] {
+		if entry.SiteID == "" || seenArtSites[entry.SiteID] {
 			continue
 		}
-		seenSites[entry.SiteID] = true
+		seenArtSites[entry.SiteID] = true
 		if arts, err := a.backend.Articles(entry.SiteID); err == nil {
 			for _, art := range arts {
-				excerpts[art.SiteID+":"+art.ID] = excerptText(art.Content, 110)
+				excerpts["art:"+art.SiteID+":"+art.ID] = excerptText(art.Content, 110)
+			}
+		}
+	}
+	seenDraftSites := map[string]bool{}
+	for _, entry := range a.dashboard.RecentDrafts {
+		if entry.SiteID == "" || seenDraftSites[entry.SiteID] {
+			continue
+		}
+		seenDraftSites[entry.SiteID] = true
+		if drafts, err := a.backend.Drafts(entry.SiteID); err == nil {
+			for _, d := range drafts {
+				excerpts["draft:"+d.SiteID+":"+d.ID] = excerptText(d.Content, 110)
 			}
 		}
 	}
