@@ -326,42 +326,86 @@ func (a *App) viewDashboardArticles(c *ui.Context) {
 			}
 		})
 
-		// Tactile paper-sheet article cards.
-		shown := 0
+		// 4-column portrait book-sheet article cards (monochrome paper aesthetic).
+		var filtered []store.DashboardEntry
 		for _, art := range a.dashboard.RecentArticles {
 			if a.articleFilterSiteID != "" && art.SiteID != a.articleFilterSiteID {
 				continue
 			}
-			shown++
-			siteID, artID := art.SiteID, art.ID
-			title := fallbackTitle(art.Title)
-			siteName := fallbackTitle(art.SiteName)
-			label := fmt.Sprintf("%s  ·  %s", title, siteName)
-
-			card := interactiveRow(c, "dash-art-"+artID, label, paperBg, paperHover, pal.active).
-				Padding(13, 16, 13, 16).Radius(6).
-				Border(0.5, paperEdge).Shadow(0, 2, 6, 0, paperShadow)
-			card.Children(func() {
-				ui.Column(c).Gap(6).Grow(1).MinWidth(0).Children(func() {
-					ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-						ui.Text(c, title).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink).MaxLines(1).Ellipsis("…").Grow(1)
-						ui.Text(c, formatShortDate(art.Modified)).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted).Shrink(0).NoWrap()
-					})
-					ui.Row(c).AlignItems(ui.Center).Gap(7).AlignSelf(ui.Stretch).Children(func() {
-						ui.Icon(c, lucide.FileText()).Size(12, 12).TextColor(pal.muted).Shrink(0)
-						ui.Text(c, siteName).Font(macPlanetFont).FontSize(11.5).TextColor(pal.secondary).NoWrap()
-					})
-				})
-			})
-			if card.Clicked() {
-				a.openArticleForRead(siteID, artID)
-			}
+			filtered = append(filtered, art)
 		}
-		if shown == 0 {
-			ui.Column(c).AlignSelf(ui.Stretch).Padding(20).Radius(6).Background(paperBg).Border(0.5, paperEdge).Children(func() {
+		if len(filtered) == 0 {
+			ui.Column(c).AlignSelf(ui.Stretch).Padding(20).Radius(8).Background(paperBg).Border(0.5, paperEdge).Children(func() {
 				ui.Text(c, "暂无匹配的已发布文章").Font(macPlanetFont).FontSize(12.5).TextColor(pal.muted)
 			})
+			return
 		}
+
+		badgeBg := ui.RGBA(15, 23, 42, 0.065)
+		badgeFg := pal.secondary
+		if pal.dark {
+			badgeBg = ui.RGBA(255, 255, 255, 0.09)
+			badgeFg = pal.secondary
+		}
+
+		const cols = 4
+		ui.Column(c).AlignSelf(ui.Stretch).Gap(16).Children(func() {
+			for rowStart := 0; rowStart < len(filtered); rowStart += cols {
+				ui.Row(c).AlignSelf(ui.Stretch).Gap(16).Children(func() {
+					for col := range cols {
+						idx := rowStart + col
+						if idx >= len(filtered) {
+							ui.Box(c).Grow(1).MinWidth(0)
+							continue
+						}
+						art := filtered[idx]
+						siteID, artID := art.SiteID, art.ID
+						title := fallbackTitle(art.Title)
+						siteName := fallbackTitle(art.SiteName)
+						label := fmt.Sprintf("%s  ·  %s", title, siteName)
+						excerpt := ""
+						if a.articleExcerpts != nil {
+							excerpt = a.articleExcerpts[siteID+":"+artID]
+						}
+
+						card := ui.ButtonBase(c.Key("dash-art-"+artID)).Label(label).
+							Grow(1).MinWidth(0).Height(228).Radius(12).
+							Background(paperBg).Border(0.5, paperEdge).
+							Shadow(0, 3, 10, 0, paperShadow).
+							Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+						if card.Hovered() {
+							card.Background(paperHover)
+						}
+						card.Children(func() {
+							ui.Column(c).Fill().Radius(12).Clip().AlignItems(ui.Start).Children(func() {
+								// Top-left corner bookmark tag (monochrome stone/graphite), clipped cleanly to card corner.
+								ui.Box(c).Padding(5, 12, 5, 12).Background(badgeBg).Radius(12, 0, 8, 0).Children(func() {
+									ui.Text(c, siteName).Font(macPlanetFont).FontSize(11).FontWeight(500).TextColor(badgeFg).NoWrap()
+								})
+								// Portrait book-sheet typography body.
+								ui.Column(c).Fill().Padding(14, 15, 13, 15).Gap(8).AlignItems(ui.Start).Children(func() {
+									ui.Text(c, title).Font(macPlanetFont).FontSize(15.5).FontWeight(700).LetterSpacing(-0.015).
+										TextColor(pal.ink).MaxLines(2).Ellipsis("…")
+									if excerpt != "" {
+										ui.Text(c, excerpt).Font(macPlanetFont).FontSize(12).TextColor(pal.secondary).
+											MaxLines(4).Ellipsis("…")
+									}
+									ui.Box(c).Grow(1)
+									ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(paperEdge)
+									ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Padding(4, 0, 0, 0).Children(func() {
+										ui.Icon(c, lucide.FileText()).Size(12, 12).TextColor(pal.muted)
+										ui.Text(c, formatShortDate(art.Modified)).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
+									})
+								})
+							})
+						})
+						if card.Clicked() {
+							a.openArticleForRead(siteID, artID)
+						}
+					}
+				})
+			}
+		})
 	})
 }
 

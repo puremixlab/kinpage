@@ -47,12 +47,13 @@ type App struct {
 	mode           viewMode
 	selectedSiteID string
 
-	dashboard     store.DashboardSnapshot
-	activity      []store.DailyActivity
-	sites         []store.Site
-	drafts        []store.Draft
-	articles      []store.Article
-	subscriptions []store.Subscription
+	dashboard       store.DashboardSnapshot
+	activity        []store.DailyActivity
+	sites           []store.Site
+	drafts          []store.Draft
+	articles        []store.Article
+	subscriptions   []store.Subscription
+	articleExcerpts map[string]string
 
 	// Reading / editing selection within the selected site.
 	editing           bool
@@ -306,9 +307,27 @@ func (a *App) Reload() {
 	if st, err := a.backend.IPFSStatus(); err == nil {
 		a.ipfsModal.status = st
 	}
+	a.refreshDashboardExcerpts()
 	if a.selectedSiteID != "" {
 		a.loadSiteItems(a.selectedSiteID)
 	}
+}
+
+func (a *App) refreshDashboardExcerpts() {
+	excerpts := make(map[string]string, len(a.dashboard.RecentArticles))
+	seenSites := map[string]bool{}
+	for _, entry := range a.dashboard.RecentArticles {
+		if entry.SiteID == "" || seenSites[entry.SiteID] {
+			continue
+		}
+		seenSites[entry.SiteID] = true
+		if arts, err := a.backend.Articles(entry.SiteID); err == nil {
+			for _, art := range arts {
+				excerpts[art.SiteID+":"+art.ID] = excerptText(art.Content, 110)
+			}
+		}
+	}
+	a.articleExcerpts = excerpts
 }
 
 func (a *App) loadSiteItems(siteID string) {
