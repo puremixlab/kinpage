@@ -10,8 +10,8 @@
 
 | 范围 | 当前行为与实现位置 |
 | --- | --- |
-| 导航、概览、编辑区、应用对话框 | 使用 [design-tokens.css](../src/design-tokens.css) 中的浅色语义角色，组件继续读取现有样式层叠；没有应用级深色 token 映射。 |
-| 本地文章、订阅文章和编辑预览 | iframe 使用 [ui.ts](../src/ui.ts) 的 `readingStyles`，由 [main.ts](../src/main.ts) 和 [feed-reader.ts](../src/feed-reader.ts) 生成文档；宿主阅读区域保持浅色。尚未建立外壳与阅读文档的深色同步。 |
+| 导航、概览、编辑区、应用对话框 | 原使用 `windows/src/design-tokens.css` 中的浅色语义角色，组件读取既有样式层叠；没有应用级深色 token 映射。 |
+| 本地文章、订阅文章和编辑预览 | iframe 原使用 `windows/src/ui.ts` 的 `readingStyles`，由 `windows/src/main.ts` 和 `windows/src/feed-reader.ts` 生成文档；宿主阅读区域保持浅色。尚未建立外壳与阅读文档的深色同步。 |
 | 站点模板示例、生成的站点和外部网页 | 配色由各自模板或页面决定，不属于应用阅读主题的支持承诺；不能以某个模板自带深色样式推断应用支持深色。 |
 
 ## 强制颜色模式与验证边界

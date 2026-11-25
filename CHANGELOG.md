@@ -6,12 +6,22 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ### Added
 
+- Added macOS Planet Local API, Web Client & Web3 parity features: `GET /v0/id`, `GET /v0/planets/my/:uuid/public/*` static site preview hosting, built-in `/app/` Web Client (with custom `Public/app` override support), Farcaster Mini App `.well-known/farcaster.json` configuration and generation, `dWebServices.xyz` hosted IPNS CID sync on publication, and an EIP-681 ETH creator tipping sheet (`打赏创作者 (ETH)…`).
+- Added macOS Planet UX & navigation parity features: startup restoration of last selected site/article/subscription, persistent sidebar site and subscription ordering (`上移`/`下移`), in-app internal link navigation (`planet://`, relative article slugs, and followed ENS domains), empty-workspace "Follow Featured" onboarding action, and custom data repository relocation (`迁移数据仓库目录…` via `repo-location.json`).
+- Added macOS Planet rich-media & reading parity features: automatic privacy-enhanced YouTube iframe embeds (`youtube.com/watch`, `youtu.be`, `youtube.com/shorts`) in Markdown rendering, interactive GFM To-Do checkboxes directly inside the native article reader, video attachment hardware-accelerated compression presets (`H.264`/`HEVC` 1080p & 720p via `ffmpeg`), automatic `_grid.jpg` / `_grid.png` derivative square thumbnails for gallery templates, and QuickPost media attachments with unsaved-content discard confirmation.
+- Added macOS Planet IPFS & reliability parity features: `Ctrl+O` Open IPFS Resource via local gateway (supporting CID, IPNS, `ipfs://`, `ipns://`, and `.eth`/`.sol`/`.bit`/`.fc`), Quick Rebuild (index-only) vs Full Rebuild in site context menus, `https://webui.ipfs.io` CORS configuration for Kubo RPC, IPNS-publish-in-progress close confirmation guard, Windows system sleep prevention toggle (`SetThreadExecutionState`), and automatic external `library.json` change detection.
+- Added macOS Planet content management parity features: custom article publish date editing in Article Settings, moving articles (with attachments and automatic slug deduplication) across sites, portable `.article.zip` single-article export and import (supporting macOS `.planetarticle` layouts with Zip Slip protection), multi-type article and subscription stars (`星标`/`待办`/`已完成`/`灵感`/`喜爱`/`计划`) with star-type list filtering, and non-destructive site archiving/unarchiving with a collapsible sidebar section.
 - Added a writing activity overview to the dashboard: a GitHub-style contribution heatmap of daily writing actions (create/edit an article or draft) with day/week/cumulative granularity switches, an inline summary of the past year's actions and the current writing streak, and a daily trend chart for the last 7 or 30 days with separate article and draft series.
 
 ### Changed
 
 - Refactored the Native UI (`windows/internal/nativeui`) to match the macOS Planet three-column layout: streamlined the sidebar header (toggle, AI assistant, and `⋯` tools menu without brand text), unified Smart Feeds with solid color icons, swapped the sidebar bottom bar to IPFS status popover on the left and a `+` New/Follow menu on the right, replaced the permanent list search bar with a filter menu and `Ctrl+F` toggleable search, unified article/draft/subscription rows with relative dates and outlined badges, converted detail and dashboard toolbars to icon-only macOS actions, removed the duplicate reader header action row, added native right-click context menus, top-attached macOS sheets, keyboard shortcuts (`Ctrl+N`, `Ctrl+D`, `Ctrl+E`, `Ctrl+F`), and persisted resizable sidebar/list widths.
 - Swapped the sidebar bottom bar order so the settings menu sits on the left and the IPFS node status button is pinned to the right edge, with the tools popup opening rightward within the sidebar.
+- Streamlined the shared quality checks (`bun run check` / Windows CI) to run documentation checks, `gofmt`, `go vet`, tooling/release Bun tests, and uncached Go tests, removing legacy TypeScript/Vite frontend checks and builds.
+
+### Removed
+
+- Removed the legacy WebView frontend (`windows/src/`, `--legacy-webview` / `PLANET_LEGACY_WEBVIEW`), its 29 `happy-dom` UI tests, and unused frontend dependencies (`mygo-runtime`, `happy-dom`, `vite`, `typescript`); the app now launches exclusively in Native UI while retaining sandboxed WebView2 for template previews and subscription original webpage viewing.
 
 ## [0.0.1-alpha.6] - 2026-11-21
 

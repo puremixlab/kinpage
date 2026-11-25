@@ -8,6 +8,7 @@ import (
 	"github.com/lobehub/lobe-mygo/pkg/display"
 	"github.com/lobehub/lobe-mygo/pkg/lucide"
 	lobemd "github.com/lobehub/lobe-mygo/pkg/markdown"
+	"windows/internal/store"
 )
 
 func (a *App) viewDetailPane(c *ui.Context) {
@@ -69,6 +70,30 @@ func (a *App) viewArticleReader(c *ui.Context) {
 						ui.Text(c, strings.Join(meta, "   ·   ")).Font(macPlanetFont).FontSize(12.5).TextColor(pal.muted)
 					}
 					hairlineH(c, pal)
+					if todos := store.ParseMarkdownTodos(art.Content); len(todos) > 0 {
+						doneCount := 0
+						for _, td := range todos {
+							if td.Checked {
+								doneCount++
+							}
+						}
+						macInsetCard(c, pal, func() {
+							ui.Text(c, fmt.Sprintf("待办事项 (%d/%d)", doneCount, len(todos))).
+								Font(macPlanetFont).FontSize(12).FontWeight(600).TextColor(pal.muted)
+							for _, td := range todos {
+								item := td
+								checked := item.Checked
+								ui.Checkbox(c.Key(fmt.Sprintf("todo-%s-%d", art.ID, item.LineIndex)), &checked, item.Text)
+								if checked != item.Checked && a.backend != nil {
+									if _, err := a.backend.ToggleArticleTodo(art.SiteID, art.ID, item.LineIndex); err != nil {
+										a.setError("更新待办状态失败：" + err.Error())
+									} else {
+										a.Reload()
+									}
+								}
+							}
+						})
+					}
 					lobemd.Markdown(c, art.Content, lobemd.MarkdownProps{
 						FontSize:              15,
 						LineHeight:            1.8,

@@ -276,6 +276,9 @@ func (c *Client) Init() error {
 	if err = applyLowPowerDefaults(config); err != nil {
 		return err
 	}
+	if err = applyWebUICORS(config); err != nil {
+		return err
+	}
 	b, err = json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return err

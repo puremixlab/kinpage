@@ -5,17 +5,42 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
+
+	"windows/internal/store"
 )
 
 type layoutPrefs struct {
-	SidebarWidth     float32 `json:"sidebarWidth"`
-	PostsPanelWidth  float32 `json:"postsPanelWidth"`
-	SidebarCollapsed bool    `json:"sidebarCollapsed"`
-	PostsCollapsed   bool    `json:"postsCollapsed"`
+	SidebarWidth     float32  `json:"sidebarWidth"`
+	PostsPanelWidth  float32  `json:"postsPanelWidth"`
+	SidebarCollapsed bool     `json:"sidebarCollapsed"`
+	PostsCollapsed   bool     `json:"postsCollapsed"`
+	LastMode         int      `json:"lastMode,omitempty"`
+	LastSiteID       string   `json:"lastSiteId,omitempty"`
+	LastArticleID    string   `json:"lastArticleId,omitempty"`
+	LastSubURL       string   `json:"lastSubUrl,omitempty"`
+	LastSubItemKey   string   `json:"lastSubItemKey,omitempty"`
+	SiteOrder        []string `json:"siteOrder,omitempty"`
+	SubOrder         []string `json:"subOrder,omitempty"`
 }
 
-// EnablePrefsPersistence loads saved split widths and panel collapse states from
-// path (if present) and persists subsequent changes whenever layout state updates.
+func layoutPrefsEqual(a, b layoutPrefs) bool {
+	return a.SidebarWidth == b.SidebarWidth &&
+		a.PostsPanelWidth == b.PostsPanelWidth &&
+		a.SidebarCollapsed == b.SidebarCollapsed &&
+		a.PostsCollapsed == b.PostsCollapsed &&
+		a.LastMode == b.LastMode &&
+		a.LastSiteID == b.LastSiteID &&
+		a.LastArticleID == b.LastArticleID &&
+		a.LastSubURL == b.LastSubURL &&
+		a.LastSubItemKey == b.LastSubItemKey &&
+		slices.Equal(a.SiteOrder, b.SiteOrder) &&
+		slices.Equal(a.SubOrder, b.SubOrder)
+}
+
+// EnablePrefsPersistence loads saved split widths, panel collapse states,
+// sidebar ordering, and last active selection from path (if present), and
+// persists subsequent changes whenever state updates.
 func (a *App) EnablePrefsPersistence(path string) {
 	a.prefsPath = path
 	if path == "" {
@@ -39,7 +64,51 @@ func (a *App) EnablePrefsPersistence(path string) {
 	}
 	a.sidebarCollapsed = p.SidebarCollapsed
 	a.postsCollapsed = p.PostsCollapsed
+	a.siteOrder = append([]string(nil), p.SiteOrder...)
+	a.subOrder = append([]string(nil), p.SubOrder...)
+	a.restoreLastSelection(p)
 	a.lastSavedPrefs = a.currentLayoutPrefs()
+}
+
+func (a *App) restoreLastSelection(p layoutPrefs) {
+	switch viewMode(p.LastMode) {
+	case viewSite:
+		if p.LastSiteID == "" {
+			return
+		}
+		for _, s := range a.sites {
+			if s.ID == p.LastSiteID {
+				a.selectSite(s.ID)
+				if p.LastArticleID != "" {
+					for _, art := range a.articles {
+						if art.ID == p.LastArticleID {
+							a.openArticleForRead(s.ID, art.ID)
+							break
+						}
+					}
+				}
+				return
+			}
+		}
+	case viewToday, viewUnread, viewStarred:
+		a.openSubscriptionView(viewMode(p.LastMode), "")
+		if p.LastSubURL != "" && p.LastSubItemKey != "" {
+			a.selectSubItem(p.LastSubURL, p.LastSubItemKey)
+		}
+	case viewSubscription:
+		if p.LastSubURL == "" {
+			return
+		}
+		for _, sub := range a.subscriptions {
+			if sub.URL == p.LastSubURL {
+				a.openSubscriptionView(viewSubscription, sub.URL)
+				if p.LastSubItemKey != "" {
+					a.selectSubItem(sub.URL, p.LastSubItemKey)
+				}
+				return
+			}
+		}
+	}
 }
 
 func (a *App) currentLayoutPrefs() layoutPrefs {
@@ -48,6 +117,13 @@ func (a *App) currentLayoutPrefs() layoutPrefs {
 		PostsPanelWidth:  float32(math.Round(float64(a.postsPanelWidth))),
 		SidebarCollapsed: a.sidebarCollapsed,
 		PostsCollapsed:   a.postsCollapsed,
+		LastMode:         int(a.mode),
+		LastSiteID:       a.selectedSiteID,
+		LastArticleID:    a.selectedReadID,
+		LastSubURL:       a.selectedSubURL,
+		LastSubItemKey:   a.selectedSubItemKey,
+		SiteOrder:        append([]string(nil), a.siteOrder...),
+		SubOrder:         append([]string(nil), a.subOrder...),
 	}
 }
 
@@ -56,7 +132,7 @@ func (a *App) maybeSaveLayoutPrefs() {
 		return
 	}
 	cur := a.currentLayoutPrefs()
-	if cur == a.lastSavedPrefs {
+	if layoutPrefsEqual(cur, a.lastSavedPrefs) {
 		return
 	}
 	a.lastSavedPrefs = cur
@@ -68,4 +144,86 @@ func (a *App) maybeSaveLayoutPrefs() {
 		return
 	}
 	_ = os.WriteFile(a.prefsPath, data, 0o600)
+}
+
+func (a *App) orderedSites() []store.Site {
+	if len(a.siteOrder) == 0 {
+		return a.sites
+	}
+	rank := make(map[string]int, len(a.siteOrder))
+	for i, id := range a.siteOrder {
+		rank[id] = i
+	}
+	out := append([]store.Site(nil), a.sites...)
+	slices.SortStableFunc(out, func(x, y store.Site) int {
+		rx, okX := rank[x.ID]
+		ry, okY := rank[y.ID]
+		if !okX {
+			rx = len(a.siteOrder)
+		}
+		if !okY {
+			ry = len(a.siteOrder)
+		}
+		return rx - ry
+	})
+	return out
+}
+
+func (a *App) orderedSubscriptions() []store.Subscription {
+	if len(a.subOrder) == 0 {
+		return a.subscriptions
+	}
+	rank := make(map[string]int, len(a.subOrder))
+	for i, u := range a.subOrder {
+		rank[u] = i
+	}
+	out := append([]store.Subscription(nil), a.subscriptions...)
+	slices.SortStableFunc(out, func(x, y store.Subscription) int {
+		rx, okX := rank[x.URL]
+		ry, okY := rank[y.URL]
+		if !okX {
+			rx = len(a.subOrder)
+		}
+		if !okY {
+			ry = len(a.subOrder)
+		}
+		return rx - ry
+	})
+	return out
+}
+
+func (a *App) moveSiteOrder(siteID string, delta int) {
+	ordered := a.orderedSites()
+	var ids []string
+	for _, s := range ordered {
+		ids = append(ids, s.ID)
+	}
+	idx := slices.Index(ids, siteID)
+	if idx < 0 {
+		return
+	}
+	target := idx + delta
+	if target < 0 || target >= len(ids) {
+		return
+	}
+	ids[idx], ids[target] = ids[target], ids[idx]
+	a.siteOrder = ids
+}
+
+func (a *App) moveSubOrder(subURL string, delta int) {
+	ordered := a.orderedSubscriptions()
+	var urls []string
+	for _, s := range ordered {
+		urls = append(urls, s.URL)
+	}
+	idx := slices.Index(urls, subURL)
+	if idx < 0 {
+		return
+	}
+	target := idx + delta
+	if target < 0 || target >= len(urls) {
+		return
+	}
+	urls[idx], urls[target] = urls[target], urls[idx]
+	a.subOrder = urls
 }

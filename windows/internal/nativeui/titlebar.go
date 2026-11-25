@@ -1,6 +1,7 @@
 package nativeui
 
 import (
+	"context"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -60,6 +61,12 @@ func (a *App) viewSidebarHeader(c *ui.Context) {
 			if m.Item("快捷发文").Shortcut(ui.Ctrl, ui.KeyD).Chosen() {
 				a.openQuickPost()
 			}
+			if m.Item("打开 IPFS 资源…").Shortcut(ui.Ctrl, ui.KeyO).Chosen() {
+				a.openIPFSResourceModal()
+			}
+			if m.Item("打赏创作者 (ETH)…").Chosen() {
+				a.openTipModal("")
+			}
 			m.Separator()
 			if m.Item("已发布文件夹").Chosen() {
 				a.openFoldersModal()
@@ -81,6 +88,27 @@ func (a *App) viewSidebarHeader(c *ui.Context) {
 				a.openToolsModal(toolsTabLogs)
 			}
 			m.Separator()
+			preventSleep := a.backend != nil && a.backend.PreventSleep()
+			if m.Item("运行期间防止系统休眠").Radio(preventSleep).Chosen() {
+				if a.backend != nil {
+					if err := a.backend.SetPreventSleep(!preventSleep); err != nil {
+						a.setError("设置防休眠失败：" + err.Error())
+					} else if !preventSleep {
+						a.setStatus("已开启防休眠")
+					} else {
+						a.setStatus("已关闭防休眠")
+					}
+				}
+			}
+			if m.Item("迁移数据仓库目录…").Chosen() {
+				if a.backend != nil {
+					if dst, err := a.backend.MoveDataDir(context.Background()); err != nil {
+						a.setError("迁移数据目录失败：" + err.Error())
+					} else if dst != "" {
+						a.setStatus("已迁移至 " + dst + "，重启 Planet 后生效")
+					}
+				}
+			}
 			if m.Item("刷新数据").Chosen() {
 				a.Reload()
 				a.setStatus("已刷新数据")
@@ -118,28 +146,51 @@ func (a *App) viewListPaneHeader(c *ui.Context, title, subtitle string, isSubMod
 			filterColor = pal.accent
 		}
 		toolbarIconBtnColored(c, "list-filter-menu", lucide.ListFilter(), filterColor, "筛选文章", pal).Menu(func(m *ui.Menu) {
-			if m.Item("全部").Radio(a.listFilter == listFilterAll).Chosen() {
+			if m.Item("全部").Radio(a.listFilter == listFilterAll && a.starTypeFilter < 0).Chosen() {
 				a.listFilter = listFilterAll
+				a.starTypeFilter = -1
 			}
 			if isSubMode {
 				if m.Item("未读").Radio(a.listFilter == listFilterUnread).Chosen() {
 					a.listFilter = listFilterUnread
+					a.starTypeFilter = -1
 				}
-				if m.Item("已收藏").Radio(a.listFilter == listFilterStarred).Chosen() {
+				if m.Item("已收藏").Radio(a.listFilter == listFilterStarred && a.starTypeFilter < 0).Chosen() {
 					a.listFilter = listFilterStarred
+					a.starTypeFilter = -1
 				}
 			} else {
 				if m.Item("独立页面").Radio(a.listFilter == listFilterPages).Chosen() {
 					a.listFilter = listFilterPages
+					a.starTypeFilter = -1
 				}
 				if m.Item("导航项").Radio(a.listFilter == listFilterNav).Chosen() {
 					a.listFilter = listFilterNav
+					a.starTypeFilter = -1
 				}
 				m.Separator()
 				if m.Item("已置顶").Radio(a.listFilter == listFilterPinned).Chosen() {
 					a.listFilter = listFilterPinned
+					a.starTypeFilter = -1
+				}
+				if m.Item("已收藏").Radio(a.listFilter == listFilterStarred && a.starTypeFilter < 0).Chosen() {
+					a.listFilter = listFilterStarred
+					a.starTypeFilter = -1
 				}
 			}
+			m.Submenu("按星标类型", func(sm *ui.Menu) {
+				if sm.Item("全部星标").Radio(a.listFilter == listFilterStarred && a.starTypeFilter < 0).Chosen() {
+					a.listFilter = listFilterStarred
+					a.starTypeFilter = -1
+				}
+				sm.Separator()
+				for _, opt := range allStarTypes {
+					if sm.Item(opt.label).Radio(a.listFilter == listFilterStarred && a.starTypeFilter == opt.id).Chosen() {
+						a.listFilter = listFilterStarred
+						a.starTypeFilter = opt.id
+					}
+				}
+			})
 			m.Separator()
 			searchLabel := "在列表中筛选…"
 			if a.listSearchOpen {

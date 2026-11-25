@@ -125,17 +125,17 @@ bun run dev
 
 | 命令 | 说明 |
 | --- | --- |
-| `bun run dev` | 启动桌面应用开发环境（`bun run dev:web` 仅启动前端预览） |
-| `bun run check` | 运行完整质量检查：文档、Go 格式、`go vet`、前端测试、Go 测试、TypeScript 与生产构建 |
+| `bun run dev` | 启动 Native UI 桌面应用开发环境 |
+| `bun run check` | 运行完整质量检查：文档、Go 格式、`go vet`、工具与发布脚本测试、Go 测试 |
 | `bun run check:docs` | 仅修改[文档白名单](docs/git-workflow.md#纯文档检查)时的轻量检查（仅需 Git 和 Bun） |
 | `bun run security:check` | 运行依赖漏洞安全扫描（需联网） |
 | `bun run build` | 构建程序与独立安装包，输出到 `windows/build/windows-amd64/`（构建前先关闭 Planet/Kubo） |
 
 ## 技术栈
 
-- **桌面壳层**：[MyGo](https://github.com/egoist/mygo) + Windows WebView2
+- **桌面界面与壳层**：[MyGo](https://github.com/egoist/mygo) Native UI + 沙箱 Windows WebView2（仅用于模板预览与订阅原文网页）
 - **后端与 IPFS**：Go + 内置 [Kubo](https://github.com/ipfs/kubo)
-- **前端界面**：TypeScript + Vite
+- **工具链与发布脚本**：Bun + PowerShell
 
 ## 文档与支持
 

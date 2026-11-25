@@ -2,6 +2,7 @@ package nativeui
 
 import (
 	"context"
+	"time"
 
 	"windows/internal/applog"
 	"windows/internal/ipfs"
@@ -32,6 +33,7 @@ type Backend interface {
 	ApplyPresetAvatar(siteID, key string) (store.Site, error)
 	SetSaveRoundAvatar(siteID string, round bool) (store.Site, error)
 	RemoveSite(siteID string) error
+	SetSiteArchived(siteID string, archived bool) (store.Site, error)
 	RemovedSites() ([]store.Site, error)
 	RestoreSite(siteID string) (store.Site, error)
 	PermanentlyDeleteSite(siteID string) error
@@ -40,6 +42,12 @@ type Backend interface {
 	SetIPFSEnabled(enabled bool) error
 	IPFSRepoSize() (int64, error)
 	IPFSGarbageCollect() error
+	ResolveIPFSResourceURL(input string) (string, error)
+	RebuildSite(siteID string, quick bool) (int, error)
+	PreventSleep() bool
+	SetPreventSleep(enabled bool) error
+	DataDir() string
+	MoveDataDir(ctx context.Context) (string, error)
 	OfflineMediaUsage() (offline.Usage, error)
 	CleanupOfflineMedia() (offline.Usage, error)
 	PublishedFolders() ([]store.PublishedFolder, error)
@@ -90,16 +98,25 @@ type Backend interface {
 	AddDraftAttachment(ctx context.Context, siteID, draftID string) (store.Draft, error)
 	RemoveDraftAttachment(siteID, draftID, name string) (store.Draft, error)
 	SetDraftHeroImage(siteID, draftID, name string) (store.Draft, error)
+	CompressDraftVideo(siteID, draftID, name, preset string) (store.Draft, error)
 	SetArticlePinned(siteID, articleID string, pinned bool) (store.Article, error)
+	ToggleArticleTodo(siteID, articleID string, lineIndex int) (store.Article, error)
 	UpdateArticleSettings(siteID, articleID, slug string, articleType int, externalLink string, inNavigation bool, weight int) (store.Article, error)
+	UpdateArticleDate(siteID, articleID string, created time.Time) (store.Article, error)
+	SetArticleStar(siteID, articleID string, starred bool, starType int) (store.Article, error)
+	MoveArticle(fromSiteID, articleID, toSiteID string) (store.Article, error)
+	ExportArticle(ctx context.Context, siteID, articleID string) (string, error)
+	ImportArticle(ctx context.Context, siteID string) (store.Article, error)
 	DeleteArticle(siteID, articleID string) error
 	QuickPost(siteID, title, content, attachmentName, attachmentBase64 string) (store.Article, error)
+	PickQuickPostAttachment(ctx context.Context) (string, string, error)
 	Subscriptions() ([]store.Subscription, error)
 	Follow(address string) (store.Subscription, error)
 	RefreshSubscription(address string) (store.Subscription, error)
 	UpdateSubscription(oldAddress, newAddress, customTitle string) (store.Subscription, error)
 	Unfollow(address string) error
 	StarSubscription(address, key string, starred bool) error
+	SetSubscriptionStar(address, key string, starred bool, starType int) error
 	SetSubscriptionRead(address, key string, read bool) error
 	MarkSubscriptionRead(address string) error
 	SearchArticles(query string) ([]store.SearchResult, error)

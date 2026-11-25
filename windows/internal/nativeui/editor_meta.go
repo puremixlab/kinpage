@@ -10,6 +10,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
+	"windows/internal/mediainfo"
 	"windows/internal/tagname"
 )
 
@@ -85,6 +86,36 @@ func (a *App) viewEditorMetadata(c *ui.Context) {
 							}
 							a.setDraftHeroImage(nextHero)
 						}
+					}
+					if isVideoFilename(name) {
+						btn := ui.ButtonBase(c.Key("att-compress-"+name)).Label("压缩视频").
+							Height(26).PaddingX(8).Radius(6).Background(pal.canvas).Border(0.5, pal.controlLine).
+							Center().Cursor(ui.CursorPointer)
+						if btn.Hovered() {
+							btn.Background(pal.hover)
+						}
+						btn.Children(func() {
+							ui.Text(c, "压缩").Font(macPlanetFont).FontSize(11.5).TextColor(pal.ink).NoWrap()
+						})
+						btn.Menu(func(m *ui.Menu) {
+							presets := []struct{ id, label string }{
+								{mediainfo.VideoPresetH2641080p, "H.264 1080p"},
+								{mediainfo.VideoPresetH264720p, "H.264 720p"},
+								{mediainfo.VideoPresetHEVC1080p, "HEVC 1080p"},
+								{mediainfo.VideoPresetHEVC720p, "HEVC 720p"},
+							}
+							for _, p := range presets {
+								if m.Item(p.label).Chosen() {
+									if a.backend != nil && a.selectedSiteID != "" && a.activeDraftID != "" {
+										if _, err := a.backend.CompressDraftVideo(a.selectedSiteID, a.activeDraftID, name, p.id); err != nil {
+											a.setError("压缩视频失败：" + err.Error())
+										} else {
+											a.setStatus("视频压缩完成：" + name + " (" + p.label + ")")
+										}
+									}
+								}
+							}
+						})
 					}
 					if macSecondaryButton(c, "att-rm-"+name, "×", pal) {
 						a.removeDraftAttachment(name)
@@ -228,6 +259,15 @@ func makeTagKey(label string) string {
 func isImageFilename(name string) bool {
 	switch strings.ToLower(filepath.Ext(name)) {
 	case ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".svg":
+		return true
+	default:
+		return false
+	}
+}
+
+func isVideoFilename(name string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".mp4", ".mov", ".m4v", ".webm", ".mkv":
 		return true
 	default:
 		return false

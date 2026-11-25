@@ -125,17 +125,17 @@ Run all commands from `windows/`:
 
 | Command | Purpose |
 | --- | --- |
-| `bun run dev` | Start the desktop app with live reload (`bun run dev:web` starts frontend only) |
-| `bun run check` | Run full quality checks: docs, `gofmt`, `go vet`, frontend tests, Go tests, TypeScript, Vite build |
+| `bun run dev` | Start the Native UI desktop app in development mode |
+| `bun run check` | Run full quality checks: docs, `gofmt`, `go vet`, tooling/release tests, Go tests |
 | `bun run check:docs` | Lightweight check for [documentation-only changes](docs/git-workflow.md#纯文档检查) (Git + Bun only) |
 | `bun run security:check` | Run dependency vulnerability audit (requires network access) |
 | `bun run build` | Package the desktop app and installer into `windows/build/windows-amd64/` (close Planet/Kubo first) |
 
 ## Tech Stack
 
-- **Desktop runtime:** [MyGo](https://github.com/egoist/mygo) + Windows WebView2
+- **Desktop UI & runtime:** [MyGo](https://github.com/egoist/mygo) Native UI + sandboxed Windows WebView2 (for template previews and original webpage viewing)
 - **Backend & IPFS:** Go + bundled [Kubo](https://github.com/ipfs/kubo)
-- **Frontend:** TypeScript + Vite
+- **Tooling & release scripts:** Bun + PowerShell
 
 ## Documentation & Support
 

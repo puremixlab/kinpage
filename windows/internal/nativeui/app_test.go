@@ -34,6 +34,8 @@ type fakeBackend struct {
 	ipfsRepoSize  int64
 	offlineUsage  offline.Usage
 	gcCount       int
+	preventSleep  bool
+	rebuildCalls  []string
 	deployCalls   []string
 	xConfigured   bool
 	tgConfigured  bool
@@ -255,6 +257,29 @@ func (f *fakeBackend) SetIPFSEnabled(enabled bool) error {
 }
 func (f *fakeBackend) IPFSRepoSize() (int64, error) { return f.ipfsRepoSize, nil }
 func (f *fakeBackend) IPFSGarbageCollect() error    { f.gcCount++; return nil }
+func (f *fakeBackend) ResolveIPFSResourceURL(input string) (string, error) {
+	return ipfs.ResolveResourceURL("http://127.0.0.1:8080", input)
+}
+func (f *fakeBackend) RebuildSite(siteID string, quick bool) (int, error) {
+	mode := "full"
+	if quick {
+		mode = "quick"
+	}
+	f.rebuildCalls = append(f.rebuildCalls, siteID+":"+mode)
+	n := 0
+	for _, a := range f.articles {
+		if a.SiteID == siteID {
+			n++
+		}
+	}
+	return n, nil
+}
+func (f *fakeBackend) PreventSleep() bool           { return f.preventSleep }
+func (f *fakeBackend) SetPreventSleep(v bool) error { f.preventSleep = v; return nil }
+func (f *fakeBackend) DataDir() string              { return `D:\planet-data` }
+func (f *fakeBackend) MoveDataDir(_ context.Context) (string, error) {
+	return `D:\planet-data-new`, nil
+}
 
 func (f *fakeBackend) OfflineMediaUsage() (offline.Usage, error) { return f.offlineUsage, nil }
 func (f *fakeBackend) CleanupOfflineMedia() (offline.Usage, error) {
@@ -584,6 +609,87 @@ func (f *fakeBackend) DeleteArticle(siteID, articleID string) error {
 	return nil
 }
 
+func (f *fakeBackend) SetSiteArchived(siteID string, archived bool) (store.Site, error) {
+	for i := range f.sites {
+		if f.sites[i].ID == siteID {
+			f.sites[i].Archived = archived
+			return f.sites[i], nil
+		}
+	}
+	return store.Site{}, fmt.Errorf("site not found")
+}
+
+func (f *fakeBackend) UpdateArticleDate(siteID, articleID string, created time.Time) (store.Article, error) {
+	for i := range f.articles {
+		if f.articles[i].SiteID == siteID && f.articles[i].ID == articleID {
+			f.articles[i].Created = created
+			f.articles[i].Modified = time.Now()
+			return f.articles[i], nil
+		}
+	}
+	return store.Article{}, fmt.Errorf("article not found")
+}
+
+func (f *fakeBackend) SetArticleStar(siteID, articleID string, starred bool, starType int) (store.Article, error) {
+	for i := range f.articles {
+		if f.articles[i].SiteID == siteID && f.articles[i].ID == articleID {
+			f.articles[i].Starred = starred
+			if !starred {
+				starType = store.StarTypeDefault
+			}
+			f.articles[i].StarType = starType
+			return f.articles[i], nil
+		}
+	}
+	return store.Article{}, fmt.Errorf("article not found")
+}
+
+func (f *fakeBackend) SetSubscriptionStar(address, key string, starred bool, starType int) error {
+	for i := range f.subscriptions {
+		if f.subscriptions[i].URL == address {
+			for j := range f.subscriptions[i].Feed.Items {
+				if feedItemKey(f.subscriptions[i].Feed.Items[j]) == key {
+					f.subscriptions[i].Feed.Items[j].Starred = starred
+					if !starred {
+						starType = store.StarTypeDefault
+					}
+					f.subscriptions[i].Feed.Items[j].StarType = starType
+					return nil
+				}
+			}
+		}
+	}
+	return fmt.Errorf("item not found")
+}
+
+func (f *fakeBackend) MoveArticle(fromSiteID, articleID, toSiteID string) (store.Article, error) {
+	for i := range f.articles {
+		if f.articles[i].SiteID == fromSiteID && f.articles[i].ID == articleID {
+			f.articles[i].SiteID = toSiteID
+			return f.articles[i], nil
+		}
+	}
+	return store.Article{}, fmt.Errorf("article not found")
+}
+
+func (f *fakeBackend) ExportArticle(_ context.Context, _, articleID string) (string, error) {
+	return `D:\exports\` + articleID + ".article.zip", nil
+}
+
+func (f *fakeBackend) ImportArticle(_ context.Context, siteID string) (store.Article, error) {
+	f.nextID++
+	art := store.Article{
+		ID:       fmt.Sprintf("imp-%d", f.nextID),
+		SiteID:   siteID,
+		Title:    "导入的文章",
+		Content:  "Imported body",
+		Created:  time.Now(),
+		Modified: time.Now(),
+	}
+	f.articles = append(f.articles, art)
+	return art, nil
+}
+
 func (f *fakeBackend) QuickPost(siteID, title, content, _, _ string) (store.Article, error) {
 	now := time.Now()
 	f.nextID++
@@ -593,6 +699,33 @@ func (f *fakeBackend) QuickPost(siteID, title, content, _, _ string) (store.Arti
 	}
 	f.articles = append(f.articles, art)
 	return art, nil
+}
+
+func (f *fakeBackend) PickQuickPostAttachment(_ context.Context) (string, string, error) {
+	return "clip.png", "aGVsbG8=", nil
+}
+
+func (f *fakeBackend) ToggleArticleTodo(siteID, articleID string, lineIndex int) (store.Article, error) {
+	for i := range f.articles {
+		if f.articles[i].SiteID == siteID && f.articles[i].ID == articleID {
+			updated, ok := store.ToggleMarkdownTodo(f.articles[i].Content, lineIndex)
+			if !ok {
+				return store.Article{}, fmt.Errorf("todo not found")
+			}
+			f.articles[i].Content = updated
+			return f.articles[i], nil
+		}
+	}
+	return store.Article{}, fmt.Errorf("article not found")
+}
+
+func (f *fakeBackend) CompressDraftVideo(siteID, draftID, _, _ string) (store.Draft, error) {
+	for _, d := range f.drafts {
+		if d.SiteID == siteID && d.ID == draftID {
+			return d, nil
+		}
+	}
+	return store.Draft{}, fmt.Errorf("draft not found")
 }
 
 func (f *fakeBackend) Subscriptions() ([]store.Subscription, error) {

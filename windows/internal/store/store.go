@@ -60,6 +60,7 @@ type Site struct {
 	AcceptsDonationETHAddress  string             `json:"acceptsDonationETHAddress,omitempty"`
 	JuiceboxEnabled            bool               `json:"juiceboxEnabled,omitempty"`
 	JuiceboxProjectID          int                `json:"juiceboxProjectID,omitempty"`
+	FarcasterManifestJSON      string             `json:"farcasterManifestJson,omitempty"`
 	AvatarPNG                  string             `json:"avatarPng,omitempty"`
 	Created                    time.Time          `json:"created"`
 	IPNS                       string             `json:"ipns,omitempty"`
@@ -71,6 +72,7 @@ type Site struct {
 	NextArticleNumber          int                `json:"nextArticleNumber,omitempty"`
 	Imported                   bool               `json:"imported,omitempty"`
 	TagsUnsupported            bool               `json:"tagsUnsupported,omitempty"`
+	Archived                   bool               `json:"archived,omitempty"`
 	Removed                    bool               `json:"removed,omitempty"`
 	DeletionPending            bool               `json:"deletionPending,omitempty"`
 	ContentRevision            uint64             `json:"contentRevision,omitempty"`
@@ -173,6 +175,8 @@ type Article struct {
 	HeroImage              string            `json:"heroImage,omitempty"`
 	HeroImageManual        bool              `json:"heroImageManual,omitempty"`
 	Pinned                 *time.Time        `json:"pinned,omitempty"`
+	Starred                bool              `json:"starred,omitempty"`
+	StarType               int               `json:"starType,omitempty"`
 }
 
 // Draft is private local work and is never included in publication snapshots.
@@ -195,6 +199,7 @@ type Draft struct {
 type data struct {
 	Version          int                        `json:"version"`
 	IPFSDisabled     bool                       `json:"ipfsDisabled,omitempty"`
+	PreventSleep     bool                       `json:"preventSleep,omitempty"`
 	Sites            []Site                     `json:"sites"`
 	Articles         []Article                  `json:"articles"`
 	Drafts           []Draft                    `json:"drafts,omitempty"`
@@ -377,9 +382,11 @@ type Subscription struct {
 }
 
 type Store struct {
-	mu   sync.Mutex
-	path string
-	data data
+	mu          sync.Mutex
+	path        string
+	data        data
+	lastModTime time.Time
+	lastSize    int64
 }
 
 func (s *Store) IPFSDisabled() bool {
@@ -410,6 +417,10 @@ func Open(dir string) (*Store, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+	if info, statErr := os.Stat(s.path); statErr == nil {
+		s.lastModTime = info.ModTime()
+		s.lastSize = info.Size()
 	}
 	if err := json.Unmarshal(b, &s.data); err != nil {
 		return nil, fmt.Errorf("read library: %w", err)
@@ -644,6 +655,10 @@ func (s *Store) write(next data) error {
 	}
 	if err = os.Rename(tmp, s.path); err != nil {
 		return err
+	}
+	if info, statErr := os.Stat(s.path); statErr == nil {
+		s.lastModTime = info.ModTime()
+		s.lastSize = info.Size()
 	}
 	s.data = next
 	return nil
@@ -1320,28 +1335,7 @@ func (s *Store) SetSubscriptionError(address, message string) error {
 
 // SetSubscriptionStarred persists the state without replacing refreshed content.
 func (s *Store) SetSubscriptionStarred(address, key string, starred bool) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if key == "" {
-		return errors.New("文章标识无效")
-	}
-	next := s.data
-	next.Subscriptions = append([]Subscription{}, s.data.Subscriptions...)
-	for i, sub := range next.Subscriptions {
-		if sub.URL == address {
-			sub.Feed.Items = append([]feeds.Item{}, sub.Feed.Items...)
-			for j := range sub.Feed.Items {
-				if feeds.ItemKey(sub.Feed.Items[j]) == key {
-					sub.Feed.Items[j].Starred = starred
-					sub.Feed.Items[j].Key = key
-					next.Subscriptions[i] = sub
-					return s.write(next)
-				}
-			}
-			return errors.New("订阅文章不存在")
-		}
-	}
-	return errors.New("订阅不存在")
+	return s.SetSubscriptionStar(address, key, starred, StarTypeDefault)
 }
 
 // SetSubscriptionRead changes local reading state without replacing feed data.

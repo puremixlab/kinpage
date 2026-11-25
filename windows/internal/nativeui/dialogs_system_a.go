@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"windows/internal/ipfs"
 	"windows/internal/offline"
+	"windows/internal/services"
 	"windows/internal/store"
 )
 
@@ -38,6 +39,108 @@ type removedSitesState struct {
 	open  bool
 	sites []store.Site
 	err   string
+}
+
+func (a *App) openTipModal(recipient string) {
+	a.tipRecipient = strings.TrimSpace(recipient)
+	if a.tipAmount == "" {
+		a.tipAmount = "0.005"
+	}
+	a.tipErr = ""
+	a.tipModalOpen = true
+}
+
+func (a *App) viewTipCreatorSheet(c *ui.Context) {
+	pal := a.pal
+	if macSheet(c, &a.tipModalOpen, macSheetProps{
+		Title:       "打赏创作者 (ETH)",
+		Width:       460,
+		PrimaryText: "在钱包中打开支付链接",
+		CancelText:  "取消",
+	}, pal, func() {
+		macInsetCard(c, pal, func() {
+			macField(c, "收款地址 (0x… 或 ENS)", "", pal, func() {
+				ui.TextInput(c.Key("tip-recipient"), &a.tipRecipient).Placeholder("例如 planetable.eth 或 0x…").Label("收款地址").AlignSelf(ui.Stretch)
+			})
+			macField(c, "打赏金额 (ETH)", "", pal, func() {
+				ui.Row(c).Gap(6).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
+					ui.Box(c).Grow(1).MinWidth(0).Children(func() {
+						ui.TextInput(c.Key("tip-amount"), &a.tipAmount).Placeholder("0.005").Label("打赏金额").AlignSelf(ui.Stretch)
+					})
+					for _, preset := range []string{"0.001", "0.005", "0.01"} {
+						p := preset
+						if macSecondaryButton(c, "tip-preset-"+p, p+" ETH", pal) {
+							a.tipAmount = p
+						}
+					}
+				})
+			})
+		})
+		if uri, err := services.BuildTipPaymentURI(a.tipRecipient, a.tipAmount); err == nil {
+			ui.Text(c, "EIP-681: "+uri).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).MaxLines(2).Ellipsis("…")
+		}
+		if a.tipErr != "" {
+			ui.Text(c, a.tipErr).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+		}
+	}) {
+		uri, err := services.BuildTipPaymentURI(a.tipRecipient, a.tipAmount)
+		if err != nil {
+			a.tipErr = err.Error()
+			return
+		}
+		if a.openExternal != nil {
+			if err := a.openExternal(uri); err != nil {
+				a.tipErr = "无法唤起钱包应用：" + err.Error()
+				return
+			}
+		}
+		a.tipModalOpen = false
+		a.setStatus("已唤起钱包打赏链接：" + a.tipRecipient)
+	}
+}
+
+func (a *App) openIPFSResourceModal() {
+	a.openIPFSResInput = ""
+	a.openIPFSResErr = ""
+	a.openIPFSResOpen = true
+}
+
+func (a *App) viewOpenIPFSResourceSheet(c *ui.Context) {
+	pal := a.pal
+	if macSheet(c, &a.openIPFSResOpen, macSheetProps{
+		Title:       "打开 IPFS 资源",
+		Width:       480,
+		PrimaryText: "在本地网关打开",
+		CancelText:  "取消",
+	}, pal, func() {
+		macInsetCard(c, pal, func() {
+			macField(c, "CID / IPNS / 去中心化域名", "", pal, func() {
+				ui.TextInput(c.Key("open-ipfs-res-input"), &a.openIPFSResInput).
+					Placeholder("例如 Qm… / bafy… / k51… / planetable.eth").
+					Label("IPFS 资源地址").AutoFocus().AlignSelf(ui.Stretch)
+			})
+		})
+		if a.openIPFSResErr != "" {
+			ui.Text(c, a.openIPFSResErr).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+		}
+	}) {
+		if a.backend == nil {
+			return
+		}
+		targetURL, err := a.backend.ResolveIPFSResourceURL(a.openIPFSResInput)
+		if err != nil {
+			a.openIPFSResErr = err.Error()
+			return
+		}
+		if a.openExternal != nil {
+			if err := a.openExternal(targetURL); err != nil {
+				a.openIPFSResErr = "打开本地网关失败：" + err.Error()
+				return
+			}
+		}
+		a.openIPFSResOpen = false
+		a.setStatus("已在本地网关打开：" + targetURL)
+	}
 }
 
 func (a *App) openIPFSModal() {

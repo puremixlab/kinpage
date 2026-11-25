@@ -25,16 +25,15 @@ try {
 }
 
 $package = Get-Content -Raw -Encoding UTF8 (Join-Path $projectRoot 'package.json') | ConvertFrom-Json
-$runtimeNames = @($package.dependencies.PSObject.Properties.Name | Sort-Object)
-if ($runtimeNames.Count -ne 1 -or $runtimeNames[0] -ne 'mygo-runtime') {
+$runtimeNames = @()
+if ($null -ne $package.PSObject.Properties['dependencies'] -and $null -ne $package.dependencies) {
+    $runtimeNames = @($package.dependencies.PSObject.Properties.Name | Sort-Object)
+}
+if ($runtimeNames.Count -ne 0) {
     throw 'Runtime frontend dependencies changed; update the notice collector before distributing.'
 }
-$runtimeDir = Join-Path $projectRoot 'node_modules/mygo-runtime'
-$runtimePackage = Get-Content -Raw -Encoding UTF8 (Join-Path $runtimeDir 'package.json') | ConvertFrom-Json
 $cliPackage = Get-Content -Raw -Encoding UTF8 (Join-Path $projectRoot 'node_modules/mygo-cli/package.json') | ConvertFrom-Json
 if ($cliPackage.version -ne '0.10.0') { throw 'The MyGo CLI version changed; re-audit the installer hook before building.' }
-$runtimeLicense = Join-Path $runtimeDir 'LICENSE'
-if (-not (Test-Path -LiteralPath $runtimeLicense -PathType Leaf)) { throw 'mygo-runtime LICENSE is missing.' }
 $goLicense = Join-Path $goRoot 'LICENSE'
 if (-not (Test-Path -LiteralPath $goLicense -PathType Leaf)) { throw 'Go LICENSE is missing.' }
 $kuboExecutable = Join-Path $projectRoot 'resources/windows-amd64/ipfs.exe'
@@ -61,7 +60,7 @@ if ($manualCount -gt 0) { Write-Warning "Kubo license evidence contains $manualC
 
 $notice = New-Object System.Text.StringBuilder
 [void]$notice.AppendLine('Third-party license materials for Planet Windows (windows/amd64).')
-[void]$notice.AppendLine('Generated from the linked Go modules and frontend runtime; assess additional obligations before distribution.')
+[void]$notice.AppendLine('Generated from the linked Go modules; assess additional obligations before distribution.')
 [void]$notice.AppendLine("Kubo ships separately; see KUBO-BUILDINFO.txt and KUBO-DEPENDENCY-LICENSES.txt. Unresolved module evidence entries: $manualCount. Collection alone is not distribution approval.")
 function Add-License([string]$Title, [string]$Path) {
     [void]$notice.AppendLine()
@@ -71,7 +70,6 @@ function Add-License([string]$Title, [string]$Path) {
     [void]$notice.AppendLine([System.IO.File]::ReadAllText($Path))
 }
 Add-License 'Go standard library: LICENSE' $goLicense
-Add-License ("mygo-runtime " + $runtimePackage.version + ': LICENSE') $runtimeLicense
 Add-License 'Built-in Planet templates: pinned sources and license status' (Join-Path $projectRoot 'internal/templateinstall/builtins/TEMPLATE-NOTICES.txt')
 Add-License '8-bit template: upstream icon attribution' (Join-Path $projectRoot 'internal/templateinstall/builtins/gamedb/ATTRIBUTION.md')
 Add-License 'Sepia template: LICENSE' (Join-Path $projectRoot 'internal/templateinstall/builtins/sepia/LICENSE')
@@ -92,4 +90,4 @@ if (-not (Test-Path -LiteralPath $planetLicense -PathType Leaf)) { throw 'Planet
 [System.IO.File]::WriteAllText((Join-Path $Destination 'THIRD-PARTY-NOTICES.txt'), $notice.ToString(), $utf8)
 [System.IO.File]::WriteAllText((Join-Path $Destination 'KUBO-BUILDINFO.txt'), (($kuboInfo -replace '^.*ipfs\.exe:', 'ipfs.exe:') -join "`n") + "`n", $utf8)
 [System.IO.File]::WriteAllText((Join-Path $Destination 'KUBO-DEPENDENCY-LICENSES.txt'), [System.IO.File]::ReadAllText($kuboEvidence), $utf8)
-Write-Host "Prepared Planet license and notices for $($modules.Count) Go modules and mygo-runtime $($runtimePackage.version)."
+Write-Host "Prepared Planet license and notices for $($modules.Count) Go modules."

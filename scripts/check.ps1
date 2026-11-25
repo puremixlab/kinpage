@@ -40,9 +40,8 @@ try {
     }
 
     Invoke-Check 'Go static analysis' { go vet ./... }
-    Invoke-Check 'Frontend tests' { bun test }
+    Invoke-Check 'Tooling and release tests' { bun test }
     Invoke-Check 'Go tests (uncached)' { go test -count=1 -timeout 5m ./... }
-    Invoke-Check 'TypeScript and frontend production build' { bun run build:web }
     Write-Host "`nAll checks passed. Installer and optional integration tests are separate."
 } finally {
     Pop-Location

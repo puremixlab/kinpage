@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -74,6 +75,8 @@ type Library struct {
 	telegramAPI         services.TelegramAPI
 	apiMu               sync.Mutex
 	apiServer           *localapi.Server
+	activePublishes     atomic.Int32
+	defaultDataDir      string
 }
 
 func (l *Library) ensureAPIServer() *localapi.Server {
@@ -917,12 +920,256 @@ func (l *Library) UpdateArticleSettings(siteID, articleID, slug string, articleT
 	return s.UpdateArticleSettings(siteID, articleID, slug, articleType, externalLink, inNavigation, weight)
 }
 
+func (l *Library) ToggleArticleTodo(siteID, articleID string, lineIndex int) (store.Article, error) {
+	s, err := l.open()
+	if err != nil {
+		return store.Article{}, err
+	}
+	return s.ToggleArticleTodo(siteID, articleID, lineIndex)
+}
+
+func (l *Library) CompressDraftVideo(siteID, draftID, name, preset string) (store.Draft, error) {
+	s, err := l.open()
+	if err != nil {
+		return store.Draft{}, err
+	}
+	root, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return store.Draft{}, err
+	}
+	return attachments.CompressDraftVideo(root, s, siteID, draftID, name, preset)
+}
+
+func (l *Library) PickQuickPostAttachment(ctx context.Context) (string, string, error) {
+	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "选择快捷发文附件（图片、视频或音频）"})
+	if err != nil || len(paths) == 0 {
+		return "", "", err
+	}
+	raw, err := os.ReadFile(paths[0])
+	if err != nil {
+		return "", "", err
+	}
+	if len(raw) > 100<<20 {
+		return "", "", errors.New("附件大小不能超过 100 MB")
+	}
+	return filepath.Base(paths[0]), base64.StdEncoding.EncodeToString(raw), nil
+}
+
 func (l *Library) SetArticlePinned(siteID, articleID string, pinned bool) (store.Article, error) {
 	s, err := l.open()
 	if err != nil {
 		return store.Article{}, err
 	}
 	return s.SetArticlePinned(siteID, articleID, pinned)
+}
+
+func (l *Library) ActivePublishCount() int {
+	return int(l.activePublishes.Load())
+}
+
+func (l *Library) DataDir() string {
+	dir, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return ""
+	}
+	return dir
+}
+
+func (l *Library) MoveDataDir(ctx context.Context) (string, error) {
+	dirs, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "选择新的空数据仓库目录", Directory: true})
+	if err != nil || len(dirs) == 0 {
+		return "", err
+	}
+	currentDir, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return "", err
+	}
+	defaultDir := l.defaultDataDir
+	if defaultDir == "" {
+		defaultDir = currentDir
+	}
+	if err := store.MigrateDataDir(defaultDir, currentDir, dirs[0]); err != nil {
+		return "", err
+	}
+	return dirs[0], nil
+}
+
+func (l *Library) PreventSleep() bool {
+	s, err := l.open()
+	if err != nil {
+		return false
+	}
+	return s.PreventSleep()
+}
+
+func (l *Library) SetPreventSleep(enabled bool) error {
+	s, err := l.open()
+	if err != nil {
+		return err
+	}
+	if err := services.SetPreventSleep(enabled); err != nil {
+		return err
+	}
+	return s.SetPreventSleep(enabled)
+}
+
+func (l *Library) ResolveIPFSResourceURL(input string) (string, error) {
+	st, err := l.IPFSStatus()
+	if err != nil {
+		return "", err
+	}
+	return ipfs.ResolveResourceURL(st.Gateway, input)
+}
+
+func (l *Library) RebuildSite(siteID string, quick bool) (int, error) {
+	l.publicMu.Lock()
+	defer l.publicMu.Unlock()
+	s, err := l.open()
+	if err != nil {
+		return 0, err
+	}
+	sites, err := s.ListSites()
+	if err != nil {
+		return 0, err
+	}
+	var selected *store.Site
+	for i := range sites {
+		if sites[i].ID == siteID {
+			selected = &sites[i]
+			break
+		}
+	}
+	if selected == nil {
+		return 0, errors.New("站点不存在")
+	}
+	articles, err := s.ListArticles(siteID)
+	if err != nil {
+		return 0, err
+	}
+	root, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return 0, err
+	}
+	outDir := filepath.Join(root, "sites", siteID)
+	templateDir, err := l.templatePath(*selected)
+	if err != nil {
+		return 0, err
+	}
+	if quick {
+		if err := sitegen.RenderIndexOnly(outDir, *selected, articles, templateDir); err != nil {
+			return 0, err
+		}
+		return len(articles), nil
+	}
+	enriched, err := attachments.EnrichMedia(root, *selected, articles)
+	if err != nil {
+		return 0, err
+	}
+	if templateDir != "" {
+		if err := sitegen.RenderWithTemplate(outDir, *selected, enriched, templateDir); err != nil {
+			return 0, err
+		}
+	} else {
+		if err := sitegen.Render(outDir, *selected, enriched); err != nil {
+			return 0, err
+		}
+	}
+	if err := attachments.CopyToSite(root, outDir, enriched); err != nil {
+		return 0, err
+	}
+	if err := sitegen.WriteAliases(outDir, enriched); err != nil {
+		return 0, err
+	}
+	return len(enriched), nil
+}
+
+func (l *Library) SetSiteArchived(siteID string, archived bool) (store.Site, error) {
+	s, err := l.open()
+	if err != nil {
+		return store.Site{}, err
+	}
+	return s.SetSiteArchived(siteID, archived)
+}
+
+func (l *Library) UpdateArticleDate(siteID, articleID string, created time.Time) (store.Article, error) {
+	s, err := l.open()
+	if err != nil {
+		return store.Article{}, err
+	}
+	return s.UpdateArticleDate(siteID, articleID, created)
+}
+
+func (l *Library) SetArticleStar(siteID, articleID string, starred bool, starType int) (store.Article, error) {
+	s, err := l.open()
+	if err != nil {
+		return store.Article{}, err
+	}
+	return s.SetArticleStar(siteID, articleID, starred, starType)
+}
+
+func (l *Library) SetSubscriptionStar(address, key string, starred bool, starType int) error {
+	s, err := l.open()
+	if err != nil {
+		return err
+	}
+	return s.SetSubscriptionStar(address, key, starred, starType)
+}
+
+func (l *Library) MoveArticle(fromSiteID, articleID, toSiteID string) (store.Article, error) {
+	s, err := l.open()
+	if err != nil {
+		return store.Article{}, err
+	}
+	root, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return store.Article{}, err
+	}
+	return attachments.MoveArticle(root, s, fromSiteID, articleID, toSiteID)
+}
+
+func (l *Library) ExportArticle(ctx context.Context, siteID, articleID string) (string, error) {
+	dirs, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "选择导出文章数据包的目录", Directory: true})
+	if err != nil || len(dirs) == 0 {
+		return "", err
+	}
+	s, err := l.open()
+	if err != nil {
+		return "", err
+	}
+	root, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return "", err
+	}
+	name := articleID
+	if arts, err := s.ListArticles(siteID); err == nil {
+		for _, a := range arts {
+			if a.ID == articleID && strings.TrimSpace(a.Slug) != "" {
+				name = a.Slug
+				break
+			}
+		}
+	}
+	dest := filepath.Join(dirs[0], name+".article.zip")
+	if err := attachments.ExportArticleZip(root, s, siteID, articleID, dest); err != nil {
+		return "", err
+	}
+	return dest, nil
+}
+
+func (l *Library) ImportArticle(ctx context.Context, siteID string) (store.Article, error) {
+	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "选择要导入的文章数据包 (.article.zip)"})
+	if err != nil || len(paths) == 0 {
+		return store.Article{}, err
+	}
+	s, err := l.open()
+	if err != nil {
+		return store.Article{}, err
+	}
+	root, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return store.Article{}, err
+	}
+	return attachments.ImportArticleZip(root, s, siteID, paths[0])
 }
 func (l *Library) SaveArticleWithTags(siteID, articleID, title, content, tagsJSON string) (store.Article, error) {
 	s, err := l.open()
@@ -2102,6 +2349,8 @@ func (l *Library) SubscriptionPreview(address, key string) (string, error) {
 
 // PublishSite publishes the saved snapshot; Kubo is started only on request.
 func (l *Library) PublishSite(siteID string) (publisher.Result, error) {
+	l.activePublishes.Add(1)
+	defer l.activePublishes.Add(-1)
 	l.publicMu.Lock()
 	defer l.publicMu.Unlock()
 	s, err := l.open()
@@ -2189,6 +2438,7 @@ func (l *Library) PublishSite(siteID string) (publisher.Result, error) {
 		return result, fmt.Errorf("IPNS 已发布到 %s，但保存本地状态失败：%w", result.IPNS, err)
 	}
 	l.scheduleProvide(result.CID)
+	services.SendDesktopNotification("Planet 发布完成", site.Name+" 已发布到 IPNS")
 	if site.ShouldPrewarmNewPost() && result.CID != "" {
 		l.schedulePrewarm(*site, result.CID)
 	}
@@ -2208,6 +2458,9 @@ func (l *Library) PublishSite(siteID string) (publisher.Result, error) {
 		}
 		if e = services.PinPublished(root, siteID, result.CID, services.NewClient()); e != nil {
 			result.PinnableWarning += " 站点已发布，但 Filebase 固定请求未完成：" + e.Error()
+		}
+		if e = services.SyncDWebServices(root, siteID, result.CID, nil); e != nil {
+			result.PinnableWarning += " 站点已发布，但 dWebServices.xyz 同步未完成：" + e.Error()
 		}
 		if warning := l.autoDeploy(root, *site, articles); warning != "" {
 			result.PinnableWarning += " IPNS 已发布，但外部发布未完成：" + warning
@@ -3202,6 +3455,9 @@ func (l *Library) ExportWebsite(ctx context.Context, siteID string) (string, err
 				if err = attachments.GenerateVideoThumbnail(root, *selected, article, dir); err != nil {
 					break
 				}
+				if err = attachments.GenerateGridThumbnails(root, *selected, article, dir); err != nil {
+					break
+				}
 			}
 		}
 		if err == nil {
@@ -3216,15 +3472,6 @@ func (l *Library) ExportWebsite(ctx context.Context, siteID string) (string, err
 }
 
 func main() {
-	// MyGo invokes the executable only to generate bindings. It must not
-	// acquire the application or installer locks held by a running instance.
-	if os.Getenv("MYGO_GENERATE") != "" {
-		mygo.Bind(&Library{})
-		if err := mygo.App.Run(); err != nil {
-			log.Fatal(err)
-		}
-		return
-	}
 	if len(os.Args) == 2 && os.Args[1] == "--planet-version" {
 		fmt.Println(appVersion)
 		return
@@ -3244,6 +3491,12 @@ func main() {
 		}
 		mygo.App.SetPath(mygo.PathUserData, filepath.Join(path, "development"))
 	}
+	defaultUserDataDir, _ := mygo.App.Path(mygo.PathUserData)
+	if defaultUserDataDir != "" {
+		if resolved := store.ResolveDataDir(defaultUserDataDir); resolved != "" && resolved != defaultUserDataDir {
+			mygo.App.SetPath(mygo.PathUserData, resolved)
+		}
+	}
 	if !mygo.App.RequestSingleInstanceLock() {
 		return
 	}
@@ -3253,11 +3506,11 @@ func main() {
 		log.Fatal(err)
 	}
 	defer releaseUpdateLock()
-	library := &Library{}
+	library := &Library{defaultDataDir: defaultUserDataDir}
 	maintenanceCtx, cancelMaintenance := context.WithCancel(context.Background())
 	var maintenance sync.WaitGroup
-	mygo.Bind(library)
 	defer func() {
+		_ = services.SetPreventSleep(false)
 		library.closeAPIServer()
 		library.closeUpdates()
 		cancelMaintenance()
@@ -3270,35 +3523,38 @@ func main() {
 		if root, err := mygo.App.Path(mygo.PathUserData); err == nil {
 			_ = library.ensureAPIServer().Sync(root)
 		}
+		if library.PreventSleep() {
+			_ = services.SetPreventSleep(true)
+		}
 		maintenance.Add(1)
 		go func() { defer maintenance.Done(); library.maintainPublished(maintenanceCtx) }()
+		nativeApp := nativeui.New(library)
+		if s, err := library.open(); err == nil {
+			maintenance.Add(1)
+			go func() {
+				defer maintenance.Done()
+				s.WatchExternalChanges(maintenanceCtx, 2*time.Second, nativeApp.MarkDirtyExternal)
+			}()
+		}
+		if root, err := mygo.App.Path(mygo.PathUserData); err == nil {
+			nativeApp.EnablePrefsPersistence(filepath.Join(root, "nativeui-layout.json"))
+		}
 		opts := mygo.WindowOptions{
 			Title: "Planet", Width: 1280, Height: 820, MinWidth: 860, MinHeight: 600,
 			BackgroundColor: "#f7f7f5", StateKey: "main",
-		}
-		var nativeApp *nativeui.App
-		if useNativeUI(os.Args[1:]) {
-			nativeApp = nativeui.New(library)
-			if root, err := mygo.App.Path(mygo.PathUserData); err == nil {
-				nativeApp.EnablePrefsPersistence(filepath.Join(root, "nativeui-layout.json"))
-			}
-			opts.TitleBarStyle = mygo.TitleBarHidden
-			opts.Content = ui.View(nativeApp.View)
-		} else {
-			opts.URL = "/"
+			TitleBarStyle: mygo.TitleBarHidden,
+			Content:       ui.View(nativeApp.View),
 		}
 		win := mygo.NewWindow(opts)
-		if nativeApp != nil {
-			nativeApp.SetWebViewFactory(func() (nativeui.WebViewHost, error) {
-				wv, err := win.NewWebView(mygo.WebViewOptions{
-					Page: mygo.PageOptions{Untrusted: true},
-				})
-				if err != nil {
-					return nil, err
-				}
-				return &mygoWebViewHost{wv: wv}, nil
+		nativeApp.SetWebViewFactory(func() (nativeui.WebViewHost, error) {
+			wv, err := win.NewWebView(mygo.WebViewOptions{
+				Page: mygo.PageOptions{Untrusted: true},
 			})
-		}
+			if err != nil {
+				return nil, err
+			}
+			return &mygoWebViewHost{wv: wv}, nil
+		})
 		var closing atomic.Bool
 		win.OnClose(func(event *mygo.CloseEvent) {
 			event.PreventDefault()
@@ -3307,11 +3563,13 @@ func main() {
 			}
 			go func() {
 				defer closing.Store(false)
-				result, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: win, Type: mygo.MessageQuestion, Title: "关闭 Planet", Message: "确定关闭窗口？", Detail: "尚未保存的文章更改将会丢失。", Buttons: []string{"取消", "关闭"}, DefaultButton: 0, CancelButton: 0})
+				detail := "尚未保存的文章更改将会丢失。"
+				if library.ActivePublishCount() > 0 {
+					detail = "当前正在进行 IPNS 发布，强制关闭可能导致发布中断或站点无法解析。"
+				}
+				result, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: win, Type: mygo.MessageQuestion, Title: "关闭 Planet", Message: "确定关闭窗口？", Detail: detail, Buttons: []string{"取消", "关闭"}, DefaultButton: 0, CancelButton: 0})
 				if err == nil && result.Button == 1 {
-					if nativeApp != nil {
-						nativeApp.Close()
-					}
+					nativeApp.Close()
 					win.Destroy()
 				}
 			}()
@@ -3320,18 +3578,6 @@ func main() {
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func useNativeUI(args []string) bool {
-	if os.Getenv("PLANET_LEGACY_WEBVIEW") == "1" {
-		return false
-	}
-	for _, arg := range args {
-		if arg == "--legacy-webview" {
-			return false
-		}
-	}
-	return true
 }
 
 type mygoWebViewHost struct {

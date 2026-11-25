@@ -294,7 +294,7 @@ X API 需要开发者应用及可用访问额度，可能产生费用，含链�
 
 开发和检查需要 Windows 64 位、Git、Go 1.27.4 或兼容工具链、Bun 和 WebView2 Runtime；打包还需要 7-Zip。Go 使用默认的 `GOTOOLCHAIN=auto` 时可以自动获取依赖所要求的工具链。
 
-以下命令使用 PowerShell。从仓库根目录进入 `windows/` 并安装前端依赖，后续命令均在该目录执行：
+以下命令使用 PowerShell。从仓库根目录进入 `windows/` 并安装构建工具依赖，后续命令均在该目录执行：
 
 ```powershell
 cd windows
@@ -310,11 +310,9 @@ powershell -NoProfile -File scripts/prepare-kubo.ps1
 bun run dev
 ```
 
-仅调试前端资源时可使用 `bun run dev:web` 启动 Vite；普通浏览器没有 MyGo 桌面桥接，无法提供完整桌面功能。
-
 ### 共享质量与安全检查
 
-仅修改[文档白名单](../docs/git-workflow.md#纯文档检查)内的文件时，只需 Git 和 Bun，在本目录运行以下命令，无需安装前端依赖或构建：
+仅修改[文档白名单](../docs/git-workflow.md#纯文档检查)内的文件时，只需 Git 和 Bun，在本目录运行以下命令，无需安装其他依赖或构建：
 
 ```powershell
 bun run check:docs
@@ -326,7 +324,7 @@ bun run check:docs
 bun run check
 ```
 
-`bun run check` 是本地与 CI 共用的完整检查入口：依次执行文档检查、Go 格式检查、`go vet`、前端测试、禁用结果缓存的 Go 测试、TypeScript 类型检查和前端生产构建。任一步失败即停止；安装器仍需另行执行 `bun run build` 和发行验收。
+`bun run check` 是本地与 CI 共用的完整检查入口：依次执行文档检查、Go 格式检查、`go vet`、工具与发布脚本测试，以及禁用结果缓存的 Go 测试。任一步失败即停止；安装器仍需另行执行 `bun run build` 和发行验收。
 
 分支、提交、可选 Git hooks 与版本管理见 [Git 协作指南](../docs/git-workflow.md)。
 

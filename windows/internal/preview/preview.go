@@ -20,7 +20,7 @@ func Markdown(source string) (string, error) {
 	if err := goldmark.New(goldmark.WithExtensions(extension.GFM, extension.Footnote), goldmark.WithRendererOptions(html.WithHardWraps())).Convert([]byte(source), &out); err != nil {
 		return "", err
 	}
-	return out.String(), nil
+	return EmbedYouTubeLinks(out.String()), nil
 }
 
 // MarkdownWithImages replaces registered relative images with isolated data URLs.

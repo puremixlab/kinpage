@@ -2,7 +2,7 @@
 
 发行源码包包含指定 Git 提交的应用源码、`go.mod`、`go.sum`、`bun.lock`、Go vendor 源码和 go-ethereum 的源码及许可文本。`SOURCE-PROVENANCE.json` 记录提交、版本、锁文件摘要和 go-ethereum 模块版本及 h1；包外的 `source-manifest.json` 还记录 ZIP 的 SHA-256 和字节数。这些材料用于重建和修改静态链接的 Go 库，不是完整许可合规结论，也不能单独证明某个二进制由该源码构建。
 
-源码包不包含 Git 历史、本机环境文件、发布者密钥、`node_modules`、已生成的前端或应用构建结果，以及 Kubo、WebView2、Go、Bun 等运行时或工具安装包。Go 模块按锁文件收集；Bun 依赖在重建时按 `bun.lock` 下载。go-ethereum 源码保留库、测试及构建说明，省略与链接库无关的上游可执行文件，具体路径列在清单的 `omittedUpstreamBinaries` 中。
+源码包不包含 Git 历史、本机环境文件、发布者密钥、`node_modules`、已生成的应用构建结果，以及 Kubo、WebView2、Go、Bun 等运行时或工具安装包。Go 模块按锁文件收集；Bun 依赖在重建时按 `bun.lock` 下载。go-ethereum 源码保留库、测试及构建说明，省略与链接库无关的上游可执行文件，具体路径列在清单的 `omittedUpstreamBinaries` 中。
 
 ## 准备发行源码包
 
@@ -27,13 +27,12 @@ $env:GOFLAGS = '-mod=vendor'
 $env:GOOS = 'windows'
 $env:GOARCH = 'amd64'
 $env:CGO_ENABLED = '0'
-bun run build:web
 # 如需本地 IPFS 节点，下载并校验固定版本的 Kubo：
 powershell -NoProfile -File scripts/prepare-kubo.ps1
 bunx mygo build -platform windows/amd64 -skip-build-command -skip-installer -o .mygo/rebuilt
 ```
 
-程序输出为 `.mygo/rebuilt/windows-amd64/Planet Windows.exe`，包含重新构建的前端；`-skip-build-command` 避免再次执行面向发行包的材料收集，`-skip-installer` 仅生成独立程序和资源。该路径不需要发布者签名密钥，不会安装程序，也不会替换已有安装。它不能代替正式安装包的签名、许可或原生安装验收；需要对外分发修改版时，另行完成这些检查并清楚标识修改。
+程序输出为 `.mygo/rebuilt/windows-amd64/Planet Windows.exe`；`-skip-build-command` 避免再次执行面向发行包的材料收集，`-skip-installer` 仅生成独立程序和资源。该路径不需要发布者签名密钥，不会安装程序，也不会替换已有安装。它不能代替正式安装包的签名、许可或原生安装验收；需要对外分发修改版时，另行完成这些检查并清楚标识修改。
 
 `-mod=vendor` 使 Go 使用包内 `windows/vendor/` 源码。不要在修改后运行 `go mod vendor`，该命令会从模块缓存重建 vendor 并覆盖修改。增加新的依赖或包时，应先更新依赖及 vendor，再进行所需修改。Go vendoring 的范围和行为见 [Go Modules Reference](https://go.dev/ref/mod#go-mod-vendor)。
 

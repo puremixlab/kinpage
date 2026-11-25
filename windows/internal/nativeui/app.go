@@ -3,6 +3,7 @@ package nativeui
 import (
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -81,6 +82,8 @@ type App struct {
 	postSearchQuery   string
 	listSearchOpen    bool
 	listFilter        listFilterKind
+	starTypeFilter    int // -1 = all star types, 0..5 = specific store.StarType
+	archivedExpanded  bool
 
 	// Unsaved draft navigation guard.
 	unsavedDialogOpen bool
@@ -93,14 +96,24 @@ type App struct {
 	createSiteError string
 
 	// Article settings modal state.
-	articleSettingsOpen    bool
-	articleSettingsID      string
-	articleSettingsSlug    string
-	articleSettingsType    int
-	articleSettingsExtLink string
-	articleSettingsInNav   bool
-	articleSettingsWeight  string
-	articleSettingsErr     string
+	articleSettingsOpen     bool
+	articleSettingsID       string
+	articleSettingsSlug     string
+	articleSettingsType     int
+	articleSettingsExtLink  string
+	articleSettingsInNav    bool
+	articleSettingsWeight   string
+	articleSettingsDate     string
+	articleSettingsOrigDate string
+	articleSettingsErr      string
+
+	// Move article sheet state.
+	moveArticleOpen         bool
+	moveArticleID           string
+	moveArticleTitle        string
+	moveArticleFromSiteID   string
+	moveArticleTargetSiteID string
+	moveArticleErr          string
 
 	// Delete article confirmation dialog state.
 	deleteArticleOpen  bool
@@ -108,11 +121,14 @@ type App struct {
 	deleteArticleTitle string
 
 	// Quick post modal state.
-	quickPostOpen    bool
-	quickPostSiteID  string
-	quickPostTitle   string
-	quickPostContent string
-	quickPostErr     string
+	quickPostOpen           bool
+	quickPostSiteID         string
+	quickPostTitle          string
+	quickPostContent        string
+	quickPostAttachmentName string
+	quickPostAttachmentB64  string
+	quickPostDiscardConfirm bool
+	quickPostErr            string
 
 	// Dashboard interaction state.
 	activityMode        int
@@ -148,12 +164,20 @@ type App struct {
 	relatedErr            string
 
 	// Batch 3A modals state.
-	siteSettings siteSettingsState
-	publishModal publishModalState
-	ipfsModal    ipfsModalState
-	offlineModal offlineModalState
-	foldersModal foldersModalState
-	removedSites removedSitesState
+	siteSettings     siteSettingsState
+	publishModal     publishModalState
+	ipfsModal        ipfsModalState
+	offlineModal     offlineModalState
+	foldersModal     foldersModalState
+	removedSites     removedSitesState
+	openIPFSResOpen  bool
+	openIPFSResInput string
+	openIPFSResErr   string
+	tipModalOpen     bool
+	tipRecipient     string
+	tipAmount        string
+	tipErr           string
+	externalDirty    atomic.Bool
 
 	// Batch 3B & 3C modals state.
 	integrations    integrationsModalState
@@ -175,6 +199,8 @@ type App struct {
 	postsCollapsed   bool
 	prefsPath        string
 	lastSavedPrefs   layoutPrefs
+	siteOrder        []string
+	subOrder         []string
 
 	// Feedback status (dispatched as non-blocking macOS bottom-right toasts).
 	statusText     string
@@ -210,6 +236,7 @@ func New(backend Backend) *App {
 		sidebarWidth:     228,
 		editorSplitRatio: 50,
 		trendHoverPoint:  -1,
+		starTypeFilter:   -1,
 		speaker:          newDefaultSpeaker(),
 		openExternal:     openBrowserFile,
 		imgLoader:        newImageLoader(),
@@ -225,6 +252,12 @@ func (a *App) Close() {
 	}
 	a.destroyTemplatePreviewWV()
 	a.destroySubWebView()
+}
+
+// MarkDirtyExternal flags that library.json was modified outside Planet so the
+// next UI frame reloads cleanly on the main thread.
+func (a *App) MarkDirtyExternal() {
+	a.externalDirty.Store(true)
 }
 
 func (a *App) toggleSpeak(title, body string) {
@@ -538,12 +571,12 @@ func (a *App) currentArticle() *store.Article {
 
 func (a *App) anyModalOpen() bool {
 	return a.createSiteOpen || a.composePickerOpen || a.articleSettingsOpen ||
-		a.quickPostOpen || a.deleteArticleOpen || a.unsavedDialogOpen ||
+		a.moveArticleOpen || a.quickPostOpen || a.deleteArticleOpen || a.unsavedDialogOpen ||
 		a.followModalOpen || a.editSubOpen || a.unfollowOpen ||
 		a.searchModalOpen || a.relatedModalOpen ||
 		a.siteSettings.open || a.siteSettings.removeConfirm ||
 		a.publishModal.open || a.ipfsModal.open || a.offlineModal.open ||
-		a.foldersModal.open || a.removedSites.open ||
+		a.openIPFSResOpen || a.tipModalOpen || a.foldersModal.open || a.removedSites.open ||
 		a.toolsModal.open || a.templatePreview.open
 }
 

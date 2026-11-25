@@ -92,6 +92,7 @@ func (a *App) openSubscriptionView(mode viewMode, subURL string) {
 	a.subSearchQuery = ""
 	a.listSearchOpen = false
 	a.listFilter = listFilterAll
+	a.starTypeFilter = -1
 	a.clearStatus()
 	items := a.visibleSubscriptionItems()
 	if len(items) > 0 {
@@ -114,14 +115,24 @@ func (a *App) visibleSubscriptionItems() []subItemEntry {
 			if a.mode == viewUnread && item.Read {
 				continue
 			}
-			if a.mode == viewStarred && !item.Starred {
-				continue
+			if a.mode == viewStarred {
+				if !item.Starred {
+					continue
+				}
+				if a.starTypeFilter >= 0 && item.StarType != a.starTypeFilter {
+					continue
+				}
 			}
 			if a.listFilter == listFilterUnread && item.Read {
 				continue
 			}
-			if a.listFilter == listFilterStarred && !item.Starred {
-				continue
+			if a.listFilter == listFilterStarred {
+				if !item.Starred {
+					continue
+				}
+				if a.starTypeFilter >= 0 && item.StarType != a.starTypeFilter {
+					continue
+				}
 			}
 			if query != "" {
 				hay := strings.ToLower(item.Title + " " + stitle)
@@ -270,6 +281,7 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 						sourceLabel: sourceLabel,
 						selected:    selected,
 						starred:     entry.item.Starred,
+						starType:    entry.item.StarType,
 						unread:      !entry.item.Read,
 					}, pal).ContextMenu(a.subItemContextMenu(entry))
 					if row.Clicked() {
