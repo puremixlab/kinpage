@@ -18,8 +18,14 @@ func (a *App) viewSidebar(c *ui.Context) {
 		ui.Scroll(c).TrackScroll(&a.sidebarScroll).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).PaddingX(10).PaddingY(4).Gap(2).Children(func() {
 				// 0. Pinned top-level primary entry: Writing Desk (写作台).
+				navIconColor := func(selected bool) ui.Color {
+					if selected {
+						return pal.ink
+					}
+					return pal.secondary
+				}
 				if sidebarNavRow(c, "nav-overview", "写作台", a.mode == viewOverview, 0, func() {
-					smartFeedIcon(c, iconGrid, pal.accent)
+					smartFeedIcon(c, iconGrid, navIconColor(a.mode == viewOverview))
 				}, pal) {
 					a.guardUnsaved(func() {
 						a.mode = viewOverview
@@ -32,20 +38,20 @@ func (a *App) viewSidebar(c *ui.Context) {
 				ui.Box(c).PaddingX(6).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
 				ui.Box(c).Height(6)
 
-				// 1. Smart Feeds (阅读) — matching macOS PlanetSidebarView.swift:34-76.
+				// 1. Smart Feeds (阅读) — calm monochrome icons; color reserved for site avatars.
 				ui.Text(c, "阅读").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.muted).PaddingX(8).PaddingY(3)
 				if sidebarNavRow(c, "nav-today", "今天", a.mode == viewToday, a.totalTodayCount(), func() {
-					smartFeedIcon(c, iconSunSolid, pal.orange)
+					smartFeedIcon(c, iconSunSolid, navIconColor(a.mode == viewToday))
 				}, pal) {
 					a.guardUnsaved(func() { a.openSubscriptionView(viewToday, "") })
 				}
 				if sidebarNavRow(c, "nav-unread", "未读", a.mode == viewUnread, a.totalUnreadCount(), func() {
-					smartFeedIcon(c, iconCircleInsetSolid, pal.accent)
+					smartFeedIcon(c, iconCircleInsetSolid, navIconColor(a.mode == viewUnread))
 				}, pal) {
 					a.guardUnsaved(func() { a.openSubscriptionView(viewUnread, "") })
 				}
 				if sidebarNavRow(c, "nav-starred", "收藏", a.mode == viewStarred, a.totalStarredCount(), func() {
-					smartFeedIcon(c, iconStarSolid, pal.yellow)
+					smartFeedIcon(c, iconStarSolid, navIconColor(a.mode == viewStarred))
 				}, pal) {
 					a.guardUnsaved(func() { a.openSubscriptionView(viewStarred, "") })
 				}

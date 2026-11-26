@@ -104,11 +104,13 @@ func articleRow(c *ui.Context, p articleRowProps, pal macPalette) ui.Element {
 	metaColor := pal.muted
 	badgeBorder := pal.line
 	if p.selected {
-		restBg, hoverBg = pal.listSelected, pal.listSelected
-		titleColor = ui.Hex("#ffffff")
-		excerptColor = pal.listSelMuted
-		metaColor = pal.listSelMuted
-		badgeBorder = ui.RGBA(255, 255, 255, 0.35)
+		if pal.dark {
+			restBg = ui.RGBA(255, 255, 255, 0.08)
+			hoverBg = ui.RGBA(255, 255, 255, 0.10)
+		} else {
+			restBg = ui.RGBA(15, 23, 42, 0.06)
+			hoverBg = ui.RGBA(15, 23, 42, 0.08)
+		}
 	}
 
 	aria := p.ariaLabel
@@ -117,24 +119,23 @@ func articleRow(c *ui.Context, p articleRowProps, pal macPalette) ui.Element {
 	}
 
 	row := interactiveRow(c, p.key, aria, restBg, hoverBg, pal.active).
-		MinHeight(84).Radius(7).Padding(9, 12, 9, 4).
+		MinHeight(78).Radius(7).Padding(9, 12, 9, 4).
 		Children(func() {
-			ui.Row(c).AlignItems(ui.Start).Gap(2).Grow(1).MinWidth(0).Children(func() {
-				// Left 18px gutter for star / unread dot so all titles stay vertically aligned.
+			ui.Row(c).AlignItems(ui.Stretch).Gap(2).Grow(1).MinWidth(0).Children(func() {
+				// Subtle 2.5px left accent bar when selected (calm monochrome identity).
+				if p.selected {
+					ui.Box(c).Width(2.5).Radius(2).Background(pal.prefsInk).Margin(2, 2, 2, 0).Shrink(0)
+				}
+				// Left 18px gutter for star / unread dot / draft pen so all titles stay vertically aligned.
 				ui.Box(c).Width(18).PaddingY(3).Center().Shrink(0).Children(func() {
 					switch {
 					case p.starred:
 						starIcon, starCol := starTypeVisual(p.starType, pal)
-						if p.selected {
-							starCol = ui.Hex("#ffffff")
-						}
 						ui.Icon(c, starIcon).Size(12, 12).TextColor(starCol)
 					case p.unread:
-						dotCol := pal.accent
-						if p.selected {
-							dotCol = ui.Hex("#ffffff")
-						}
-						ui.Box(c).Size(7, 7).Radius(3.5).Background(dotCol)
+						ui.Box(c).Size(7, 7).Radius(3.5).Background(pal.accent)
+					case p.isDraft:
+						ui.Icon(c, lucide.PenLine()).Size(12, 12).TextColor(pal.muted)
 					}
 				})
 
@@ -142,16 +143,12 @@ func articleRow(c *ui.Context, p articleRowProps, pal macPalette) ui.Element {
 					// Row 1: Pin icon + single-line Title + right-aligned Date.
 					ui.Row(c).AlignItems(ui.Center).Gap(6).AlignSelf(ui.Stretch).Children(func() {
 						if p.pinned {
-							pinCol := pal.accent
-							if p.selected {
-								pinCol = ui.Hex("#ffffff")
-							}
-							ui.Icon(c, lucide.Pin()).Size(12, 12).TextColor(pinCol).Shrink(0)
+							ui.Icon(c, lucide.Pin()).Size(12, 12).TextColor(pal.secondary).Shrink(0)
 						}
 						ui.Text(c, p.title).Font(macPlanetFont).FontSize(13).FontWeight(600).
 							TextColor(titleColor).MaxLines(1).Ellipsis("…").Grow(1)
 						if p.dateText != "" {
-							ui.Text(c, p.dateText).Font(macPlanetFont).FontSize(12).
+							ui.Text(c, p.dateText).Font(macPlanetFont).FontSize(11.5).
 								TextColor(metaColor).NoWrap().Shrink(0)
 						}
 					})
@@ -162,17 +159,14 @@ func articleRow(c *ui.Context, p articleRowProps, pal macPalette) ui.Element {
 							TextColor(excerptColor).MaxLines(2).Ellipsis("…")
 					}
 
-					// Row 3: Compact metadata / media / source tags.
-					hasFooter := p.isDraft || p.isPage || p.navWeight > 0 || p.attachments > 0 || p.sourceLabel != ""
+					// Row 3: Compact metadata / media / source tags (no redundant "草稿" badge).
+					hasFooter := p.isPage || p.navWeight > 0 || p.attachments > 0 || p.sourceLabel != ""
 					if hasFooter {
 						ui.Row(c).AlignItems(ui.Center).Gap(6).AlignSelf(ui.Stretch).Children(func() {
 							outlinedPill := func(text string) {
 								ui.Box(c).Padding(1, 5, 1, 5).Radius(4).Border(0.5, badgeBorder).Shrink(0).Children(func() {
 									ui.Text(c, text).Font(macPlanetFont).FontSize(10.5).TextColor(metaColor).NoWrap()
 								})
-							}
-							if p.isDraft {
-								outlinedPill("草稿")
 							}
 							if p.isPage {
 								outlinedPill("页面")
@@ -272,12 +266,15 @@ func macPreferencesWindow(c *ui.Context, open *bool, maxWidth, maxHeight float32
 	if maxHeight <= 0 {
 		maxHeight = 680
 	}
-	dim := ui.RGBA(15, 23, 42, 0.28)
+	if _, winH := c.Size(); winH > 200 && maxHeight > winH-56 {
+		maxHeight = winH - 56
+	}
+	dim := ui.RGBA(0, 0, 0, 0.18)
 	if pal.dark {
-		dim = ui.RGBA(0, 0, 0, 0.56)
+		dim = ui.RGBA(0, 0, 0, 0.45)
 	}
 	ui.DialogBase(c, open, func(backdrop, panel ui.Element) {
-		backdrop.Center().Padding(28).Background(dim)
+		backdrop.Center().Padding(24).Background(dim)
 		panel.WidthPercent(100).MaxWidth(maxWidth).HeightPercent(100).MaxHeight(maxHeight).
 			Radius(14).Background(pal.prefsCanvas).Border(0.5, pal.prefsCardBorder).
 			Shadow(0, 18, 44, 0, pal.shadowColor).Clip()
@@ -306,9 +303,9 @@ func macField(c *ui.Context, label, hint string, pal macPalette, input func()) {
 	})
 }
 
-// prefsNavRow renders a macOS System Settings sidebar item with a soft-tinted
-// 20x20 rounded-square badge icon and an elevated active pill.
-func prefsNavRow(c *ui.Context, key, label string, selected bool, icon *ui.SVG, tint ui.Color, pal macPalette) bool {
+// prefsNavRow renders a macOS System Settings sidebar item with a neutral
+// monochrome 20x20 rounded-square badge icon and an elevated active pill.
+func prefsNavRow(c *ui.Context, key, label string, selected bool, icon *ui.SVG, _ ui.Color, pal macPalette) bool {
 	rest := ui.Transparent
 	hover := pal.hover
 	active := pal.active
@@ -316,9 +313,13 @@ func prefsNavRow(c *ui.Context, key, label string, selected bool, icon *ui.SVG, 
 		rest = pal.prefsNavActiveBg
 		hover = pal.prefsNavActiveBg
 	}
-	badgeAlpha := float32(0.13)
+	badgeBg := ui.RGBA(15, 23, 42, 0.06)
 	if pal.dark {
-		badgeAlpha = 0.22
+		badgeBg = ui.RGBA(255, 255, 255, 0.08)
+	}
+	iconFg := pal.prefsSecondary
+	if selected {
+		iconFg = pal.prefsInk
 	}
 	b := interactiveRow(c, key, label, rest, hover, active).
 		MinHeight(32).Radius(7).Padding(5, 8, 5, 8)
@@ -328,8 +329,8 @@ func prefsNavRow(c *ui.Context, key, label string, selected bool, icon *ui.SVG, 
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(9).Grow(1).MinWidth(0).Children(func() {
 			if icon != nil {
-				ui.Box(c).Size(20, 20).Radius(5).Background(tint.Alpha(badgeAlpha)).Center().Shrink(0).Children(func() {
-					ui.Icon(c, icon).Size(12, 12).TextColor(tint)
+				ui.Box(c).Size(20, 20).Radius(5).Background(badgeBg).Center().Shrink(0).Children(func() {
+					ui.Icon(c, icon).Size(12, 12).TextColor(iconFg)
 				})
 			}
 			txt := ui.Text(c, label).Font(macPlanetFont).FontSize(13).TextColor(pal.prefsInk).Grow(1).NoWrap()
@@ -355,9 +356,9 @@ func macSheetFrame(c *ui.Context, open *bool, width float32, pal macPalette, con
 	if width <= 0 {
 		width = 520
 	}
-	dim := ui.RGBA(0, 0, 0, 0.24)
+	dim := ui.RGBA(0, 0, 0, 0.18)
 	if pal.dark {
-		dim = ui.RGBA(0, 0, 0, 0.50)
+		dim = ui.RGBA(0, 0, 0, 0.45)
 	}
 	ui.DialogBase(c, open, func(backdrop, panel ui.Element) {
 		backdrop.Justify(ui.Start).AlignItems(ui.Center).Padding(44, 16, 24, 16).Background(dim)

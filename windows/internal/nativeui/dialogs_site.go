@@ -152,22 +152,6 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 				})
 
 				// Bottom site identity card (navigation rail stays free of destructive actions).
-				if site := a.findSiteByID(st.siteID); site != nil {
-					ui.Column(c).Gap(6).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-						prefsHairlineH(c, pal)
-						ui.Row(c).Padding(6, 8, 2, 8).Gap(10).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-							a.siteAvatar(c, *site, 0, 28)
-							ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-								ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsInk).MaxLines(1).Ellipsis("…")
-								tpl := site.TemplateName
-								if tpl == "" {
-									tpl = "默认模板"
-								}
-								ui.Text(c, tpl).Font(macPlanetFont).FontSize(11).TextColor(pal.prefsMuted).MaxLines(1).Ellipsis("…")
-							})
-						})
-					})
-				}
 			})
 			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
 
@@ -195,7 +179,7 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 				})
 
 				ui.Scroll(c).TrackScroll(&st.scroll).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
-					ui.Column(c).Padding(4, 28, 24, 28).Gap(16).AlignSelf(ui.Stretch).Children(func() {
+					ui.Column(c).Padding(4, 28, 36, 28).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 						switch st.tab {
 						case siteSettingsTabBasic:
 							macInsetCard(c, pal, func() {
@@ -224,32 +208,45 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 													a.setStatus("已移除站点头像")
 												}
 											}
-											prevRound := st.roundAvatar
-											ui.Checkbox(c.Key("ss-avatar-round"), &st.roundAvatar, "圆形裁切")
-											if st.roundAvatar != prevRound {
-												if _, err := a.backend.SetSaveRoundAvatar(st.siteID, st.roundAvatar); err != nil {
-													st.err = err.Error()
-												} else {
-													a.Reload()
-												}
-											}
 										})
+										prevRound := st.roundAvatar
+										ui.Checkbox(c.Key("ss-avatar-round"), &st.roundAvatar, "圆形裁切")
+										if st.roundAvatar != prevRound {
+											if _, err := a.backend.SetSaveRoundAvatar(st.siteID, st.roundAvatar); err != nil {
+												st.err = err.Error()
+											} else {
+												a.Reload()
+											}
+										}
 									})
 								})
 								if presets := a.backend.PresetAvatars(); len(presets) > 0 {
 									prefsHairlineH(c, pal)
-									ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {
+									ui.Column(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
 										ui.Text(c, "快速选择内置头像").Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
-										ui.Row(c).Gap(6).Wrap().Children(func() {
+										ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
 											for i, p := range presets {
-												if i >= 8 {
+												if i >= 12 {
 													break
 												}
-												key, title := p.Key, p.Title
+												idx, key, title, pngURL := i, p.Key, p.Title, p.PNG
 												if title == "" {
 													title = key
 												}
-												if macSecondaryButton(c, "ss-preset-"+key, title, pal) {
+												btn := ui.ButtonBase(c.Key("ss-preset-"+key)).Label(title).
+													Size(34, 34).Radius(17).Border(0.5, pal.prefsCardBorder).
+													Center().Clip().Cursor(ui.CursorPointer).Tooltip(title)
+												if btn.Hovered() {
+													btn.Border(0.5, pal.prefsInk)
+												}
+												btn.Children(func() {
+													if bmp := a.bitmapForDataURL(pngURL); bmp != nil {
+														ui.Image(c, bmp).Size(32, 32)
+													} else {
+														avatarCircleIndexed(c, title, idx, 32)
+													}
+												})
+												if btn.Clicked() {
 													if _, err := a.backend.ApplyPresetAvatar(st.siteID, key); err != nil {
 														st.err = err.Error()
 													} else {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/lucide"
 	"windows/internal/ipfs"
 	"windows/internal/offline"
 	"windows/internal/services"
@@ -164,20 +165,11 @@ func (a *App) refreshIPFSModal() {
 func (a *App) viewIPFSPopoverContent(c *ui.Context) {
 	pal := a.pal
 	m := &a.ipfsModal
-	ui.Column(c).Width(320).Gap(10).Children(func() {
+	ui.Column(c).Width(320).Padding(4).Gap(10).Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
 			ui.Text(c, "IPFS 节点状态").Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink)
-			toggleLabel := "停用节点"
-			if m.status.Disabled {
-				toggleLabel = "启用节点"
-			}
-			if macSecondaryButton(c, "ipfs-toggle", toggleLabel, pal) {
-				if err := a.backend.SetIPFSEnabled(m.status.Disabled); err != nil {
-					m.err = err.Error()
-				} else {
-					m.msg = "节点状态已更新"
-					a.refreshIPFSModal()
-				}
+			if toolbarIconBtn(c, "ipfs-close", lucide.X(), "关闭").Clicked() {
+				m.open = false
 			}
 		})
 
@@ -219,8 +211,18 @@ func (a *App) viewIPFSPopoverContent(c *ui.Context) {
 			if macSecondaryButton(c, "ipfs-refresh", "刷新", pal) {
 				a.refreshIPFSModal()
 			}
-			if macPrimaryButtonSmall(c, "ipfs-close", "关闭", pal) {
-				m.open = false
+			isRunning := !m.status.Disabled && m.status.Running
+			toggleLabel := "启动节点"
+			if isRunning {
+				toggleLabel = "停用节点"
+			}
+			if macPrimaryButtonSmall(c, "ipfs-toggle", toggleLabel, pal) {
+				if err := a.backend.SetIPFSEnabled(!isRunning); err != nil {
+					m.err = err.Error()
+				} else {
+					m.msg = "节点状态已更新"
+					a.refreshIPFSModal()
+				}
 			}
 		})
 	})
