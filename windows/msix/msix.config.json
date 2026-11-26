@@ -1,0 +1,15 @@
+{
+  "packageName": "org.planetable.planetwindows",
+  "publisher": "CN=PlanetWindowsLocalDev",
+  "publisherDisplayName": "Planet Windows",
+  "displayName": "Planet Windows",
+  "description": "Decentralized blog publishing and RSS/IPFS/ENS reader for Windows.",
+  "backgroundColor": "transparent",
+  "minVersion": "10.0.19041.0",
+  "maxVersionTested": "10.0.26100.0",
+  "languages": [
+    "zh-CN",
+    "zh-TW",
+    "en-US"
+  ]
+}

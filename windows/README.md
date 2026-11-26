@@ -344,7 +344,7 @@ bun run build
 
 构建脚本从 Kubo 官方 GitHub release 下载固定版本 0.38.2 并核验 SHA-512，构建时将程序及许可证放入安装包。
 
-`bun run release:prepare -BundleDir <独立发行目录>` 只生成本地草稿材料，正式发布要求见 [发布流程](../docs/releasing.md) 与 [原生 Windows 验收模板](../docs/release-acceptance-template.md)。
+`bun run release:prepare -BundleDir <独立发行目录>` 只生成本地草稿材料，正式发布要求见 [发布流程](../docs/releasing.md) 与 [原生 Windows 验收模板](../docs/release-acceptance-template.md)。如需打包面向 Microsoft Store 的 `.msix`，可先完成 `bun run build`，再执行 `bun run build:msix`，详见 [MSIX 打包说明](docs/msix-packaging.md)。
 
 安装包包含 Planet、Go 与第三方依赖许可材料及 Kubo 构建清单。Kubo 的 241 个依赖模块均已收集许可材料，四项无根目录许可文件的模块已补充固定版本的源码或嵌套许可证据；材料收集本身不代表全面合规结论。go-ethereum 库的对应源码及重新构建步骤见[源码与重建说明](../docs/rebuilding-release.md)，收集范围见[发行检查记录](docs/release-audit.md)。
 
