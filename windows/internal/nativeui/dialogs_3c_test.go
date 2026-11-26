@@ -13,7 +13,7 @@ func TestNativeUIToolsModalBatch3C(t *testing.T) {
 	backend := &fakeBackend{
 		apiStatus: localapi.Status{Port: 8086},
 		ipnsKeys:  []ipfs.KeyInfo{{Name: "self", ID: "k51-self"}},
-		appLogs:   []applog.Entry{{Time: "10:00:00", Category: "Planet", Message: "启动完成"}},
+		appLogs:   []applog.Entry{{Time: "10:00:00", Category: "Kinpage", Message: "启动完成"}},
 	}
 	app := New(backend)
 	tt := ui.NewTester(app.View, 1280, 900)

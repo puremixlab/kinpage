@@ -38,7 +38,7 @@ func TestParentLockTransferKeepsExactObjectAlive(t *testing.T) {
 	}
 	root := t.TempDir()
 	ready := filepath.Join(root, "ready")
-	name, _ := windows.UTF16PtrFromString(`Local\PlanetWindows-Test-ParentLock-` + strconv.Itoa(os.Getpid()))
+	name, _ := windows.UTF16PtrFromString(`Local\Kinpage-Test-ParentLock-` + strconv.Itoa(os.Getpid()))
 	held, e := windows.CreateMutex(nil, false, name)
 	if e != nil {
 		t.Fatal(e)

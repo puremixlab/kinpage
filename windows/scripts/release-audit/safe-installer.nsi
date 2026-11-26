@@ -15,10 +15,10 @@ Unicode true
 !include "MUI2.nsh"
 !define MUI_ICON "${__FILEDIR__}\..\..\resources\icon.ico"
 !define MUI_UNICON "${__FILEDIR__}\..\..\resources\icon.ico"
-Name "Planet Windows"
+Name "Kinpage"
 OutFile "${OUTPUT}"
-InstallDir "$LOCALAPPDATA\Programs\Planet Windows"
-InstallDirRegKey HKCU "Software\PlanetWindows\InstallerState" "InstallLocation"
+InstallDir "$LOCALAPPDATA\Programs\Kinpage"
+InstallDirRegKey HKCU "Software\Kinpage\InstallerState" "InstallLocation"
 RequestExecutionLevel user
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
@@ -28,14 +28,14 @@ RequestExecutionLevel user
 
 Function .onInit
   ; Shared by every protocol-2 installer and uninstaller for the entire process.
-  System::Call 'kernel32::CreateMutexW(p0,i1,w "Global\PlanetWindows-Installer-Transaction-v2")p.r9?e'
+  System::Call 'kernel32::CreateMutexW(p0,i1,w "Global\Kinpage-Installer-Transaction-v2")p.r9?e'
   Pop $8
   StrCmp $9 0 0 +4
-  MessageBox MB_OK|MB_ICONSTOP "Cannot obtain the Planet installer lock." /SD IDOK
+  MessageBox MB_OK|MB_ICONSTOP "Cannot obtain the Kinpage installer lock." /SD IDOK
   SetErrorLevel 2
   Abort
   StrCmp $8 183 0 +4
-  MessageBox MB_OK|MB_ICONSTOP "Another Planet installer or uninstaller is running." /SD IDOK
+  MessageBox MB_OK|MB_ICONSTOP "Another Kinpage installer or uninstaller is running." /SD IDOK
   SetErrorLevel 2
   Abort
   InitPluginsDir
@@ -43,14 +43,14 @@ Function .onInit
   File /oname=planet-installer-guard.exe "${GUARD}"
 FunctionEnd
 Function un.onInit
-  System::Call 'kernel32::CreateMutexW(p0,i1,w "Global\PlanetWindows-Installer-Transaction-v2")p.r9?e'
+  System::Call 'kernel32::CreateMutexW(p0,i1,w "Global\Kinpage-Installer-Transaction-v2")p.r9?e'
   Pop $8
   StrCmp $9 0 0 +4
-  MessageBox MB_OK|MB_ICONSTOP "Cannot obtain the Planet installer lock." /SD IDOK
+  MessageBox MB_OK|MB_ICONSTOP "Cannot obtain the Kinpage installer lock." /SD IDOK
   SetErrorLevel 2
   Abort
   StrCmp $8 183 0 +4
-  MessageBox MB_OK|MB_ICONSTOP "Another Planet installer or uninstaller is running." /SD IDOK
+  MessageBox MB_OK|MB_ICONSTOP "Another Kinpage installer or uninstaller is running." /SD IDOK
   SetErrorLevel 2
   Abort
   InitPluginsDir
@@ -62,11 +62,11 @@ FunctionEnd
   IfErrors install_failed
 !macroend
 !macro WriteUninstallRegistry
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\org.planetable.planetwindows" "DisplayName" "Planet Windows"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\org.planetable.planetwindows" "DisplayVersion" "${VERSION}"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\org.planetable.planetwindows" "InstallLocation" "$INSTDIR"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\org.planetable.planetwindows" "UninstallString" '"$INSTDIR\Uninstall.exe"'
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\org.planetable.planetwindows" "QuietUninstallString" '"$INSTDIR\Uninstall.exe" /S'
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\dev.puremixlab.kinpage" "DisplayName" "Kinpage"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\dev.puremixlab.kinpage" "DisplayVersion" "${VERSION}"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\dev.puremixlab.kinpage" "InstallLocation" "$INSTDIR"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\dev.puremixlab.kinpage" "UninstallString" '"$INSTDIR\Uninstall.exe"'
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\dev.puremixlab.kinpage" "QuietUninstallString" '"$INSTDIR\Uninstall.exe" /S'
 !macroend
 Section
   nsExec::ExecToStack '"$PLUGINSDIR\planet-installer-guard.exe" install-check "$INSTDIR"'
@@ -82,7 +82,7 @@ Section
   ; Stage in the private plugin directory. The guard alone owns the durable
   ; upgrade transaction; NSIS never overwrites an existing payload directly.
   SetOutPath "$PLUGINSDIR\update-payload"
-  File "${PAYLOAD}\Planet Windows.exe"
+  File "${PAYLOAD}\Kinpage.exe"
   File "${PAYLOAD}\ipfs.exe"
   File "${PAYLOAD}\icon.png"
   File "${PAYLOAD}\kubo-LICENSE.txt"
@@ -110,7 +110,7 @@ install_allowed:
   SetOutPath "$INSTDIR"
   !insertmacro CheckFileError
   SetOverwrite off
-  File "${PAYLOAD}\Planet Windows.exe"
+  File "${PAYLOAD}\Kinpage.exe"
   !insertmacro CheckFileError
   File "${PAYLOAD}\ipfs.exe"
   !insertmacro CheckFileError
@@ -145,9 +145,9 @@ record_done:
   IfErrors install_failed
   ; Generate privately; the guard atomically refuses an existing destination.
   ClearErrors
-  CreateShortCut "$PLUGINSDIR\planet-start.lnk" "$INSTDIR\Planet Windows.exe"
+  CreateShortCut "$PLUGINSDIR\planet-start.lnk" "$INSTDIR\Kinpage.exe"
   IfErrors shortcut_failed
-  nsExec::ExecToStack '"$PLUGINSDIR\planet-installer-guard.exe" shortcut-create "$INSTDIR" "$PLUGINSDIR\planet-start.lnk" "$SMPROGRAMS\Planet Windows.lnk"'
+  nsExec::ExecToStack '"$PLUGINSDIR\planet-installer-guard.exe" shortcut-create "$INSTDIR" "$PLUGINSDIR\planet-start.lnk" "$SMPROGRAMS\Kinpage.lnk"'
   Pop $0
   Pop $1
   StrCmp $0 "0" install_done
@@ -176,7 +176,7 @@ Section "Uninstall"
   SetErrorLevel 2
   Abort
 uninstall_allowed:
-  nsExec::ExecToStack '"$PLUGINSDIR\planet-installer-guard.exe" shortcut-remove "$INSTDIR" "$SMPROGRAMS\Planet Windows.lnk"'
+  nsExec::ExecToStack '"$PLUGINSDIR\planet-installer-guard.exe" shortcut-remove "$INSTDIR" "$SMPROGRAMS\Kinpage.lnk"'
   Pop $0
   Pop $1
   StrCmp $0 "0" shortcut_checked
@@ -184,7 +184,7 @@ uninstall_allowed:
   SetErrorLevel 2
   Abort
 shortcut_checked:
-  !insertmacro DeleteOwned "Planet Windows.exe"
+  !insertmacro DeleteOwned "Kinpage.exe"
   !insertmacro DeleteOwned "ipfs.exe"
   !insertmacro DeleteOwned "icon.png"
   !insertmacro DeleteOwned "kubo-LICENSE.txt"
@@ -195,13 +195,13 @@ shortcut_checked:
   !insertmacro DeleteOwned "KUBO-BUILDINFO.txt"
   !insertmacro DeleteOwned "KUBO-DEPENDENCY-LICENSES.txt"
   ClearErrors
-  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\org.planetable.planetwindows"
+  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\dev.puremixlab.kinpage"
   IfErrors uninstall_failed
   ClearErrors
   Delete "$INSTDIR\Uninstall.exe"
   IfErrors restore_uninstall_entry
   ClearErrors
-  DeleteRegKey HKCU "Software\PlanetWindows\InstallerState"
+  DeleteRegKey HKCU "Software\Kinpage\InstallerState"
   IfErrors uninstall_failed
   RMDir "$INSTDIR"
   Goto uninstall_done

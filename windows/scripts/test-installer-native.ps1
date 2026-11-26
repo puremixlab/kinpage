@@ -45,7 +45,7 @@ $taskVersionJson = & bun (Join-Path $PSScriptRoot '../../scripts/release-version
 if ($LASTEXITCODE -ne 0) { throw 'Expected version is invalid.' }
 Assert-Native (($taskVersionJson | ConvertFrom-Json).version -ceq $ExpectedVersion) 'Expected version is not canonical.'
 $taskBundle = [IO.Path]::GetDirectoryName($taskInstaller)
-$taskPayloadNames = @('Planet Windows.exe', 'ipfs.exe', 'icon.png', 'kubo-LICENSE.txt', 'kubo-LICENSE-MIT.txt', 'kubo-LICENSE-APACHE.txt', 'LICENSE-PLANET.txt', 'THIRD-PARTY-NOTICES.txt', 'KUBO-BUILDINFO.txt', 'KUBO-DEPENDENCY-LICENSES.txt')
+$taskPayloadNames = @('Kinpage.exe', 'ipfs.exe', 'icon.png', 'kubo-LICENSE.txt', 'kubo-LICENSE-MIT.txt', 'kubo-LICENSE-APACHE.txt', 'LICENSE-PLANET.txt', 'THIRD-PARTY-NOTICES.txt', 'KUBO-BUILDINFO.txt', 'KUBO-DEPENDENCY-LICENSES.txt')
 $taskExpectedHashes = [ordered]@{}
 foreach ($taskName in $taskPayloadNames) {
     $taskFile = Join-Path $taskBundle $taskName
@@ -53,17 +53,17 @@ foreach ($taskName in $taskPayloadNames) {
     $taskExpectedHashes[$taskName] = Get-NativeHash $taskFile
 }
 
-$taskStateKey = 'HKCU:\Software\PlanetWindows\InstallerState'
-$taskUninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\org.planetable.planetwindows'
-$taskTransactionKey = 'HKCU:\Software\PlanetWindows\UpdateTransaction'
-$taskUserData = Join-Path ([Environment]::GetFolderPath('ApplicationData')) 'Planet Windows'
-$taskLocalData = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Planet Windows'
-$taskDefaultInstall = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs/Planet Windows'
-$taskShortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'Planet Windows.lnk'
+$taskStateKey = 'HKCU:\Software\Kinpage\InstallerState'
+$taskUninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\dev.puremixlab.kinpage'
+$taskTransactionKey = 'HKCU:\Software\Kinpage\UpdateTransaction'
+$taskUserData = Join-Path ([Environment]::GetFolderPath('ApplicationData')) 'Kinpage'
+$taskLocalData = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Kinpage'
+$taskDefaultInstall = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs/Kinpage'
+$taskShortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'Kinpage.lnk'
 foreach ($taskPath in @($taskStateKey, $taskUninstallKey, $taskTransactionKey, $taskUserData, $taskLocalData, $taskDefaultInstall, $taskShortcut)) {
     Assert-Native (-not (Test-Path -LiteralPath $taskPath)) "Test requires a clean disposable profile; existing product path: $taskPath"
 }
-Assert-Native (@(Get-Process -Name 'Planet Windows' -ErrorAction SilentlyContinue).Count -eq 0) 'A Planet process already exists.'
+Assert-Native (@(Get-Process -Name 'Kinpage' -ErrorAction SilentlyContinue).Count -eq 0) 'A Kinpage process already exists.'
 foreach ($taskPath in @($taskUserData, $taskLocalData, $taskShortcut, $EvidenceDir)) { Assert-NormalPath $taskPath }
 
 $taskTempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
@@ -167,7 +167,7 @@ function Get-InstalledSnapshot {
 try {
     $taskOS = Get-CimInstance Win32_OperatingSystem
     $taskEvidence.windows = "$($taskOS.Caption) $($taskOS.Version) build $($taskOS.BuildNumber)"
-    $taskEvidence.signatures = @('Planet Windows.exe', [IO.Path]::GetFileName($taskInstaller)) | ForEach-Object {
+    $taskEvidence.signatures = @('Kinpage.exe', [IO.Path]::GetFileName($taskInstaller)) | ForEach-Object {
         $taskSignature = Get-AuthenticodeSignature -LiteralPath (Join-Path $taskBundle $_)
         [ordered]@{ file = $_; status = [string]$taskSignature.Status }
     }
@@ -175,7 +175,7 @@ try {
     [IO.File]::WriteAllText($taskUserSentinel, 'Synthetic user data to preserve; no real site or key.', $taskUtf8)
     $taskUserHash = Get-NativeHash $taskUserSentinel
     [IO.Directory]::CreateDirectory($taskForeign) | Out-Null
-    $taskForeignFile = Join-Path $taskForeign 'Planet Windows.exe'
+    $taskForeignFile = Join-Path $taskForeign 'Kinpage.exe'
     [IO.File]::WriteAllText($taskForeignFile, 'Foreign test file; not executable.', $taskUtf8)
     $taskForeignHash = Get-NativeHash $taskForeignFile
     Invoke-NativeSetup $taskForeign $false
@@ -187,13 +187,13 @@ try {
     Assert-Installed
     Assert-Native (Test-Path -LiteralPath $taskShortcut -PathType Leaf) 'Start Menu shortcut missing.'
     $taskShell = New-Object -ComObject WScript.Shell
-    try { Assert-Native ($taskShell.CreateShortcut($taskShortcut).TargetPath -ieq (Join-Path $taskInstall 'Planet Windows.exe')) 'Shortcut target differs.' }
+    try { Assert-Native ($taskShell.CreateShortcut($taskShortcut).TargetPath -ieq (Join-Path $taskInstall 'Kinpage.exe')) 'Shortcut target differs.' }
     finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($taskShell) }
     Add-NativeResult 'fresh-install-payload-registration-shortcut'
 
     $taskVersionProcess = [Diagnostics.Process]::new()
     try {
-        $taskVersionProcess.StartInfo.FileName = Join-Path $taskInstall 'Planet Windows.exe'
+        $taskVersionProcess.StartInfo.FileName = Join-Path $taskInstall 'Kinpage.exe'
         $taskVersionProcess.StartInfo.Arguments = '--planet-version'
         $taskVersionProcess.StartInfo.UseShellExecute = $false
         $taskVersionProcess.StartInfo.CreateNoWindow = $true

@@ -1535,7 +1535,7 @@ func (l *Library) AskAI(prompt, contextTitle, contextBody, historyJSON string) (
 	if strings.TrimSpace(historyJSON) != "" {
 		_ = json.Unmarshal([]byte(historyJSON), &history)
 	}
-	sys := "你是 Planet 本地知识与文章助手，请使用清晰简洁的中文回答用户问题。"
+	sys := "你是邻页（Kinpage）本地知识与文章助手，请使用清晰简洁的中文回答用户问题。"
 	if strings.TrimSpace(contextTitle) != "" || strings.TrimSpace(contextBody) != "" {
 		bodyRunes := []rune(contextBody)
 		if len(bodyRunes) > 8000 {
@@ -1932,7 +1932,7 @@ func (l *Library) UpdateSiteWeb3(siteID, web3JSON string) (store.Site, error) {
 	}
 	updated, err := s.UpdateSiteWeb3(siteID, cfg)
 	if err == nil {
-		applog.Global.Append("Planet", "已更新站点 Web3 捐赠设置："+updated.Name)
+		applog.Global.Append("Kinpage", "已更新站点 Web3 捐赠设置："+updated.Name)
 	}
 	return updated, err
 }
@@ -2442,7 +2442,7 @@ func (l *Library) PublishSite(siteID string) (publisher.Result, error) {
 		return result, fmt.Errorf("IPNS 已发布到 %s，但保存本地状态失败：%w", result.IPNS, err)
 	}
 	l.scheduleProvide(result.CID)
-	services.SendDesktopNotification("Planet 发布完成", site.Name+" 已发布到 IPNS")
+	services.SendDesktopNotification("邻页发布完成", site.Name+" 已发布到 IPNS")
 	if site.ShouldPrewarmNewPost() && result.CID != "" {
 		l.schedulePrewarm(*site, result.CID)
 	}
@@ -2966,7 +2966,7 @@ func (l *Library) templatePath(site store.Site) (string, error) {
 }
 
 func (l *Library) SelectTemplate(ctx context.Context, siteID string) (store.Site, error) {
-	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "选择 Planet 模板目录", Directory: true})
+	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "选择模板目录", Directory: true})
 	if err != nil || len(paths) == 0 {
 		return store.Site{}, err
 	}
@@ -3495,7 +3495,7 @@ func main() {
 		showStartupError(err)
 		log.Fatal(err)
 	}
-	mygo.App.SetName("Planet Windows")
+	mygo.App.SetName("Kinpage")
 	if mygo.IsDev() {
 		path, err := mygo.App.Path(mygo.PathUserData)
 		if err != nil {
@@ -3552,7 +3552,7 @@ func main() {
 			nativeApp.EnablePrefsPersistence(filepath.Join(root, "nativeui-layout.json"))
 		}
 		opts := mygo.WindowOptions{
-			Title: "Planet", Width: 1280, Height: 820, MinWidth: 860, MinHeight: 600,
+			Title: "邻页 · Kinpage", Width: 1280, Height: 820, MinWidth: 860, MinHeight: 600,
 			BackgroundColor: "#f7f7f5", StateKey: "main",
 			TitleBarStyle:  mygo.TitleBarHidden,
 			TitleBarHeight: 44,
@@ -3643,9 +3643,9 @@ func main() {
 		}
 
 		if createdTray, err := mygo.NewTray(mygo.TrayOptions{
-			ID:      "planet-windows-tray",
+			ID:      "kinpage-tray",
 			Icon:    appIconPNG,
-			ToolTip: "Planet",
+			ToolTip: "邻页 · Kinpage",
 			Menu:    buildTrayMenu(nativeApp.Locale()),
 		}); err == nil {
 			tray = createdTray
@@ -3680,7 +3680,7 @@ func main() {
 				if library.ActivePublishCount() > 0 {
 					detail = "当前正在进行 IPNS 发布，强制关闭可能导致发布中断或站点无法解析。"
 				}
-				result, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: win, Type: mygo.MessageQuestion, Title: "关闭 Planet", Message: "确定关闭窗口？", Detail: detail, Buttons: []string{"取消", "关闭"}, DefaultButton: 0, CancelButton: 0})
+				result, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: win, Type: mygo.MessageQuestion, Title: "关闭邻页", Message: "确定关闭窗口？", Detail: detail, Buttons: []string{"取消", "关闭"}, DefaultButton: 0, CancelButton: 0})
 				if err == nil && result.Button == 1 {
 					quitting.Store(true)
 					nativeApp.Close()
@@ -3697,22 +3697,22 @@ func main() {
 func trayMenuStrings(loc nativeui.Locale) (showLabel, quitLabel string) {
 	switch loc {
 	case nativeui.LocaleZhCN:
-		return "显示 Planet", "退出 Planet"
+		return "显示邻页", "退出邻页"
 	case nativeui.LocaleZhTW:
-		return "顯示 Planet", "結束 Planet"
+		return "顯示鄰頁", "結束鄰頁"
 	default:
-		return "Show Planet", "Quit Planet"
+		return "Show Kinpage", "Quit Kinpage"
 	}
 }
 
 func trayQuitConfirmStrings(loc nativeui.Locale) (title, msg, detail, cancelBtn, quitBtn string) {
 	switch loc {
 	case nativeui.LocaleZhCN:
-		return "退出 Planet", "确定退出 Planet？", "当前正在进行 IPNS 发布，强制退出可能导致发布中断或站点无法解析。", "取消", "退出"
+		return "退出邻页", "确定退出邻页？", "当前正在进行 IPNS 发布，强制退出可能导致发布中断或站点无法解析。", "取消", "退出"
 	case nativeui.LocaleZhTW:
-		return "結束 Planet", "確定要結束 Planet？", "目前正在進行 IPNS 發布，強制結束可能導致發布中斷或站點無法解析。", "取消", "結束"
+		return "結束鄰頁", "確定要結束鄰頁？", "目前正在進行 IPNS 發布，強制結束可能導致發布中斷或站點無法解析。", "取消", "結束"
 	default:
-		return "Quit Planet", "Quit Planet?", "An IPNS publish is currently in progress. Quitting now may interrupt publishing.", "Cancel", "Quit"
+		return "Quit Kinpage", "Quit Kinpage?", "An IPNS publish is currently in progress. Quitting now may interrupt publishing.", "Cancel", "Quit"
 	}
 }
 

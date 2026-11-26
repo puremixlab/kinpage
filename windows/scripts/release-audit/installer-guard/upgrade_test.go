@@ -18,7 +18,7 @@ func TestUpgradeResumesEveryInterruptedTransition(t *testing.T) {
 		t.Run(string(rune('A'+stop)), func(t *testing.T) {
 			root, source := t.TempDir(), t.TempDir()
 			old, newFiles := map[string]string{}, map[string]string{}
-			for _, name := range []string{"Planet Windows.exe", "ipfs.exe", "Uninstall.exe"} {
+			for _, name := range []string{"Kinpage.exe", "ipfs.exe", "Uninstall.exe"} {
 				os.WriteFile(filepath.Join(root, name), []byte("old:"+name), 0600)
 				os.WriteFile(filepath.Join(source, name), []byte("new:"+name), 0600)
 				old[name] = digest("old:" + name)
@@ -69,7 +69,7 @@ func TestUpgradeRejectsChangedLockedAndForeignPaths(t *testing.T) {
 	for _, kind := range []string{"changed", "missing", "locked", "collision"} {
 		t.Run(kind, func(t *testing.T) {
 			root, source := t.TempDir(), t.TempDir()
-			name := "Planet Windows.exe"
+			name := "Kinpage.exe"
 			os.WriteFile(filepath.Join(root, name), []byte("old"), 0600)
 			os.WriteFile(filepath.Join(source, name), []byte("new"), 0600)
 			switch kind {

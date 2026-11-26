@@ -1,8 +1,8 @@
 {
-  "packageName": "org.planetable.planetwindows",
-  "publisher": "CN=PlanetWindowsLocalDev",
-  "publisherDisplayName": "Planet Windows",
-  "displayName": "Planet Windows",
+  "packageName": "dev.puremixlab.kinpage",
+  "publisher": "CN=KinpageLocalDev",
+  "publisherDisplayName": "Kinpage",
+  "displayName": "Kinpage",
   "description": "Decentralized blog publishing and RSS/IPFS/ENS reader for Windows.",
   "backgroundColor": "transparent",
   "minVersion": "10.0.19041.0",

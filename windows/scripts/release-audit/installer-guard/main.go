@@ -23,8 +23,8 @@ import (
 
 var manifestBase64 string // set by -ldflags from the actual build payload
 
-var stateKey = `Software\PlanetWindows\InstallerState`
-var uninstallKey = `Software\Microsoft\Windows\CurrentVersion\Uninstall\org.planetable.planetwindows`
+var stateKey = `Software\Kinpage\InstallerState`
+var uninstallKey = `Software\Microsoft\Windows\CurrentVersion\Uninstall\dev.puremixlab.kinpage`
 
 func manifest() (map[string]string, error) {
 	b, err := base64.StdEncoding.DecodeString(manifestBase64)
@@ -98,7 +98,7 @@ func checkInstall(path string) error {
 			return err
 		}
 		if exists {
-			return errors.New("an existing Planet Windows installation is registered; automatic upgrade is not supported")
+			return errors.New("an existing Kinpage installation is registered; automatic upgrade is not supported")
 		}
 	}
 	entries, err := os.ReadDir(path)
@@ -310,7 +310,7 @@ func checkUpgrade(path string) error {
 	// Generation 1 recorded individual values without storing a manifest.
 	// Require that complete known set even when a future payload differs.
 	required := map[string]bool{
-		"planet windows.exe": false, "ipfs.exe": false, "icon.png": false,
+		"kinpage.exe": false, "ipfs.exe": false, "icon.png": false,
 		"kubo-license.txt": false, "kubo-license-mit.txt": false, "kubo-license-apache.txt": false,
 		"license-planet.txt": false, "third-party-notices.txt": false,
 		"kubo-buildinfo.txt": false, "kubo-dependency-licenses.txt": false,
@@ -421,7 +421,7 @@ func createShortcut(installDir, source, destination string) error {
 	if err != nil {
 		return err
 	}
-	if !strings.EqualFold(filepath.Base(destination), "Planet Windows.lnk") {
+	if !strings.EqualFold(filepath.Base(destination), "Kinpage.lnk") {
 		return errors.New("unexpected shortcut name")
 	}
 	directory, err := safeDirectory(filepath.Dir(destination))
@@ -532,7 +532,7 @@ func removeShortcut(installDir, destination string) error {
 	if err != nil {
 		return err
 	}
-	if !strings.EqualFold(filepath.Base(destination), "Planet Windows.lnk") {
+	if !strings.EqualFold(filepath.Base(destination), "Kinpage.lnk") {
 		return errors.New("unexpected shortcut name")
 	}
 	directory, err := safeDirectory(filepath.Dir(destination))

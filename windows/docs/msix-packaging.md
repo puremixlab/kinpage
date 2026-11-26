@@ -19,14 +19,14 @@
 bun run build:msix
 ```
 
-脚本会校验 `Planet Windows.exe --planet-version` 与 [windows/release.json](../release.json) 一致，自动生成全部 MSIX PNG 图标（若在 `windows/msix/Assets/` 放置同名文件则优先使用自定义素材），并在 `.mygo/msix/<构建ID>/` 下输出 `planet-windows-<版本>-x64.msix` 及 SHA-256 摘要。
+脚本会校验 `Kinpage.exe --planet-version` 与 [windows/release.json](../release.json) 一致，自动生成全部 MSIX PNG 图标（若在 `windows/msix/Assets/` 放置同名文件则优先使用自定义素材），并在 `.mygo/msix/<构建ID>/` 下输出 `kinpage-<版本>-x64.msix` 及 SHA-256 摘要。
 
 如需指定独立发行目录或输出路径：
 
 ```powershell
 powershell -NoProfile -File scripts/build-msix.ps1 `
   -PayloadDir '.mygo/releases/<构建ID>/windows-amd64' `
-  -OutputFile '.mygo/msix/planet-windows-x64.msix'
+  -OutputFile '.mygo/msix/kinpage-x64.msix'
 ```
 
 ## 提交到 Microsoft Store
@@ -44,7 +44,7 @@ powershell -NoProfile -File scripts/build-msix.ps1 `
 
 `-Store` 模式会强制检查：
 
-- `Publisher` 不能为默认的本地占位符 `CN=PlanetWindowsLocalDev`。
+- `Publisher` 不能为默认的本地占位符 `CN=KinpageLocalDev`。
 - MSIX 版本号为四段纯数字且末位为 `0`（由 `windows/release.json` 自动派生为 `Major.Minor.Patch.0`）。
 - 禁止直接将预发布版本打包提交商店（若仅用于商店内部测试轨道，可显式附加 `-AllowPrerelease`）。
 

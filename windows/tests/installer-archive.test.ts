@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 const helper = resolve(import.meta.dir, "../scripts/release-audit/archive-entries.ps1");
 const payload = [
-  "Planet Windows.exe", "icon.png", "ipfs.exe", "kubo-LICENSE.txt",
+  "Kinpage.exe", "icon.png", "ipfs.exe", "kubo-LICENSE.txt",
   "kubo-LICENSE-MIT.txt", "kubo-LICENSE-APACHE.txt", "LICENSE-PLANET.txt",
   "THIRD-PARTY-NOTICES.txt", "KUBO-BUILDINFO.txt", "KUBO-DEPENDENCY-LICENSES.txt",
 ];

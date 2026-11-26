@@ -143,7 +143,7 @@ func TestLiveLocaleSwitchRendersTranslatedUI(t *testing.T) {
 
 	app.SetLocale(LocaleEn)
 	tester.Frame()
-	if !tester.HasText("Dashboard") || !tester.HasText("My Planets") {
+	if !tester.HasText("Dashboard") || !tester.HasText("My Sites") {
 		t.Fatalf("expected en sidebar labels after switching to en")
 	}
 	if tester.HasText("写作台") {

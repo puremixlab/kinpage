@@ -35,7 +35,7 @@ func SendDesktopNotification(title, body string) {
 $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
 $xml.LoadXml('<toast><visual><binding template="ToastText02"><text id="1">` + escape(title) + `</text><text id="2">` + escape(body) + `</text></binding></visual></toast>')
 $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Planet Windows').Show($toast)`
+[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Kinpage').Show($toast)`
 		cmd := exec.CommandContext(ctx, "powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", script)
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 		_ = cmd.Run()

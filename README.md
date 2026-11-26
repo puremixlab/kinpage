@@ -2,8 +2,8 @@
 
 <a href="docs/branding/README.md">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/planet-horizontal-reversed.svg">
-    <img src="docs/branding/planet-horizontal-color.svg" alt="Planet Windows" width="320">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/kinpage-horizontal-reversed.svg">
+    <img src="docs/branding/kinpage-horizontal-color.svg" alt="Kinpage (邻页)" width="320">
   </picture>
 </a>
 
@@ -29,9 +29,9 @@
 
 <br />
 
-<img src="docs/screenshots/workspace-dashboard.png" alt="Planet Windows Native UI Writing Desk showing the date masthead, compact writing activity heatmap, elevated draft sheet, and article cards" width="900">
+<img src="docs/screenshots/workspace-dashboard.png" alt="Kinpage Native UI Writing Desk showing the date masthead, compact writing activity heatmap, elevated draft sheet, and article cards" width="900">
 
-<p><sub>An independent Windows port derived from <a href="https://github.com/Planetable/Planet">Planetable/Planet</a> for macOS, built with MyGo Native UI.</sub></p>
+<p><sub><strong>Kinpage (邻页)</strong> — an independent Windows native app derived from <a href="https://github.com/Planetable/Planet">Planetable/Planet</a> for macOS, built with MyGo Native UI.</sub></p>
 
 </div>
 
@@ -67,7 +67,7 @@
 <table>
   <tr>
     <td width="50%" align="center" valign="top">
-      <img src="docs/screenshots/subscription-reader.png" alt="Planet Windows three-pane reader showing subscriptions, article list, and rendered post" width="100%">
+      <img src="docs/screenshots/subscription-reader.png" alt="Kinpage three-pane reader showing subscriptions, article list, and rendered post" width="100%">
       <br />
       <sub><strong>Three-Column Reader</strong> — Subscriptions, article list, and rich Markdown reading view.</sub>
     </td>
@@ -92,7 +92,7 @@
 | --- | --- | --- | --- |
 | **[Planet Windows v0.0.1-rc.1](https://github.com/puremixlab/planet-windows/releases/download/v0.0.1-rc.1/planet-windows-safe-setup-0.0.1-rc.1-amd64.exe)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release page](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-rc.1) (SHA-256, source archive, acceptance evidence) |
 
-Install into an empty directory, then launch **Planet Windows** from the Start menu.
+Install into an empty directory, then launch **Kinpage** from the Start menu.
 
 > [!NOTE]
 > **Unsigned release candidate.** Windows SmartScreen may prompt when running the installer — verify the published SHA-256 checksum on the release page before installing. Native desktop GUI, IME, cross-version upgrade, and macOS `.planet` round-trip compatibility remain under verification. See [known limitations](windows/README.md#尚未完成与待验证) and the [rc.1 acceptance scope](docs/acceptance-0.0.1-rc.1.md).
@@ -130,7 +130,7 @@ Run all commands from `windows/`:
 | `bun run check` | Run full quality checks: docs, `gofmt`, `go vet`, tooling/release tests, Go tests |
 | `bun run check:docs` | Lightweight check for [documentation-only changes](docs/git-workflow.md#纯文档检查) (Git + Bun only) |
 | `bun run security:check` | Run dependency vulnerability audit (requires network access) |
-| `bun run build` | Package the desktop app and installer into `windows/build/windows-amd64/` (close Planet/Kubo first) |
+| `bun run build` | Package the desktop app and installer into `windows/build/windows-amd64/` (close Kinpage/Kubo first) |
 
 ## Tech Stack
 
@@ -149,7 +149,7 @@ Run all commands from `windows/`:
 
 ## Acknowledgements
 
-Planet Windows is an independent Windows port inspired by and derived from [Planetable/Planet](https://github.com/Planetable/Planet). Built with [MyGo](https://github.com/egoist/mygo) and [IPFS Kubo](https://github.com/ipfs/kubo).
+Kinpage (邻页) is an independent Windows native app inspired by and derived from [Planetable/Planet](https://github.com/Planetable/Planet). Built with [MyGo](https://github.com/egoist/mygo) and [IPFS Kubo](https://github.com/ipfs/kubo).
 
 ## License
 

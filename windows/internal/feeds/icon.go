@@ -360,7 +360,7 @@ func fetchHTMLPage(ctx context.Context, client *http.Client, u *url.URL) (feedDo
 	if err != nil {
 		return feedDocument{}, err
 	}
-	req.Header.Set("User-Agent", "Planet-Windows/0.1")
+	req.Header.Set("User-Agent", "Kinpage/0.1")
 	resp, err := client.Do(req)
 	if err != nil {
 		return feedDocument{}, err
@@ -383,7 +383,7 @@ func fetchBounded(ctx context.Context, client *http.Client, u *url.URL, limit in
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Planet-Windows/0.1")
+	req.Header.Set("User-Agent", "Kinpage/0.1")
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

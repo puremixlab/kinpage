@@ -257,7 +257,7 @@ func PinWithPrevious(root, source string, feed, previous feeds.Feed) (feeds.Feed
 			if err != nil {
 				return feeds.Feed{}, "", err
 			}
-			req.Header.Set("User-Agent", "Planet-Windows/0.1")
+			req.Header.Set("User-Agent", "Kinpage/0.1")
 			previousAsset, hasPrevious := old[entry.url]
 			if hasPrevious && strings.HasPrefix(previousAsset.ContentType, entry.kind+"/") {
 				f, e := Open(root, previousAsset)

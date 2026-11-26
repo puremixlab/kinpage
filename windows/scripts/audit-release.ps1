@@ -8,13 +8,13 @@ $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Utility/Microsoft.PowerShell.Utility.psd1') -Force -ErrorAction Stop
 Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Security/Microsoft.PowerShell.Security.psd1') -Force -ErrorAction Stop
 . (Join-Path $PSScriptRoot 'release-audit/archive-entries.ps1')
-if (-not $InstallerName) { $InstallerName = 'planet-windows-safe-setup-' + (([IO.File]::ReadAllText((Join-Path ([IO.Directory]::GetParent($PSScriptRoot).FullName) 'release.json')) | ConvertFrom-Json).version) + '-amd64.exe' }
+if (-not $InstallerName) { $InstallerName = 'kinpage-safe-setup-' + (([IO.File]::ReadAllText((Join-Path ([IO.Directory]::GetParent($PSScriptRoot).FullName) 'release.json')) | ConvertFrom-Json).version) + '-amd64.exe' }
 $bundle = (Resolve-Path -LiteralPath $BundleDir).Path
 if (-not (Test-Path -LiteralPath $SevenZip -PathType Leaf)) { throw "7-Zip not found: $SevenZip" }
 if ([System.IO.Path]::GetFileName($InstallerName) -ne $InstallerName) { throw 'InstallerName must be a file name, not a path.' }
 $installerName = $InstallerName
 $installer = Join-Path $bundle $installerName
-$files = @('Planet Windows.exe', 'icon.png', 'ipfs.exe', 'kubo-LICENSE.txt', 'kubo-LICENSE-MIT.txt', 'kubo-LICENSE-APACHE.txt', 'LICENSE-PLANET.txt', 'THIRD-PARTY-NOTICES.txt', 'KUBO-BUILDINFO.txt', 'KUBO-DEPENDENCY-LICENSES.txt')
+$files = @('Kinpage.exe', 'icon.png', 'ipfs.exe', 'kubo-LICENSE.txt', 'kubo-LICENSE-MIT.txt', 'kubo-LICENSE-APACHE.txt', 'LICENSE-PLANET.txt', 'THIRD-PARTY-NOTICES.txt', 'KUBO-BUILDINFO.txt', 'KUBO-DEPENDENCY-LICENSES.txt')
 if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) { throw "Installer not found: $installer" }
 
 $header = & $SevenZip l -slt $installer
@@ -53,7 +53,7 @@ foreach ($name in $files) {
     if ($archiveHash -ne $diskHash) { throw "Installer and standalone payload differ: $name" }
     $results += [pscustomobject]@{ file = $name; sha256 = $diskHash }
 }
-$signatures = @('Planet Windows.exe', $installerName, 'ipfs.exe') | ForEach-Object {
+$signatures = @('Kinpage.exe', $installerName, 'ipfs.exe') | ForEach-Object {
     $result = Get-AuthenticodeSignature -LiteralPath (Join-Path $bundle $_)
     [pscustomobject]@{ file = $_; status = [string]$result.Status }
 }
