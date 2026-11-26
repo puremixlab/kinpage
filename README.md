@@ -10,8 +10,8 @@
 <h3>Decentralized blogging, IPFS publishing, and feed reading — built natively for Windows.</h3>
 
 <p>
-  <a href="https://github.com/Stdq123/planet-windows/releases"><img src="https://img.shields.io/github/v/release/Stdq123/planet-windows?include_prereleases&label=release&color=007aff" alt="Latest Release"></a>
-  <a href="https://github.com/Stdq123/planet-windows/actions/workflows/windows-ci.yml"><img src="https://github.com/Stdq123/planet-windows/actions/workflows/windows-ci.yml/badge.svg" alt="Windows Checks"></a>
+  <a href="https://github.com/puremixlab/planet-windows/releases"><img src="https://img.shields.io/github/v/release/puremixlab/planet-windows?include_prereleases&label=release&color=007aff" alt="Latest Release"></a>
+  <a href="https://github.com/puremixlab/planet-windows/actions/workflows/windows-ci.yml"><img src="https://github.com/puremixlab/planet-windows/actions/workflows/windows-ci.yml/badge.svg" alt="Windows Checks"></a>
   <img src="https://img.shields.io/badge/platform-Windows%20x64-0078d4" alt="Platform: Windows x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2ea043" alt="MIT License"></a>
   <a href="https://awesomemygo.dev/apps/planet-windows"><img src="https://awesomemygo.dev/badge.svg" alt="Listed on Awesome MyGo"></a>
@@ -29,9 +29,9 @@
 
 <br />
 
-<img src="docs/screenshots/subscription-reader.png" alt="Planet Windows three-pane reader showing subscriptions, article list, and rendered post" width="900">
+<img src="docs/screenshots/workspace-dashboard.png" alt="Planet Windows Native UI Writing Desk showing the date masthead, compact writing activity heatmap, elevated draft sheet, and article cards" width="900">
 
-<p><sub>An independent Windows port derived from <a href="https://github.com/Planetable/Planet">Planetable/Planet</a> for macOS.</sub></p>
+<p><sub>An independent Windows port derived from <a href="https://github.com/Planetable/Planet">Planetable/Planet</a> for macOS, built with MyGo Native UI.</sub></p>
 
 </div>
 
@@ -42,22 +42,22 @@
 <table>
   <tr>
     <td width="50%" valign="top">
-      <strong>Local-First Writing &amp; Publishing</strong><br />
-      Manage multiple sites with a focused Markdown editor, live split preview, local-only private drafts, tags, custom article slugs, standalone pages, attachments, audio/video playback, and <code>podcast.xml</code> generation.
+      <strong>Native macOS-Style Writing Desk</strong><br />
+      Three-column MyGo Native UI with a Sequoia Letterpress Writing Desk (<em>写作台</em>) pinned at the top of the sidebar: editorial date masthead, compact 14-week activity heatmap, elevated manuscript draft sheet, 3:2 article cards, Quick Post with media attachments, Markdown split editor, custom publish dates, cross-site article moves, portable <code>.article.zip</code> import/export, site archiving, and <code>podcast.xml</code> generation.
     </td>
     <td width="50%" valign="top">
-      <strong>Built-In IPFS &amp; IPNS Node</strong><br />
-      Bundles Kubo for automatic IPNS publishing and background renewal, paired with a live traffic chart, public reachability and <code>/p2p-circuit</code> relay diagnostics, local gateway access, and configurable public gateways (<code>eth.sucks</code>, Aleph Cloud, and more).
+      <strong>Built-In IPFS, IPNS &amp; Local API</strong><br />
+      Bundles Kubo for automatic IPNS publishing, background renewal, Quick vs. Full rebuilds, <code>Ctrl+O</code> Open IPFS Resource (CID, IPNS, <code>.eth</code>/<code>.sol</code>/<code>.bit</code>/<code>.fc</code>), live traffic &amp; <code>/p2p-circuit</code> diagnostics, configurable public gateways, plus macOS Planet Local API (<code>/v0/id</code>, <code>/public/*</code> static previews, and built-in <code>/app/</code> Web Client).
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <strong>Feed, ENS &amp; Planet Reader</strong><br />
-      Follow RSS, Atom, JSON Feed, website homepages with feed auto-discovery, IPNS names, and ENSIP-15 <code>.eth</code> sites. Automatically fetches site icons and favicons, organizes reading with Smart Feeds (<em>Today</em>, <em>Unread</em>, <em>Favorites</em>), and pins content for offline reading.
+      <strong>Feed, ENS &amp; Offline Reader</strong><br />
+      Follow RSS, Atom, JSON Feed, website homepages with feed auto-discovery, IPNS names, and ENSIP-15 <code>.eth</code> sites. Organize reading with Smart Feeds (<em>Today</em>, <em>Unread</em>, <em>Favorites</em>) and 6 star types, interactive GFM To-Do checkboxes, privacy-enhanced YouTube embeds, sandboxed original webpage toggle, hybrid BM25 + semantic search, TTS narration, and offline media pinning.
     </td>
     <td width="50%" valign="top">
-      <strong>Themes, Backups &amp; Integrations</strong><br />
-      Ships with 5 upstream templates (<em>Plain</em>, <em>8-bit</em>, <em>Grid</em>, <em>Platinum</em>, <em>Sepia</em>), static HTML export, and <code>.planet</code> backup import/export. Supports Cloudflare Pages, SSH/rsync, Pinnable, Filebase, Plausible analytics, Telegram, and X sync.
+      <strong>Templates, Backups, Web3 &amp; Integrations</strong><br />
+      Ships with 5 upstream templates (<em>Plain</em>, <em>8-bit</em>, <em>Grid</em>, <em>Platinum</em>, <em>Sepia</em>) with sandboxed in-app preview, static HTML export, <code>.planet</code> backup import/export, and custom repository relocation. Integrates Cloudflare Pages, SSH/rsync, Pinnable, Filebase, <code>dWebServices.xyz</code>, Farcaster <code>.well-known/farcaster.json</code>, EIP-681 ETH creator tipping, Plausible, Telegram, and X sync.
     </td>
   </tr>
 </table>
@@ -67,9 +67,9 @@
 <table>
   <tr>
     <td width="50%" align="center" valign="top">
-      <img src="docs/screenshots/workspace-dashboard.png" alt="Writing dashboard with site overview, private drafts, and recent articles" width="100%">
+      <img src="docs/screenshots/subscription-reader.png" alt="Planet Windows three-pane reader showing subscriptions, article list, and rendered post" width="100%">
       <br />
-      <sub><strong>Writing Dashboard</strong> — Site status, private drafts, and recent posts at a glance.</sub>
+      <sub><strong>Three-Column Reader</strong> — Subscriptions, article list, and rich Markdown reading view.</sub>
     </td>
     <td width="50%" align="center" valign="top">
       <img src="docs/screenshots/writing-editor.png" alt="Markdown editor with private draft controls" width="100%">
@@ -90,20 +90,21 @@
 
 | Build | Platform | Requirements | Checksums & Notes |
 | --- | --- | --- | --- |
-| **[Planet Windows v0.0.1-alpha.6](https://github.com/Stdq123/planet-windows/releases/download/v0.0.1-alpha.6/planet-windows-safe-setup-0.0.1-alpha.6-amd64.exe)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release page](https://github.com/Stdq123/planet-windows/releases/tag/v0.0.1-alpha.6) (SHA-256, source archive, acceptance evidence) |
+| **[Planet Windows v0.0.1-alpha.6](https://github.com/puremixlab/planet-windows/releases/download/v0.0.1-alpha.6/planet-windows-safe-setup-0.0.1-alpha.6-amd64.exe)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release page](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-alpha.6) (SHA-256, source archive, acceptance evidence) |
 
 Install into an empty directory, then launch **Planet Windows** from the Start menu.
 
 > [!NOTE]
-> **Early unsigned alpha.** Windows SmartScreen may prompt when running the installer — verify the published SHA-256 checksum on the release page before installing. Native desktop GUI, IME, cross-version upgrade, and macOS `.planet` round-trip compatibility remain under verification. See [known limitations](windows/README.md#尚未完成与待验证) and the [alpha.6 acceptance scope](docs/acceptance-0.0.1-alpha.6.md).
+> **Early unsigned alpha.** `v0.0.1-alpha.6` is the latest published installer; newer Native UI redesign and macOS Planet 0.22.0 parity features on `main` are currently unreleased (see [Changelog](CHANGELOG.md)). Windows SmartScreen may prompt when running the installer — verify the published SHA-256 checksum on the release page before installing. Native desktop GUI, IME, cross-version upgrade, and macOS `.planet` round-trip compatibility remain under verification. See [known limitations](windows/README.md#尚未完成与待验证) and the [alpha.6 acceptance scope](docs/acceptance-0.0.1-alpha.6.md).
 
 > [!WARNING]
 > Exported `.planet` backups contain **unencrypted IPNS private keys**. Keep backup archives private and stored safely.
 
 ## Quick Start
 
-- **Follow a site:** Click **+** next to **订阅** (Subscriptions), enter a website URL (such as `https://olivida.eth.limo`), an RSS/Atom/JSON Feed URL, an IPNS address, or an ENS `.eth` name, then click **添加** (Add).
-- **Create & publish a site:** Create a site from the writing dashboard and start a Markdown post. Use **保存草稿** (Save Draft) to keep work local; **保存并发布** (Save & Publish) queues public IPFS/IPNS publication of the site and its saved attachments.
+- **Follow a site:** Click **+** at the bottom-right of the sidebar and choose **关注订阅** (Follow), enter a website URL (such as `https://olivida.eth.limo`), an RSS/Atom/JSON Feed URL, an IPNS address, or an ENS `.eth` name, then click **关注** (Follow).
+- **Create & publish a site:** Click **写文章** (Compose) or **+** to create a site and start a Markdown draft. Drafts stay local-only until you click **发布** (Publish), which queues public IPFS/IPNS publication of the site and its saved attachments.
+- **Keyboard shortcuts:** `Ctrl+N` new article, `Ctrl+D` quick post, `Ctrl+E` edit current article, `Ctrl+F` toggle list search, `Ctrl+O` open IPFS/IPNS/ENS resource.
 
 > The application interface is currently in Simplified Chinese. Step-by-step guides for writing, publishing, offline pinning, and service integrations are available in the [full Chinese user guide](windows/README.md).
 
@@ -112,7 +113,7 @@ Install into an empty directory, then launch **Planet Windows** from the Start m
 **Prerequisites:** Windows x64, Git, [Go 1.27.4](https://go.dev/dl/) (or compatible toolchain), [Bun](https://bun.sh/), WebView2 Runtime, and [7-Zip](https://www.7-zip.org/) (only required for installer packaging).
 
 ```powershell
-git clone https://github.com/Stdq123/planet-windows.git
+git clone https://github.com/puremixlab/planet-windows.git
 cd planet-windows/windows
 bun install --frozen-lockfile
 powershell -NoProfile -File scripts/prepare-kubo.ps1
@@ -133,7 +134,7 @@ Run all commands from `windows/`:
 
 ## Tech Stack
 
-- **Desktop UI & runtime:** [MyGo](https://github.com/egoist/mygo) Native UI + sandboxed Windows WebView2 (for template previews and original webpage viewing)
+- **Desktop UI & runtime:** [MyGo](https://github.com/egoist/mygo) (`v0.10.0`) + [lobe-mygo](https://github.com/lobehub/lobe-mygo) Native UI, with sandboxed Windows WebView2 (only for template previews and subscription original webpage viewing)
 - **Backend & IPFS:** Go + bundled [Kubo](https://github.com/ipfs/kubo)
 - **Tooling & release scripts:** Bun + PowerShell
 
@@ -144,7 +145,7 @@ Run all commands from `windows/`:
 - [Changelog](CHANGELOG.md) — version history and unreleased changes.
 - [Logo & Branding](docs/branding/README.md) — brand guidelines and SVG assets.
 - [Contributing](CONTRIBUTING.md) · [Git Workflow](docs/git-workflow.md) · [Releasing](docs/releasing.md) — development and release workflows.
-- [Security Policy](SECURITY.md) · [Issues](https://github.com/Stdq123/planet-windows/issues) — vulnerability reporting, bugs, and feature requests.
+- [Security Policy](SECURITY.md) · [Issues](https://github.com/puremixlab/planet-windows/issues) — vulnerability reporting, bugs, and feature requests.
 
 ## Acknowledgements
 
