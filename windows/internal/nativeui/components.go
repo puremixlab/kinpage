@@ -296,6 +296,36 @@ func macInsetCard(c *ui.Context, pal macPalette, content func()) {
 		Shadow(0, 1, 3, 0, pal.prefsCardShadow).Children(content)
 }
 
+// settingsEmptyState renders a clean ChatGPT-style empty state card inside a
+// settings pane (icon + concise description + primary pill action button),
+// avoiding raw empty forms until the user explicitly chooses to add/configure.
+func settingsEmptyState(c *ui.Context, key string, icon *ui.SVG, desc, actionLabel string, pal macPalette) bool {
+	clicked := false
+	macInsetCard(c, pal, func() {
+		ui.Column(c).PaddingY(24).Gap(10).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
+			if icon != nil {
+				ui.Icon(c, icon).Size(24, 24).TextColor(pal.prefsSecondary)
+			}
+			ui.Text(c, desc).Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
+			if actionLabel != "" {
+				btn := ui.ButtonBase(c.Key(key)).Label(actionLabel).
+					Height(30).PaddingX(16).Radius(15).Background(pal.prefsInk).
+					Center().Cursor(ui.CursorPointer)
+				if btn.Hovered() {
+					btn.Background(pal.prefsInk.Alpha(0.86))
+				}
+				btn.Children(func() {
+					ui.Text(c, actionLabel).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsCanvas).NoWrap()
+				})
+				if btn.Clicked() {
+					clicked = true
+				}
+			}
+		})
+	})
+	return clicked
+}
+
 // macField renders a top-aligned settings field with clear label and optional hint.
 func macField(c *ui.Context, label, hint string, pal macPalette, input func()) {
 	ui.Column(c).Gap(6).AlignSelf(ui.Stretch).Children(func() {

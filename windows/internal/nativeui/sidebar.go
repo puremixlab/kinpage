@@ -149,10 +149,36 @@ func (a *App) viewSidebar(c *ui.Context) {
 			})
 		})
 
-		// macOS PlanetSidebarView bottom bar (44px):
-		// Left: IPFS online status + peer count; Right: '+' menu (New Planet / Follow Planet).
+		// Sidebar bottom bar (44px):
+		// Left: Settings popover anchored cleanly above the button; Right: IPFS status popover.
 		hairlineH(c, pal)
-		ui.Row(c).Height(44).Padding(0, 10, 0, 14).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.bottomBg).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+		ui.Row(c).Height(44).Padding(0, 10, 0, 10).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.bottomBg).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+			settingsLabel := a.t("nav.settings")
+			settingsBtn := ui.ButtonBase(c.Key("sidebar-settings-menu")).Label(settingsLabel).MinHeight(30).
+				Radius(6).PaddingX(7).Cursor(ui.CursorPointer).Tooltip(settingsLabel).Transition(rowHoverTransition)
+			if a.settingsMenuOpen {
+				settingsBtn.Background(pal.active)
+			} else if settingsBtn.Hovered() {
+				settingsBtn.Background(pal.hover)
+			}
+			settingsBtn.Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+					ui.Icon(c, lucide.Settings()).Size(14, 14).TextColor(pal.secondary).Shrink(0)
+					ui.Text(c, settingsLabel).Font(macPlanetFont).FontSize(12.5).TextColor(pal.ink).NoWrap()
+				})
+			})
+			if settingsBtn.Clicked() {
+				a.settingsMenuOpen = !a.settingsMenuOpen
+			}
+			ui.PopoverBase(c, settingsBtn, &a.settingsMenuOpen, func(panel ui.Element) {
+				panel.AttachTo(settingsBtn, ui.AnchorTopLeft, ui.AnchorBottomLeft).Margin(0, 0, 8, 0).
+					Padding(6).Radius(10).Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).
+					Shadow(0, 10, 28, 0, pal.shadowColor).
+					Children(func() {
+						a.viewSettingsPopoverContent(c)
+					})
+			})
+
 			dotColor := pal.green
 			ipfsLabel := a.t("ipfs.online")
 			st := a.ipfsModal.status
@@ -193,21 +219,86 @@ func (a *App) viewSidebar(c *ui.Context) {
 			if !wasOpen && a.ipfsModal.open {
 				a.refreshIPFSModal()
 			}
+		})
+	})
+}
 
-			toolbarIconBtn(c, "sidebar-add-menu", lucide.Plus(), a.t("nav.newOrFollow")).Menu(func(m *ui.Menu) {
-				if m.Item(a.t("nav.newSiteEllipsis")).Chosen() {
-					a.newSiteName = ""
-					a.newSiteAbout = ""
-					a.createSiteError = ""
-					a.createSiteOpen = true
-				}
-				m.Separator()
-				if m.Item(a.t("nav.followSiteEllipsis")).Chosen() {
-					a.followAddress = ""
-					a.followErr = ""
-					a.followModalOpen = true
-				}
+// viewSettingsPopoverContent renders the ChatGPT-style compact Settings popover
+// anchored cleanly above the bottom-left Settings button without covering it.
+func (a *App) viewSettingsPopoverContent(c *ui.Context) {
+	pal := a.pal
+	popRow := func(key string, icon *ui.SVG, label, shortcut string, onClick func()) {
+		row := interactiveRow(c, key, label, ui.Transparent, pal.hover, pal.active).
+			MinHeight(30).Radius(6).Padding(4, 10, 4, 10).
+			Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(8).Grow(1).MinWidth(0).Children(func() {
+					if icon != nil {
+						ui.Icon(c, icon).Size(14, 14).TextColor(pal.secondary).Shrink(0)
+					}
+					ui.Text(c, label).Font(macPlanetFont).FontSize(12.5).TextColor(pal.ink).Grow(1).NoWrap()
+					if shortcut != "" {
+						ui.Text(c, shortcut).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap().Shrink(0)
+					}
+				})
 			})
+		if row.Clicked() {
+			a.settingsMenuOpen = false
+			onClick()
+		}
+	}
+
+	ui.Column(c).Width(244).Padding(4).Gap(3).Children(func() {
+		popRow("sm-new-site", lucide.Plus(), a.t("nav.newSiteEllipsis"), "", func() {
+			a.newSiteName = ""
+			a.newSiteAbout = ""
+			a.createSiteError = ""
+			a.createSiteOpen = true
+		})
+		popRow("sm-follow-site", lucide.Rss(), a.t("nav.followSiteEllipsis"), "", func() {
+			a.followAddress = ""
+			a.followErr = ""
+			a.followModalOpen = true
+		})
+
+		ui.Box(c).PaddingY(2).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
+
+		popRow("sm-quick-post", lucide.MessageSquarePlus(), a.t("menu.quickPost"), "Ctrl+D", func() {
+			a.openQuickPost()
+		})
+		popRow("sm-open-ipfs", lucide.Globe(), a.t("menu.openIPFS"), "Ctrl+O", func() {
+			a.openIPFSResourceModal()
+		})
+
+		ui.Box(c).PaddingY(2).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
+
+		// Inline language quick switcher.
+		ui.Column(c).Padding(4, 8, 4, 8).Gap(6).AlignSelf(ui.Stretch).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+				ui.Icon(c, lucide.Globe()).Size(13, 13).TextColor(pal.muted).Shrink(0)
+				ui.Text(c, a.t("menu.language")).Font(macPlanetFont).FontSize(11.5).FontWeight(500).TextColor(pal.muted)
+			})
+			locales := SupportedLocales()
+			labels := make([]string, len(locales))
+			curIdx := 0
+			for i, loc := range locales {
+				labels[i] = LocaleDisplayName(loc)
+				if a.Locale() == loc {
+					curIdx = i
+				}
+			}
+			prevIdx := curIdx
+			macSegmented(c, "sm-locale-seg", &curIdx, labels, pal)
+			if curIdx != prevIdx && curIdx >= 0 && curIdx < len(locales) {
+				chosen := locales[curIdx]
+				a.SetLocale(chosen)
+				a.setStatus(a.tf("status.languageSwitched", LocaleDisplayName(chosen)))
+			}
+		})
+
+		ui.Box(c).PaddingY(2).AlignSelf(ui.Stretch).Children(func() { hairlineH(c, pal) })
+
+		popRow("sm-more-settings", lucide.Settings(), a.t("menu.moreSettings"), "Ctrl+,", func() {
+			a.openToolsModal(toolsTabGeneral)
 		})
 	})
 }

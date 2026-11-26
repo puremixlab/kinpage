@@ -155,4 +155,15 @@ func TestLiveLocaleSwitchRendersTranslatedUI(t *testing.T) {
 	if !tester.HasText("寫作台") || !tester.HasText("我的站點") {
 		t.Fatalf("expected zh-TW sidebar labels after switching to zh-TW")
 	}
+
+	// Verify inline language switch from the bottom-left Settings popover.
+	if err := tester.Click("設定"); err != nil {
+		t.Fatalf("failed to open settings popover in zh-TW: %v", err)
+	}
+	if err := tester.Click("English"); err != nil {
+		t.Fatalf("failed to switch language to English in settings popover: %v", err)
+	}
+	if app.Locale() != LocaleEn || !tester.HasText("Dashboard") {
+		t.Fatalf("expected English locale after popover click, got %q", app.Locale())
+	}
 }

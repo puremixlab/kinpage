@@ -968,11 +968,11 @@ func TestNativeUIUnsavedGuardAndArticleActions(t *testing.T) {
 	tt := ui.NewTester(app.View, 1280, 820)
 	tt.Frame()
 
-	// Quick Post via sidebar top-right '...' tools menu.
-	if err := tt.Click("更多工具"); err != nil {
-		t.Fatalf("failed to open tools menu: %v", err)
+	// Quick Post via sidebar bottom-left Settings popover.
+	if err := tt.Click("设置"); err != nil {
+		t.Fatalf("failed to open settings popover: %v", err)
 	}
-	if err := tt.ChooseMenuItem("快捷发文"); err != nil {
+	if err := tt.Click("快捷发文"); err != nil {
 		t.Fatalf("failed to open quick post: %v", err)
 	}
 	app.quickPostTitle = "快讯"

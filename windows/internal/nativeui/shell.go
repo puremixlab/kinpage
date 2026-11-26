@@ -32,6 +32,9 @@ func (a *App) View(c *ui.Context) {
 		if c.Shortcut(ui.Ctrl, ui.KeyD) {
 			a.openQuickPost()
 		}
+		if c.Shortcut(ui.Ctrl, ui.KeyComma) {
+			a.openToolsModal(toolsTabGeneral)
+		}
 		if a.mode == viewSite && !a.editing && c.Shortcut(ui.Ctrl, ui.KeyE) {
 			if art := a.currentArticle(); art != nil {
 				a.openArticleForEdit(*art)

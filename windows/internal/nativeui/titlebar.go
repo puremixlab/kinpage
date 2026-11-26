@@ -1,7 +1,6 @@
 package nativeui
 
 import (
-	"context"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -34,8 +33,8 @@ func (a *App) topBarLeftPad(c *ui.Context) float32 {
 	return 10
 }
 
-// viewSidebarHeader renders the 44px top bar integrated seamlessly into Column 1 (Sidebar),
-// matching macOS PlanetSidebarView.toolbar: Sidebar toggle + Sparkles AI on left, '...' tools menu on right.
+// viewSidebarHeader renders the 44px top bar integrated seamlessly into Column 1 (Sidebar):
+// Brand icon + Sidebar toggle + Sparkles AI on left.
 func (a *App) viewSidebarHeader(c *ui.Context) {
 	pal := a.pal
 	h := a.topBarHeight(c)
@@ -55,72 +54,6 @@ func (a *App) viewSidebarHeader(c *ui.Context) {
 					a.openToolsModal(toolsTabAI)
 				}
 			})
-		})
-
-		toolbarIconBtn(c, "tb-sidebar-more", lucide.Ellipsis(), a.t("nav.moreTools")).Menu(func(m *ui.Menu) {
-			if m.Item(a.t("menu.quickPost")).Shortcut(ui.Ctrl, ui.KeyD).Chosen() {
-				a.openQuickPost()
-			}
-			if m.Item(a.t("menu.openIPFS")).Shortcut(ui.Ctrl, ui.KeyO).Chosen() {
-				a.openIPFSResourceModal()
-			}
-			if m.Item(a.t("menu.tipCreator")).Chosen() {
-				a.openTipModal("")
-			}
-			m.Separator()
-			if m.Item(a.t("menu.publishedFolders")).Chosen() {
-				a.openFoldersModal()
-			}
-			if m.Item(a.t("menu.offlineStorage")).Chosen() {
-				a.openOfflineModal()
-			}
-			if m.Item(a.t("menu.trash")).Chosen() {
-				a.openRemovedSitesModal()
-			}
-			m.Separator()
-			if m.Item(a.t("menu.localAPI")).Chosen() {
-				a.openToolsModal(toolsTabAPI)
-			}
-			if m.Item(a.t("menu.keyManager")).Chosen() {
-				a.openToolsModal(toolsTabKeys)
-			}
-			if m.Item(a.t("menu.appLogs")).Chosen() {
-				a.openToolsModal(toolsTabLogs)
-			}
-			m.Separator()
-			m.Submenu(a.t("menu.language"), func(sm *ui.Menu) {
-				for _, loc := range SupportedLocales() {
-					if sm.Item(LocaleDisplayName(loc)).Radio(a.Locale() == loc).Chosen() {
-						a.SetLocale(loc)
-						a.setStatus(a.tf("status.languageSwitched", LocaleDisplayName(loc)))
-					}
-				}
-			})
-			preventSleep := a.backend != nil && a.backend.PreventSleep()
-			if m.Item(a.t("menu.preventSleep")).Radio(preventSleep).Chosen() {
-				if a.backend != nil {
-					if err := a.backend.SetPreventSleep(!preventSleep); err != nil {
-						a.setError(a.tf("status.preventSleepErr", err.Error()))
-					} else if !preventSleep {
-						a.setStatus(a.t("status.preventSleepOn"))
-					} else {
-						a.setStatus(a.t("status.preventSleepOff"))
-					}
-				}
-			}
-			if m.Item(a.t("menu.moveDataDir")).Chosen() {
-				if a.backend != nil {
-					if dst, err := a.backend.MoveDataDir(context.Background()); err != nil {
-						a.setError(a.tf("status.moveDataDirErr", err.Error()))
-					} else if dst != "" {
-						a.setStatus(a.tf("status.moveDataDirDone", dst))
-					}
-				}
-			}
-			if m.Item(a.t("menu.refreshData")).Chosen() {
-				a.Reload()
-				a.setStatus(a.t("status.dataRefreshed"))
-			}
 		})
 	})
 }

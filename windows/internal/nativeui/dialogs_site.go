@@ -449,6 +449,8 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 			a.setStatus(a.t("status.siteMovedToTrash"))
 		}
 	}
+
+	a.viewIntegrationsSecondarySheets(c)
 }
 
 func (a *App) saveSiteSettings() {
