@@ -6,7 +6,7 @@
 >
 > Planet Windows 基于上述上游项目，是独立开发的 Windows 移植版本。
 
-[下载 v0.0.1-alpha.6](https://github.com/Stdq123/planet-windows/releases/tag/v0.0.1-alpha.6) · [简体中文主页](../README_zh.md) · [English README](../README.md) · [贡献指南](../CONTRIBUTING.md)
+[下载 v0.0.1-alpha.6](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-alpha.6) · [简体中文主页](../README_zh.md) · [English README](../README.md) · [贡献指南](../CONTRIBUTING.md)
 
 [![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/planet-windows)
 
@@ -32,20 +32,20 @@
 ### 下载与安装
 
 1. 准备 Windows x64 和 WebView2 Runtime。
-2. [下载 Windows x64 安装包](https://github.com/Stdq123/planet-windows/releases/download/v0.0.1-alpha.6/planet-windows-safe-setup-0.0.1-alpha.6-amd64.exe)，安装到空目录后，从开始菜单打开 **Planet Windows**。[发行页面](https://github.com/Stdq123/planet-windows/releases/tag/v0.0.1-alpha.6)同时提供对应源码、SHA-256 校验文件和本次最终安装包的验收证据。
-3. 在写作台创建站点开始写作，或点击侧栏“订阅”旁的 **+** 添加订阅。
+2. [下载 Windows x64 安装包](https://github.com/puremixlab/planet-windows/releases/download/v0.0.1-alpha.6/planet-windows-safe-setup-0.0.1-alpha.6-amd64.exe)，安装到空目录后，从开始菜单打开 **Planet Windows**。[发行页面](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-alpha.6)同时提供对应源码、SHA-256 校验文件和本次最终安装包的验收证据。
+3. 在写作台点击右上角 **写文章** 或侧栏右下角 **+** 创建站点、关注订阅。
 
 ### 写作台
 
-![写作台概览，汇总站点发布状态、私密草稿和最近文章](../docs/screenshots/workspace-dashboard.png)
+![写作台概览，展示日期刊头、紧凑热力条、抬升草稿纸面与文章卡片](../docs/screenshots/workspace-dashboard.png)
 
 ![写作台的空工作区，提供创建站点和导入备份的入口](../docs/screenshots/workspace-dashboard-empty.png)
 
-启动后默认显示写作台，汇总所有站点的文章、私密草稿和订阅未读数量，以及最近修改的草稿、文章与各站点发布状态。可在顶部选择站点开始写作，或点击草稿继续编辑；侧栏“写作台”可随时返回，未保存的修改仍会先提示确认。没有站点时，可创建新站点或导入 `.planet` 备份。
+「写作台」置顶在左侧边栏最上方，采用 macOS Sequoia 活版印纸视觉层级：顶部一体化工具栏集成搜索、快捷发文与「写文章」主操作；正文包含日期刊头与 14 周紧凑写作活动热力条、突出显示的最近草稿大纸面，以及支持按站点筛选的 3:2 活版印纸文章卡片墙。点击草稿纸面可直接继续编辑，未保存修改切换视图时会先提示确认；空工作区提供创建站点、关注精选站点或导入 `.planet` 备份的入口。
 
-写作台只读取本机元数据。IPFS 节点详情和 Plausible 访问统计由用户主动打开或查询；未配置统计或查询失败会显示说明，不会用零值代替。
+写作台列表只读取本机元数据与本地缓存摘录。IPFS 节点详情（侧栏左下角状态入口）和 Plausible 访问统计由用户主动打开或查询；未配置统计或查询失败会显示说明，不会用零值代替。
 
-常用保存与发布操作位于顶栏，其余站点操作位于“更多操作”菜单，备份与网关设置在侧栏“更多工具”。
+常用保存与发布操作位于顶部工具栏，站点与订阅项支持右键原生菜单与统一「站点设置」窗口（基本资料、发布与固定、内容同步与扩展、模板），备份、网关与数据仓库迁移位于侧栏顶部 `⋯` 工具菜单。
 
 ### 添加并阅读订阅
 
@@ -53,7 +53,7 @@
 
 在 Planet Windows 中阅读「沿途手记」示例订阅。
 
-1. 点击侧栏“订阅”旁的 **+**。
+1. 点击侧栏右下角的 **+** 并选择「关注订阅」。
 2. 输入 RSS、Atom 或 JSON Feed 地址，也可以输入支持的网站首页（例如 `https://olivida.eth.limo`）、IPNS 地址或 ENS 名称（例如 `olivida.eth`），然后点击“添加”。
 3. 在侧栏选择订阅，再选择文章阅读。点击“刷新订阅”可手动更新；点击文章页的收藏按钮后，可在侧栏“收藏的文章”中找到它。
 4. 需要离线阅读时，选中订阅并点击“更多操作 → 固定离线”。固定完成后可读取已保存的内容；不同订阅类型支持的媒体和大小限制见下文。
@@ -80,7 +80,7 @@
 
 ### 附件与媒体
 
-本地及导入站点均可为已保存的文章添加或删除附件；编辑器还支持直接在正文中粘贴剪贴板图片或拖入文件自动转存为附件并插入 Markdown 链接，以及按 Enter 键时对无序列表、有序列表和待办清单自动续行（在空列表项上按 Enter 自动移除标记）。文章会自动从正文首个 Markdown 图片引用或首个图片附件中提取 `heroImage` 封面图，并在文章列表顶栏支持切换「列表 / 网格」视图。附件立即保存或删除，系统插入的 Markdown 引用需要保存文章，删除附件时须自行删除不再需要的引用。发布、网页导出及备份会携带已保存附件。发布期间的附件操作可能需要等待发布结束，等待时不能保存或切换站点。
+本地及导入站点均可为已保存的文章添加或删除附件；编辑器还支持直接在正文中粘贴剪贴板图片或拖入文件自动转存为附件并插入 Markdown 链接，以及按 Enter 键时对无序列表、有序列表和待办清单自动续行（在空列表项上按 Enter 自动移除标记）。文章会自动从正文首个 Markdown 图片引用或首个图片附件中提取 `heroImage` 封面图，并支持视频附件硬件加速压缩（`H.264`/`HEVC`）与自动生成画廊 `_grid` 方形缩略图。附件立即保存或删除，系统插入的 Markdown 引用需要保存文章，删除附件时须自行删除不再需要的引用。发布、网页导出及备份会携带已保存附件。发布期间的附件操作可能需要等待发布结束，等待时不能保存或切换站点。
 
 编辑器的隔离预览可显示当前文章已登记的 PNG、JPEG、GIF 和 WebP 附件（单文件最多 8 MiB，总计最多 16 MiB）；外部图片和 SVG 不在预览中加载，发布后的页面仍可引用附件。
 
