@@ -447,6 +447,9 @@ func (a *App) viewDashboardArticles(c *ui.Context, containerW float32) {
 		}
 
 		cols := dashboardCardColumns(containerW)
+		if len(items) < cols {
+			cols = len(items)
+		}
 		ui.Column(c).AlignSelf(ui.Stretch).Gap(16).Children(func() {
 			for rowStart := 0; rowStart < len(items); rowStart += cols {
 				ui.Row(c).AlignSelf(ui.Stretch).Gap(16).Children(func() {
@@ -488,7 +491,7 @@ func (a *App) viewDashboardArticles(c *ui.Context, containerW float32) {
 						dotColor := a.siteStatusDotColor(siteID)
 
 						card := ui.ButtonBase(c.Key(cardKey)).Label(label).
-							Grow(1).MinWidth(0).MinHeight(184).Radius(10).
+							Grow(1).MinWidth(0).MinHeight(148).Radius(10).
 							Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).
 							Shadow(0, 2, 8, 0, pal.prefsCardShadow).
 							Cursor(ui.CursorPointer)
