@@ -3,7 +3,6 @@ package nativeui
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -98,7 +97,7 @@ func (a *App) loadIntegrationsState(site store.Site) {
 	}
 	a.integrations = integrationsModalState{
 		siteID:         site.ID,
-		siteName:       fallbackTitle(site.Name),
+		siteName:       a.fallbackTitle(site.Name),
 		templateName:   site.TemplateName,
 		templateValues: vals,
 		aggSources:     strings.Join(site.Aggregation, "\n"),
@@ -120,21 +119,21 @@ func (a *App) viewIntTemplates(c *ui.Context) {
 	m := &a.integrations
 	curName := m.templateName
 	if curName == "" {
-		curName = "默认模板"
+		curName = a.t("int.tpl.default")
 	}
 	macInsetCard(c, pal, func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
 			ui.Column(c).Gap(2).Children(func() {
-				ui.Text(c, "当前使用模板").Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
+				ui.Text(c, a.t("int.tpl.current")).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
 				ui.Text(c, curName).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink)
 			})
-			if macSecondaryButton(c, "tpl-import", "导入本地模板目录", pal) {
+			if macSecondaryButton(c, "tpl-import", a.t("int.tpl.importLocal"), pal) {
 				if site, err := a.backend.SelectTemplate(context.Background(), m.siteID); err != nil {
 					m.err = err.Error()
 				} else if site.ID != "" {
 					m.templateName = site.TemplateName
 					m.err = ""
-					m.msg = "已导入模板：" + site.TemplateName
+					m.msg = a.tf("int.tpl.imported", site.TemplateName)
 					a.Reload()
 				}
 			}
@@ -142,7 +141,7 @@ func (a *App) viewIntTemplates(c *ui.Context) {
 	})
 
 	macInsetCard(c, pal, func() {
-		ui.Text(c, "内置模板库").Font(macPlanetFont).FontSize(12.5).FontWeight(600).TextColor(pal.ink)
+		ui.Text(c, a.t("int.tpl.builtinLib")).Font(macPlanetFont).FontSize(12.5).FontWeight(600).TextColor(pal.ink)
 		for i, b := range a.backend.BuiltinTemplates() {
 			tpl := b
 			if i > 0 {
@@ -154,16 +153,16 @@ func (a *App) viewIntTemplates(c *ui.Context) {
 					ui.Text(c, tpl.Description).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
 				})
 				ui.Row(c).Gap(6).Shrink(0).Children(func() {
-					if macSecondaryButton(c, "tpl-preview-"+tpl.ID, "预览", pal) {
+					if macSecondaryButton(c, "tpl-preview-"+tpl.ID, a.t("common.preview"), pal) {
 						a.previewBuiltinTemplate(tpl.ID, tpl.Name)
 					}
-					if macSecondaryButton(c, "tpl-apply-"+tpl.ID, "应用", pal) {
+					if macSecondaryButton(c, "tpl-apply-"+tpl.ID, a.t("common.apply"), pal) {
 						if site, err := a.backend.ApplyBuiltinTemplate(m.siteID, tpl.ID); err != nil {
 							m.err = err.Error()
 						} else {
 							m.templateName = site.TemplateName
 							m.err = ""
-							m.msg = "已应用模板：" + tpl.Name
+							m.msg = a.tf("int.tpl.applied", tpl.Name)
 							if loaded, err := a.backend.TemplateSettings(m.siteID); err == nil && loaded != nil {
 								m.templateValues = loaded
 							}
@@ -177,7 +176,7 @@ func (a *App) viewIntTemplates(c *ui.Context) {
 
 	if len(m.templateValues) > 0 {
 		macInsetCard(c, pal, func() {
-			ui.Text(c, "模板参数设置").Font(macPlanetFont).FontSize(12.5).FontWeight(600).TextColor(pal.ink)
+			ui.Text(c, a.t("int.tpl.params")).Font(macPlanetFont).FontSize(12.5).FontWeight(600).TextColor(pal.ink)
 			keys := make([]string, 0, len(m.templateValues))
 			for k := range m.templateValues {
 				keys = append(keys, k)
@@ -192,13 +191,13 @@ func (a *App) viewIntTemplates(c *ui.Context) {
 				m.templateValues[key] = val
 			}
 			ui.Row(c).Justify(ui.End).AlignSelf(ui.Stretch).Children(func() {
-				if macPrimaryButtonSmall(c, "tpl-save-vals", "保存模板设置", pal) {
+				if macPrimaryButtonSmall(c, "tpl-save-vals", a.t("int.tpl.saveParams"), pal) {
 					raw, _ := json.Marshal(m.templateValues)
 					if _, err := a.backend.SaveTemplateSettings(m.siteID, string(raw)); err != nil {
 						m.err = err.Error()
 					} else {
 						m.err = ""
-						m.msg = "模板设置已保存"
+						m.msg = a.t("int.tpl.paramsSaved")
 						a.Reload()
 					}
 				}
@@ -211,7 +210,7 @@ func (a *App) previewBuiltinTemplate(id, name string) {
 	m := &a.integrations
 	htmlDoc, err := a.backend.BuiltinTemplatePreview(id)
 	if err != nil {
-		m.err = "生成模板预览失败：" + err.Error()
+		m.err = a.tf("int.tpl.previewGenErr", err.Error())
 		return
 	}
 	dir := filepath.Join(os.TempDir(), "planet-template-preview")
@@ -255,11 +254,11 @@ func (a *App) previewBuiltinTemplate(id, name string) {
 		opener = openBrowserFile
 	}
 	if err := opener(target); err != nil {
-		m.err = "打开浏览器预览失败：" + err.Error()
+		m.err = a.tf("int.tpl.previewBrowserErr", err.Error())
 		return
 	}
 	m.err = ""
-	m.msg = "已在系统浏览器中打开模板预览：" + name
+	m.msg = a.tf("int.tpl.previewBrowserOpened", name)
 }
 
 func (a *App) viewTemplatePreviewSheet(c *ui.Context) {
@@ -275,24 +274,24 @@ func (a *App) viewTemplatePreviewSheet(c *ui.Context) {
 		ui.Column(c).Fill().Background(pal.canvas).Children(func() {
 			ui.Row(c).Height(48).Padding(0, 14, 0, 20).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.prefsSidebar).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 				ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
-					ui.Text(c, fallbackTitle(tp.name)).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.prefsInk)
+					ui.Text(c, a.fallbackTitle(tp.name)).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.prefsInk)
 					ui.Box(c).Padding(2, 7, 2, 7).Radius(5).Background(pal.accent.Alpha(0.12)).Children(func() {
-						ui.Text(c, "模板预览").Font(macPlanetFont).FontSize(11).FontWeight(500).TextColor(pal.accent)
+						ui.Text(c, a.t("int.tpl.previewBadge")).Font(macPlanetFont).FontSize(11).FontWeight(500).TextColor(pal.accent)
 					})
 				})
 				ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
 					if tp.htmlPath != "" {
-						if toolbarIconBtn(c, "tpl-preview-ext", lucide.ExternalLink(), "在浏览器中打开").Clicked() {
+						if toolbarIconBtn(c, "tpl-preview-ext", lucide.ExternalLink(), a.t("menu.openInBrowser")).Clicked() {
 							opener := a.openExternal
 							if opener == nil {
 								opener = openBrowserFile
 							}
 							if err := opener(tp.htmlPath); err != nil {
-								a.setError("打开外部浏览器失败：" + err.Error())
+								a.setError(a.tf("status.openBrowserErr", err.Error()))
 							}
 						}
 					}
-					if toolbarIconBtn(c, "tpl-preview-close", lucide.X(), "关闭预览").Clicked() {
+					if toolbarIconBtn(c, "tpl-preview-close", lucide.X(), a.t("int.tpl.previewClose")).Clicked() {
 						tp.open = false
 					}
 				})
@@ -303,7 +302,7 @@ func (a *App) viewTemplatePreviewSheet(c *ui.Context) {
 					ui.WebView(c, tp.wv.Native()).Fill()
 				} else {
 					ui.Column(c).Fill().Center().Children(func() {
-						ui.Text(c, "正在加载模板预览…").Font(macPlanetFont).FontSize(13).TextColor(pal.muted)
+						ui.Text(c, a.t("int.tpl.previewLoading")).Font(macPlanetFont).FontSize(13).TextColor(pal.muted)
 					})
 				}
 			})
@@ -322,47 +321,47 @@ func (a *App) viewIntDeploy(c *ui.Context) {
 	macInsetCard(c, pal, func() {
 		ui.Row(c).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-				macField(c, "项目 / 目标名", "", pal, func() {
-					ui.TextInput(c.Key("dep-name"), &m.deployName).Label("项目名称").AlignSelf(ui.Stretch)
+				macField(c, a.t("int.deploy.nameField"), "", pal, func() {
+					ui.TextInput(c.Key("dep-name"), &m.deployName).Label(a.t("int.deploy.nameLabel")).AlignSelf(ui.Stretch)
 				})
 			})
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-				macField(c, "服务器 / 账号", "", pal, func() {
-					ui.TextInput(c.Key("dep-server"), &m.deployServer).Label("服务器地址").AlignSelf(ui.Stretch)
+				macField(c, a.t("int.deploy.serverField"), "", pal, func() {
+					ui.TextInput(c.Key("dep-server"), &m.deployServer).Label(a.t("int.deploy.serverLabel")).AlignSelf(ui.Stretch)
 				})
 			})
 		})
-		macField(c, "API Token / 密钥", "", pal, func() {
-			ui.TextInput(c.Key("dep-token"), &m.deployToken).Password().Label("部署令牌").AlignSelf(ui.Stretch)
+		macField(c, a.t("int.deploy.tokenField"), "", pal, func() {
+			ui.TextInput(c.Key("dep-token"), &m.deployToken).Password().Label(a.t("int.deploy.tokenLabel")).AlignSelf(ui.Stretch)
 		})
 		ui.Row(c).Gap(20).Wrap().Children(func() {
-			ui.Checkbox(c.Key("dep-auto"), &m.deployAuto, "发布后自动部署")
-			ui.Checkbox(c.Key("dep-del"), &m.deployDelete, "清理远端多余文件")
+			ui.Checkbox(c.Key("dep-auto"), &m.deployAuto, a.t("int.deploy.auto"))
+			ui.Checkbox(c.Key("dep-del"), &m.deployDelete, a.t("int.deploy.deleteRemote"))
 		})
 	})
 	ui.Row(c).Gap(8).Children(func() {
-		if macPrimaryButtonSmall(c, "dep-save", "保存部署配置", pal) {
+		if macPrimaryButtonSmall(c, "dep-save", a.t("int.deploy.save"), pal) {
 			if err := a.backend.ConfigureDeployment(m.siteID, kind, strings.TrimSpace(m.deployName), strings.TrimSpace(m.deployServer), strings.TrimSpace(m.deployToken), m.deployAuto, m.deployDelete); err != nil {
 				m.err = err.Error()
 			} else {
 				m.err = ""
-				m.msg = "已保存 " + kind + " 部署配置"
+				m.msg = a.tf("int.deploy.saved", kind)
 			}
 		}
-		if macSecondaryButton(c, "dep-run", "立即部署", pal) {
+		if macSecondaryButton(c, "dep-run", a.t("int.deploy.run"), pal) {
 			if msg, err := a.backend.DeploySite(m.siteID, kind); err != nil {
 				m.err = err.Error()
 			} else {
 				m.err = ""
-				m.msg = "部署完成：" + msg
+				m.msg = a.tf("int.deploy.runDone", msg)
 			}
 		}
-		if macSecondaryButton(c, "dep-disable", "停用部署", pal) {
+		if macSecondaryButton(c, "dep-disable", a.t("int.deploy.disable"), pal) {
 			if err := a.backend.DisableDeployment(m.siteID, kind); err != nil {
 				m.err = err.Error()
 			} else {
 				m.err = ""
-				m.msg = "已停用 " + kind + " 部署"
+				m.msg = a.tf("int.deploy.disabled", kind)
 			}
 		}
 	})
@@ -372,10 +371,10 @@ func (a *App) viewIntServices(c *ui.Context) {
 	pal := a.pal
 	m := &a.integrations
 	macInsetCard(c, pal, func() {
-		ui.Text(c, "Plausible 统计").Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink)
+		ui.Text(c, a.t("int.srv.plausibleTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink)
 		ui.Row(c).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-				macField(c, "域名", "", pal, func() { ui.TextInput(c.Key("srv-pl-dom"), &m.plausibleDomain).AlignSelf(ui.Stretch) })
+				macField(c, a.t("int.srv.domain"), "", pal, func() { ui.TextInput(c.Key("srv-pl-dom"), &m.plausibleDomain).AlignSelf(ui.Stretch) })
 			})
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
 				macField(c, "Script ID", "", pal, func() { ui.TextInput(c.Key("srv-pl-sid"), &m.plausibleScriptID).AlignSelf(ui.Stretch) })
@@ -386,28 +385,28 @@ func (a *App) viewIntServices(c *ui.Context) {
 				macField(c, "API Key", "", pal, func() { ui.TextInput(c.Key("srv-pl-tok"), &m.plausibleToken).Password().AlignSelf(ui.Stretch) })
 			})
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-				macField(c, "服务器", "", pal, func() {
+				macField(c, a.t("int.srv.server"), "", pal, func() {
 					ui.TextInput(c.Key("srv-pl-srv"), &m.plausibleServer).Placeholder("https://plausible.io").AlignSelf(ui.Stretch)
 				})
 			})
 		})
 		ui.Row(c).Justify(ui.End).AlignSelf(ui.Stretch).Children(func() {
-			if macSecondaryButton(c, "srv-pl-save", "保存 Plausible", pal) {
+			if macSecondaryButton(c, "srv-pl-save", a.t("int.srv.savePlausible"), pal) {
 				if err := a.backend.ConfigurePlausibleAt(m.siteID, strings.TrimSpace(m.plausibleDomain), strings.TrimSpace(m.plausibleToken), strings.TrimSpace(m.plausibleScriptID), strings.TrimSpace(m.plausibleServer)); err != nil {
 					m.err = err.Error()
 				} else {
 					m.err = ""
-					m.msg = "已保存 Plausible 配置"
+					m.msg = a.t("int.srv.savedPlausible")
 				}
 			}
 		})
 	})
 
 	macInsetCard(c, pal, func() {
-		ui.Text(c, "Filebase & Pinnable 固定服务").Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink)
+		ui.Text(c, a.t("int.srv.pinningTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink)
 		ui.Row(c).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-				macField(c, "Filebase Pin 名", "", pal, func() { ui.TextInput(c.Key("srv-fb-name"), &m.filebaseBucket).AlignSelf(ui.Stretch) })
+				macField(c, a.t("int.srv.filebasePinName"), "", pal, func() { ui.TextInput(c.Key("srv-fb-name"), &m.filebaseBucket).AlignSelf(ui.Stretch) })
 			})
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
 				macField(c, "Filebase Token", "", pal, func() { ui.TextInput(c.Key("srv-fb-tok"), &m.filebaseToken).Password().AlignSelf(ui.Stretch) })
@@ -415,45 +414,45 @@ func (a *App) viewIntServices(c *ui.Context) {
 		})
 		macField(c, "Pinnable Endpoint", "", pal, func() { ui.TextInput(c.Key("srv-pin-ep"), &m.pinnableEndpoint).AlignSelf(ui.Stretch) })
 		ui.Row(c).Gap(8).Wrap().Children(func() {
-			if macSecondaryButton(c, "srv-fb-save", "保存 Filebase", pal) {
+			if macSecondaryButton(c, "srv-fb-save", a.t("int.srv.saveFilebase"), pal) {
 				if err := a.backend.ConfigureService(m.siteID, "filebase", strings.TrimSpace(m.filebaseBucket), strings.TrimSpace(m.filebaseToken)); err != nil {
 					m.err = err.Error()
 				} else {
 					m.err = ""
-					m.msg = "已保存 Filebase 配置"
+					m.msg = a.t("int.srv.savedFilebase")
 				}
 			}
-			if macSecondaryButton(c, "srv-fb-pin", "触发 Filebase Pin", pal) {
+			if macSecondaryButton(c, "srv-fb-pin", a.t("int.srv.reqFilebasePin"), pal) {
 				if err := a.backend.RequestFilebasePin(m.siteID); err != nil {
 					m.err = err.Error()
 				} else {
 					m.err = ""
-					m.msg = "已请求 Filebase 固定"
+					m.msg = a.t("int.srv.reqFilebaseDone")
 				}
 			}
-			if macSecondaryButton(c, "srv-pin-save", "保存 Pinnable", pal) {
+			if macSecondaryButton(c, "srv-pin-save", a.t("int.srv.savePinnable"), pal) {
 				if err := a.backend.ConfigurePinnable(m.siteID, strings.TrimSpace(m.pinnableEndpoint)); err != nil {
 					m.err = err.Error()
 				} else {
 					m.err = ""
-					m.msg = "已保存 Pinnable 配置"
+					m.msg = a.t("int.srv.savedPinnable")
 				}
 			}
-			if macSecondaryButton(c, "srv-pin-req", "触发 Pinnable Pin", pal) {
+			if macSecondaryButton(c, "srv-pin-req", a.t("int.srv.reqPinnablePin"), pal) {
 				if err := a.backend.RequestPinnablePin(m.siteID); err != nil {
 					m.err = err.Error()
 				} else {
 					m.err = ""
-					m.msg = "已请求 Pinnable 固定"
+					m.msg = a.t("int.srv.reqPinnableDone")
 				}
 			}
 		})
 	})
 	macInsetCard(c, pal, func() {
-		ui.Text(c, "dWebServices.xyz 托管 IPNS").Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink)
+		ui.Text(c, a.t("int.srv.dwebTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink)
 		ui.Row(c).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-				macField(c, "域名", "", pal, func() {
+				macField(c, a.t("int.srv.domain"), "", pal, func() {
 					ui.TextInput(c.Key("srv-dweb-dom"), &m.dwebDomain).Placeholder("example.eth").AlignSelf(ui.Stretch)
 				})
 			})
@@ -463,12 +462,12 @@ func (a *App) viewIntServices(c *ui.Context) {
 				})
 			})
 		})
-		if macSecondaryButton(c, "srv-dweb-save", "保存 dWebServices", pal) {
+		if macSecondaryButton(c, "srv-dweb-save", a.t("int.srv.saveDweb"), pal) {
 			if err := a.backend.ConfigureService(m.siteID, "dwebservices", strings.TrimSpace(m.dwebDomain), strings.TrimSpace(m.dwebToken)); err != nil {
 				m.err = err.Error()
 			} else {
 				m.err = ""
-				m.msg = "已保存 dWebServices.xyz 配置"
+				m.msg = a.t("int.srv.savedDweb")
 			}
 		}
 	})
@@ -494,23 +493,23 @@ func (a *App) viewIntX(c *ui.Context) {
 				macField(c, "Access Secret", "", pal, func() { ui.TextInput(c.Key("x-ats"), &m.xAccessSecret).Password().AlignSelf(ui.Stretch) })
 			})
 		})
-		ui.Checkbox(c.Key("x-auto"), &m.xAutoSync, "发布文章时自动同步到 X")
+		ui.Checkbox(c.Key("x-auto"), &m.xAutoSync, a.t("int.x.autoSync"))
 	})
 	ui.Row(c).Gap(8).Children(func() {
-		if macPrimaryButtonSmall(c, "x-save", "保存 X 配置", pal) {
+		if macPrimaryButtonSmall(c, "x-save", a.t("int.x.save"), pal) {
 			if err := a.backend.ConfigureXSync(m.siteID, m.xAPIKey, m.xAPISecret, m.xAccessToken, m.xAccessSecret, m.xAutoSync); err != nil {
 				m.err = err.Error()
 			} else {
 				m.err = ""
-				m.msg = "已保存 X 同步配置"
+				m.msg = a.t("int.x.saved")
 			}
 		}
-		if macSecondaryButton(c, "x-disable", "停用 X 同步", pal) {
+		if macSecondaryButton(c, "x-disable", a.t("int.x.disable"), pal) {
 			if err := a.backend.DisableXSync(m.siteID); err != nil {
 				m.err = err.Error()
 			} else {
 				m.err = ""
-				m.msg = "已停用 X 同步"
+				m.msg = a.t("int.x.disabled")
 			}
 		}
 	})
@@ -520,34 +519,34 @@ func (a *App) viewIntTelegram(c *ui.Context) {
 	pal := a.pal
 	m := &a.integrations
 	macInsetCard(c, pal, func() {
-		macField(c, "频道 / Chat ID", "", pal, func() {
-			ui.TextInput(c.Key("tg-chat"), &m.tgChatID).Placeholder("@channel 或数字 ID").AlignSelf(ui.Stretch)
+		macField(c, a.t("int.tg.chatIDField"), "", pal, func() {
+			ui.TextInput(c.Key("tg-chat"), &m.tgChatID).Placeholder(a.t("int.tg.chatIDPlaceholder")).AlignSelf(ui.Stretch)
 		})
 		macField(c, "Bot Token", "", pal, func() { ui.TextInput(c.Key("tg-token"), &m.tgToken).Password().AlignSelf(ui.Stretch) })
 	})
 	ui.Row(c).Gap(8).Children(func() {
-		if macPrimaryButtonSmall(c, "tg-save", "保存 Telegram", pal) {
+		if macPrimaryButtonSmall(c, "tg-save", a.t("int.tg.save"), pal) {
 			if err := a.backend.ConfigureTelegram(m.siteID, strings.TrimSpace(m.tgChatID), strings.TrimSpace(m.tgToken)); err != nil {
 				m.err = err.Error()
 			} else {
 				m.err = ""
-				m.msg = "已保存 Telegram 同步配置"
+				m.msg = a.t("int.tg.saved")
 			}
 		}
-		if macSecondaryButton(c, "tg-retry", "重试未同步文章", pal) {
+		if macSecondaryButton(c, "tg-retry", a.t("int.tg.retry"), pal) {
 			if n, err := a.backend.RetryTelegram(m.siteID); err != nil {
 				m.err = err.Error()
 			} else {
 				m.err = ""
-				m.msg = fmt.Sprintf("已同步 %d 篇文章到 Telegram", n)
+				m.msg = a.tf("int.tg.retryDone", n)
 			}
 		}
-		if macSecondaryButton(c, "tg-disable", "停用 Telegram", pal) {
+		if macSecondaryButton(c, "tg-disable", a.t("int.tg.disable"), pal) {
 			if err := a.backend.DisableTelegram(m.siteID); err != nil {
 				m.err = err.Error()
 			} else {
 				m.err = ""
-				m.msg = "已停用 Telegram 同步"
+				m.msg = a.t("int.tg.disabled")
 			}
 		}
 	})
@@ -557,26 +556,26 @@ func (a *App) viewIntAggregate(c *ui.Context) {
 	pal := a.pal
 	m := &a.integrations
 	macInsetCard(c, pal, func() {
-		macField(c, "聚合源列表", "每行一个 RSS / Atom / IPNS 地址", pal, func() {
-			ui.TextArea(c.Key("agg-sources"), &m.aggSources).Lines(6, 10).Label("聚合源列表").AlignSelf(ui.Stretch)
+		macField(c, a.t("int.agg.sourcesField"), a.t("int.agg.sourcesHint"), pal, func() {
+			ui.TextArea(c.Key("agg-sources"), &m.aggSources).Lines(6, 10).Label(a.t("int.agg.sourcesField")).AlignSelf(ui.Stretch)
 		})
 	})
 	ui.Row(c).Gap(8).Children(func() {
-		if macPrimaryButtonSmall(c, "agg-save", "保存聚合源", pal) {
+		if macPrimaryButtonSmall(c, "agg-save", a.t("int.agg.save"), pal) {
 			if _, err := a.backend.UpdateSiteAggregation(m.siteID, m.aggSources); err != nil {
 				m.err = err.Error()
 			} else {
 				m.err = ""
-				m.msg = "已保存聚合源配置"
+				m.msg = a.t("int.agg.saved")
 				a.Reload()
 			}
 		}
-		if macSecondaryButton(c, "agg-sync", "立即抓取同步", pal) {
+		if macSecondaryButton(c, "agg-sync", a.t("int.agg.sync"), pal) {
 			if n, err := a.backend.SyncSiteAggregation(m.siteID); err != nil {
 				m.err = err.Error()
 			} else {
 				m.err = ""
-				m.msg = fmt.Sprintf("已聚合新增 %d 篇文章", n)
+				m.msg = a.tf("int.agg.syncDone", n)
 				a.Reload()
 			}
 		}
@@ -587,37 +586,37 @@ func (a *App) viewIntWeb3(c *ui.Context) {
 	pal := a.pal
 	m := &a.integrations
 	macInsetCard(c, pal, func() {
-		ui.Checkbox(c.Key("w3-donate"), &m.web3Donate, "接受以太坊捐赠")
+		ui.Checkbox(c.Key("w3-donate"), &m.web3Donate, a.t("int.web3.donateCheck"))
 		ui.Row(c).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-				macField(c, "ETH / ENS 地址", "", pal, func() {
-					ui.TextInput(c.Key("w3-eth"), &m.web3ETH).Placeholder("0x… 或 name.eth").AlignSelf(ui.Stretch)
+				macField(c, a.t("int.web3.ethField"), "", pal, func() {
+					ui.TextInput(c.Key("w3-eth"), &m.web3ETH).Placeholder(a.t("int.web3.ethPlaceholder")).AlignSelf(ui.Stretch)
 				})
 			})
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-				macField(c, "捐赠说明", "", pal, func() { ui.TextInput(c.Key("w3-msg"), &m.web3Message).AlignSelf(ui.Stretch) })
+				macField(c, a.t("int.web3.donateMsgField"), "", pal, func() { ui.TextInput(c.Key("w3-msg"), &m.web3Message).AlignSelf(ui.Stretch) })
 			})
 		})
 	})
 	macInsetCard(c, pal, func() {
 		ui.Row(c).Gap(16).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-			ui.Checkbox(c.Key("w3-jb"), &m.web3Juicebox, "启用 Juicebox 项目支持")
+			ui.Checkbox(c.Key("w3-jb"), &m.web3Juicebox, a.t("int.web3.juiceboxCheck"))
 			ui.Box(c).Width(160).Children(func() {
 				ui.TextInput(c.Key("w3-jbid"), &m.web3JuiceboxID).Placeholder("Juicebox ID").AlignSelf(ui.Stretch)
 			})
 		})
 	})
 	macInsetCard(c, pal, func() {
-		macField(c, "Farcaster Mini App (.well-known/farcaster.json)", "", pal, func() {
+		macField(c, a.t("int.web3.farcasterField"), "", pal, func() {
 			ui.TextArea(c.Key("w3-farcaster"), &m.web3Farcaster).Placeholder(`{"accountAssociation":{...}}`).Lines(3, 6).AlignSelf(ui.Stretch)
 		})
 	})
-	if macPrimaryButtonSmall(c, "w3-save", "保存 Web3 设置", pal) {
+	if macPrimaryButtonSmall(c, "w3-save", a.t("int.web3.save"), pal) {
 		jbID := 0
 		if s := strings.TrimSpace(m.web3JuiceboxID); s != "" {
 			parsed, err := strconv.Atoi(s)
 			if err != nil {
-				m.err = "Juicebox 项目 ID 必须为整数"
+				m.err = a.t("int.web3.jbIntErr")
 				return
 			}
 			jbID = parsed
@@ -634,7 +633,7 @@ func (a *App) viewIntWeb3(c *ui.Context) {
 			m.err = err.Error()
 		} else {
 			m.err = ""
-			m.msg = "Web3 设置已保存"
+			m.msg = a.t("int.web3.saved")
 			a.Reload()
 		}
 	}

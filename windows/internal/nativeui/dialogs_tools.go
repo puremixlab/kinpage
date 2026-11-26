@@ -99,17 +99,17 @@ func (a *App) viewToolsModal(c *ui.Context) {
 		ui.Row(c).Fill().Background(pal.prefsCanvas).Children(func() {
 			// Left 216px macOS Sequoia sidebar navigation with tinted icons.
 			ui.Column(c).Width(216).Shrink(0).AlignSelf(ui.Stretch).Background(pal.prefsSidebar).Padding(18, 10, 14, 10).Gap(3).Children(func() {
-				ui.Text(c, "系统工具").Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.prefsMuted).Padding(0, 10, 6, 10)
+				ui.Text(c, a.t("tools.sidebarTitle")).Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.prefsMuted).Padding(0, 10, 6, 10)
 				tabs := []struct {
 					idx   int
 					label string
 					icon  *ui.SVG
 					tint  ui.Color
 				}{
-					{toolsTabAI, "AI 助手", lucide.Sparkles(), ui.Hex("#7c3aed")},
-					{toolsTabAPI, "本地 API", lucide.Terminal(), ui.Hex("#0891b2")},
-					{toolsTabKeys, "密钥管理", lucide.KeyRound(), ui.Hex("#d97706")},
-					{toolsTabLogs, "应用日志", lucide.FileText(), ui.Hex("#64748b")},
+					{toolsTabAI, a.t("nav.aiAssistant"), lucide.Sparkles(), ui.Hex("#7c3aed")},
+					{toolsTabAPI, a.t("menu.localAPI"), lucide.Terminal(), ui.Hex("#0891b2")},
+					{toolsTabKeys, a.t("menu.keyManager"), lucide.KeyRound(), ui.Hex("#d97706")},
+					{toolsTabLogs, a.t("menu.appLogs"), lucide.FileText(), ui.Hex("#64748b")},
 				}
 				for _, tab := range tabs {
 					tIdx, tLbl := tab.idx, tab.label
@@ -128,14 +128,14 @@ func (a *App) viewToolsModal(c *ui.Context) {
 			// Right form pane + header + footer.
 			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
 				tabTitles := map[int]string{
-					toolsTabAI:   "AI 助手",
-					toolsTabAPI:  "本地 API",
-					toolsTabKeys: "密钥管理",
-					toolsTabLogs: "应用日志",
+					toolsTabAI:   a.t("nav.aiAssistant"),
+					toolsTabAPI:  a.t("menu.localAPI"),
+					toolsTabKeys: a.t("menu.keyManager"),
+					toolsTabLogs: a.t("menu.appLogs"),
 				}
 				ui.Row(c).Padding(20, 20, 12, 28).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Text(c, tabTitles[m.tab]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
-					if toolbarIconBtn(c, "tools-close-x", lucide.X(), "关闭").Clicked() {
+					if toolbarIconBtn(c, "tools-close-x", lucide.X(), a.t("common.close")).Clicked() {
 						m.open = false
 					}
 				})
@@ -160,7 +160,7 @@ func (a *App) viewToolsModal(c *ui.Context) {
 				})
 				prefsHairlineH(c, pal)
 				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.prefsFooter).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-					if macSecondaryButton(c, "tools-close", "关闭", pal) {
+					if macSecondaryButton(c, "tools-close", a.t("common.close"), pal) {
 						m.open = false
 					}
 				})
@@ -180,40 +180,40 @@ func (a *App) viewToolsAI(c *ui.Context) {
 				})
 			})
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-				macField(c, "模型名", "", pal, func() {
+				macField(c, a.t("tools.ai.modelField"), "", pal, func() {
 					ui.TextInput(c.Key("ai-model"), &m.aiModel).Placeholder("llama3 / qwen2.5").AlignSelf(ui.Stretch)
 				})
 			})
 		})
 		macField(c, "API Key", "", pal, func() {
-			ui.TextInput(c.Key("ai-tok"), &m.aiToken).Password().Placeholder("本地模型可留空").AlignSelf(ui.Stretch)
+			ui.TextInput(c.Key("ai-tok"), &m.aiToken).Password().Placeholder(a.t("tools.ai.apiKeyPlaceholder")).AlignSelf(ui.Stretch)
 		})
 		ui.Row(c).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
 			ui.Row(c).Gap(8).Wrap().Children(func() {
-				if macSecondaryButton(c, "ai-probe", "探测本地服务与模型", pal) {
+				if macSecondaryButton(c, "ai-probe", a.t("tools.ai.probeBtn"), pal) {
 					if res, err := a.backend.ProbeAI(strings.TrimSpace(m.aiBaseURL)); err != nil {
 						m.err = err.Error()
 					} else {
 						m.aiProbe = res
 						m.err = ""
-						m.msg = fmt.Sprintf("探测完成：发现 %d 个模型", len(res.Models))
+						m.msg = a.tf("tools.ai.probeDone", len(res.Models))
 						if m.aiModel == "" && len(res.Models) > 0 {
 							m.aiModel = res.Models[0]
 						}
 					}
 				}
 				if len(m.aiHistory) > 0 {
-					if macSecondaryButton(c, "ai-clear", "清空对话", pal) {
+					if macSecondaryButton(c, "ai-clear", a.t("tools.ai.clearChat"), pal) {
 						m.aiHistory = nil
 					}
 				}
 			})
-			if macPrimaryButtonSmall(c, "ai-save", "保存 AI 配置", pal) {
+			if macPrimaryButtonSmall(c, "ai-save", a.t("tools.ai.saveBtn"), pal) {
 				if _, err := a.backend.ConfigureAI(strings.TrimSpace(m.aiBaseURL), strings.TrimSpace(m.aiModel), strings.TrimSpace(m.aiToken)); err != nil {
 					m.err = err.Error()
 				} else {
 					m.err = ""
-					m.msg = "AI 配置已保存"
+					m.msg = a.t("tools.ai.savedMsg")
 				}
 			}
 		})
@@ -234,12 +234,12 @@ func (a *App) viewToolsAI(c *ui.Context) {
 
 	// Conversation card clearly separated from configuration above.
 	macInsetCard(c, pal, func() {
-		ui.Text(c, "对话测试").Font(macPlanetFont).FontSize(12.5).FontWeight(600).TextColor(pal.prefsInk)
+		ui.Text(c, a.t("tools.ai.chatTitle")).Font(macPlanetFont).FontSize(12.5).FontWeight(600).TextColor(pal.prefsInk)
 		for i, msg := range m.aiHistory {
-			roleLabel := "你"
+			roleLabel := a.t("tools.ai.roleUser")
 			bg := pal.prefsCanvas
 			if msg.Role == "assistant" {
-				roleLabel = "AI 助手"
+				roleLabel = a.t("nav.aiAssistant")
 				bg = pal.prefsCard
 			}
 			ui.Column(c.Key(fmt.Sprintf("ai-msg-%d", i))).Padding(12).Gap(4).Background(bg).Border(0.5, pal.prefsCardBorder).Radius(8).AlignSelf(ui.Stretch).Children(func() {
@@ -252,10 +252,10 @@ func (a *App) viewToolsAI(c *ui.Context) {
 			})
 		}
 		ui.Row(c).Gap(8).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-			if ui.TextInput(c.Key("ai-prompt"), &m.aiPrompt).Placeholder("输入问题（自动附带当前文章上下文）…").Grow(1).Submitted() {
+			if ui.TextInput(c.Key("ai-prompt"), &m.aiPrompt).Placeholder(a.t("tools.ai.promptPlaceholder")).Grow(1).Submitted() {
 				a.sendAIPrompt()
 			}
-			if macSecondaryButton(c, "ai-send", "发送", pal) {
+			if macSecondaryButton(c, "ai-send", a.t("tools.ai.sendBtn"), pal) {
 				a.sendAIPrompt()
 			}
 		})
@@ -291,38 +291,38 @@ func (a *App) sendAIPrompt() {
 func (a *App) viewToolsLocalAPI(c *ui.Context) {
 	pal := a.pal
 	m := &a.toolsModal
-	state := "已停止"
+	state := a.t("tools.api.stateStopped")
 	dotCol := pal.muted
 	if m.apiStatus.Running {
-		state = fmt.Sprintf("运行中 (127.0.0.1:%d)", m.apiStatus.Port)
+		state = a.tf("tools.api.stateRunning", m.apiStatus.Port)
 		dotCol = pal.green
 	}
 	macInsetCard(c, pal, func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
 			ui.Box(c).Size(8, 8).Radius(4).Background(dotCol)
-			ui.Text(c, "服务状态："+state).Font(macPlanetFont).FontWeight(600).FontSize(13).TextColor(pal.ink)
+			ui.Text(c, a.tf("tools.api.statusPrefix", state)).Font(macPlanetFont).FontWeight(600).FontSize(13).TextColor(pal.ink)
 		})
 		ui.Row(c).Gap(16).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-			ui.Checkbox(c.Key("api-en"), &m.apiEnabled, "启动本地 REST API")
+			ui.Checkbox(c.Key("api-en"), &m.apiEnabled, a.t("tools.api.enableCheck"))
 			ui.Box(c).Width(140).Children(func() {
-				ui.TextInput(c.Key("api-port"), &m.apiPort).Placeholder("端口").AlignSelf(ui.Stretch)
+				ui.TextInput(c.Key("api-port"), &m.apiPort).Placeholder(a.t("tools.api.portPlaceholder")).AlignSelf(ui.Stretch)
 			})
 		})
-		ui.Checkbox(c.Key("api-auth"), &m.apiAuthOn, "启用 HTTP Basic Auth")
+		ui.Checkbox(c.Key("api-auth"), &m.apiAuthOn, a.t("tools.api.authCheck"))
 		ui.Row(c).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-				macField(c, "用户名", "", pal, func() { ui.TextInput(c.Key("api-user"), &m.apiUsername).AlignSelf(ui.Stretch) })
+				macField(c, a.t("tools.api.userField"), "", pal, func() { ui.TextInput(c.Key("api-user"), &m.apiUsername).AlignSelf(ui.Stretch) })
 			})
 			ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-				macField(c, "密码", "", pal, func() { ui.TextInput(c.Key("api-pass"), &m.apiPasscode).Password().AlignSelf(ui.Stretch) })
+				macField(c, a.t("tools.api.passField"), "", pal, func() { ui.TextInput(c.Key("api-pass"), &m.apiPasscode).Password().AlignSelf(ui.Stretch) })
 			})
 		})
 	})
 	ui.Row(c).Gap(8).Children(func() {
-		if macPrimaryButtonSmall(c, "api-save", "保存 API 配置", pal) {
+		if macPrimaryButtonSmall(c, "api-save", a.t("tools.api.saveBtn"), pal) {
 			port, err := strconv.Atoi(strings.TrimSpace(m.apiPort))
 			if err != nil {
-				m.err = "端口必须为整数"
+				m.err = a.t("tools.api.portIntErr")
 				return
 			}
 			st, err := a.backend.ConfigureLocalAPI(m.apiEnabled, port, m.apiAuthOn, strings.TrimSpace(m.apiUsername), m.apiPasscode)
@@ -331,10 +331,10 @@ func (a *App) viewToolsLocalAPI(c *ui.Context) {
 			} else {
 				m.apiStatus = st
 				m.err = ""
-				m.msg = "本地 API 配置已保存"
+				m.msg = a.t("tools.api.savedMsg")
 			}
 		}
-		if macSecondaryButton(c, "api-clear-logs", "清空请求日志", pal) {
+		if macSecondaryButton(c, "api-clear-logs", a.t("tools.api.clearLogs"), pal) {
 			a.backend.ClearLocalAPILogs()
 			a.refreshToolsTab(toolsTabAPI)
 		}
@@ -353,11 +353,11 @@ func (a *App) viewToolsKeys(c *ui.Context) {
 	m := &a.toolsModal
 	macInsetCard(c, pal, func() {
 		ui.Row(c).Gap(8).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-			ui.TextInput(c.Key("key-imp-name"), &m.importKeyName).Placeholder("导入后的密钥名称").Grow(1)
-			if macPrimaryButtonSmall(c, "key-imp-btn", "导入密钥", pal) {
+			ui.TextInput(c.Key("key-imp-name"), &m.importKeyName).Placeholder(a.t("tools.keys.importPlaceholder")).Grow(1)
+			if macPrimaryButtonSmall(c, "key-imp-btn", a.t("tools.keys.importBtn"), pal) {
 				name := strings.TrimSpace(m.importKeyName)
 				if name == "" {
-					m.err = "请输入导入密钥名称"
+					m.err = a.t("tools.keys.nameRequired")
 					return
 				}
 				if id, err := a.backend.ImportIPNSKey(context.Background(), name); err != nil {
@@ -365,14 +365,14 @@ func (a *App) viewToolsKeys(c *ui.Context) {
 				} else {
 					m.importKeyName = ""
 					m.err = ""
-					m.msg = "已导入密钥：" + id
+					m.msg = a.tf("tools.keys.importedMsg", id)
 					a.refreshToolsTab(toolsTabKeys)
 				}
 			}
 		})
 	})
 	if len(m.keys) == 0 {
-		ui.Text(c, "暂无 IPNS 密钥（需先启动 IPFS 节点）").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+		ui.Text(c, a.t("tools.keys.empty")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 	} else {
 		macInsetCard(c, pal, func() {
 			for i, k := range m.keys {
@@ -385,12 +385,12 @@ func (a *App) viewToolsKeys(c *ui.Context) {
 						ui.Text(c, name).Font(macPlanetFont).FontWeight(600).FontSize(12.5).TextColor(pal.ink)
 						ui.Text(c, k.ID).Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
 					})
-					if macSecondaryButton(c, "key-exp-"+name, "导出", pal) {
+					if macSecondaryButton(c, "key-exp-"+name, a.t("common.export"), pal) {
 						if path, err := a.backend.ExportIPNSKey(context.Background(), name); err != nil {
 							m.err = err.Error()
 						} else if path != "" {
 							m.err = ""
-							m.msg = "已导出至：" + path
+							m.msg = a.tf("tools.keys.exportedMsg", path)
 						}
 					}
 				})
@@ -404,15 +404,15 @@ func (a *App) viewToolsLogs(c *ui.Context) {
 	m := &a.toolsModal
 	ui.Row(c).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
 		prev := m.logCatIdx
-		macSegmented(c, "log-cat", &m.logCatIdx, []string{"全部", "Planet", "IPFS", "API"}, pal)
+		macSegmented(c, "log-cat", &m.logCatIdx, []string{a.t("common.all"), "Planet", "IPFS", "API"}, pal)
 		if m.logCatIdx != prev {
 			a.refreshToolsTab(toolsTabLogs)
 		}
 		ui.Row(c).Gap(6).Children(func() {
-			if macSecondaryButton(c, "log-refresh", "刷新", pal) {
+			if macSecondaryButton(c, "log-refresh", a.t("common.refresh"), pal) {
 				a.refreshToolsTab(toolsTabLogs)
 			}
-			if macSecondaryButton(c, "log-clear", "清空日志", pal) {
+			if macSecondaryButton(c, "log-clear", a.t("tools.logs.clearBtn"), pal) {
 				a.backend.ClearAppLogs(logCategories[m.logCatIdx])
 				a.refreshToolsTab(toolsTabLogs)
 			}
@@ -420,7 +420,7 @@ func (a *App) viewToolsLogs(c *ui.Context) {
 	})
 	macInsetCard(c, pal, func() {
 		if len(m.logs) == 0 {
-			ui.Text(c, "暂无日志记录").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+			ui.Text(c, a.t("tools.logs.empty")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 		}
 		for i, entry := range m.logs {
 			ui.Text(c.Key(fmt.Sprintf("app-log-%d", i)), fmt.Sprintf("[%s] [%s] %s", entry.Time, entry.Category, entry.Message)).Font(macPlanetFont).FontSize(11.5).TextColor(pal.secondary)

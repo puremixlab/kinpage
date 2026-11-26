@@ -195,6 +195,7 @@ type App struct {
 	subWebView       WebViewHost
 	subWebViewURL    string
 	pal              macPalette
+	locale           Locale
 	bitmapCache      map[string]*ui.Bitmap
 	settingsMenuOpen bool
 	sidebarCollapsed bool
@@ -242,7 +243,9 @@ func New(backend Backend) *App {
 		speaker:          newDefaultSpeaker(),
 		openExternal:     openBrowserFile,
 		imgLoader:        newImageLoader(),
+		locale:           LocaleZhCN,
 	}
+	a.syncEditorLocale()
 	a.Reload()
 	return a
 }
@@ -268,7 +271,7 @@ func (a *App) toggleSpeak(title, body string) {
 	}
 	if a.speaker.Speaking() {
 		a.speaker.Stop()
-		a.setStatus("已停止朗读")
+		a.setStatus(a.t("status.stoppedSpeak"))
 		return
 	}
 	text := strings.TrimSpace(title + "\n\n" + body)
@@ -276,10 +279,10 @@ func (a *App) toggleSpeak(title, body string) {
 		return
 	}
 	if err := a.speaker.Speak(text); err != nil {
-		a.setError("语音朗读失败：" + err.Error())
+		a.setError(a.tf("status.speakErr", err.Error()))
 		return
 	}
-	a.setStatus("正在使用系统语音朗读…")
+	a.setStatus(a.t("status.speaking"))
 }
 
 // Reload refreshes the dashboard snapshot, writing activity, site list, and
@@ -290,7 +293,7 @@ func (a *App) Reload() {
 	}
 	a.loaded = true
 	if dash, err := a.backend.Dashboard(); err != nil {
-		a.setError("读取总览失败：" + err.Error())
+		a.setError(a.tf("status.loadOverviewErr", err.Error()))
 	} else {
 		a.dashboard = dash
 	}
@@ -298,7 +301,7 @@ func (a *App) Reload() {
 		a.activity = act
 	}
 	if sites, err := a.backend.Sites(); err != nil {
-		a.setError("读取站点列表失败：" + err.Error())
+		a.setError(a.tf("status.loadSitesErr", err.Error()))
 	} else {
 		a.sites = sites
 	}
@@ -368,13 +371,13 @@ func (a *App) loadSiteItems(siteID string) {
 	}
 	drafts, err := a.backend.Drafts(siteID)
 	if err != nil {
-		a.setError("读取草稿失败：" + err.Error())
+		a.setError(a.tf("status.loadDraftsErr", err.Error()))
 	} else {
 		a.drafts = drafts
 	}
 	articles, err := a.backend.Articles(siteID)
 	if err != nil {
-		a.setError("读取文章失败：" + err.Error())
+		a.setError(a.tf("status.loadArticlesErr", err.Error()))
 	} else {
 		sort.SliceStable(articles, func(i, j int) bool {
 			pi, pj := articles[i].Pinned != nil, articles[j].Pinned != nil
@@ -456,7 +459,7 @@ func (a *App) startNewDraft(siteID string) {
 	a.editorAttachments = nil
 	a.editorHeroImage = ""
 	a.editorBuffer.Reset("")
-	a.setStatus("新建草稿")
+	a.setStatus(a.t("status.newDraft"))
 }
 
 func (a *App) openDraft(d store.Draft) {
@@ -524,7 +527,7 @@ func (a *App) openArticleForEdit(art store.Article) {
 	a.editorAttachments = append([]string(nil), art.Attachments...)
 	a.editorHeroImage = art.HeroImage
 	a.editorBuffer.Reset(art.Content)
-	a.setStatus("正在编辑已发布文章（保存后将创建草稿）")
+	a.setStatus(a.t("status.editingPublished"))
 }
 
 func (a *App) saveCurrentDraft() bool {
@@ -533,13 +536,13 @@ func (a *App) saveCurrentDraft() bool {
 	}
 	tagsJSON, err := a.marshalEditorTags()
 	if err != nil {
-		a.setError("序列化标签失败：" + err.Error())
+		a.setError(a.tf("status.marshalTagsErr", err.Error()))
 		return false
 	}
 	content := a.editorBuffer.String()
 	draft, err := a.backend.SaveDraftWithTags(a.selectedSiteID, a.activeDraftID, a.activeArticleID, a.editorTitle, content, tagsJSON)
 	if err != nil {
-		a.setError("保存草稿失败：" + err.Error())
+		a.setError(a.tf("status.saveDraftErr", err.Error()))
 		return false
 	}
 	a.activeDraftID = draft.ID
@@ -551,7 +554,7 @@ func (a *App) saveCurrentDraft() bool {
 	a.editorHeroImage = draft.HeroImage
 	a.editorBuffer.MarkSaved()
 	a.Reload()
-	a.setStatus("草稿已保存 " + time.Now().Format("15:04:05"))
+	a.setStatus(a.tf("status.draftSaved", time.Now().Format("15:04:05")))
 	return true
 }
 
@@ -561,13 +564,13 @@ func (a *App) publishCurrentDraft() {
 	}
 	tagsJSON, err := a.marshalEditorTags()
 	if err != nil {
-		a.setError("序列化标签失败：" + err.Error())
+		a.setError(a.tf("status.marshalTagsErr", err.Error()))
 		return
 	}
 	content := a.editorBuffer.String()
 	art, err := a.backend.PublishDraftWithTags(a.selectedSiteID, a.activeDraftID, a.editorTitle, content, tagsJSON)
 	if err != nil {
-		a.setError("发布失败：" + err.Error())
+		a.setError(a.tf("status.publishErr", err.Error()))
 		return
 	}
 	a.editing = false
@@ -577,7 +580,7 @@ func (a *App) publishCurrentDraft() {
 	a.editorTagsDirty = false
 	a.editorBuffer.MarkSaved()
 	a.Reload()
-	a.setStatus("已发布：" + fallbackTitle(art.Title))
+	a.setStatus(a.tf("status.published", a.fallbackTitle(art.Title)))
 }
 
 func (a *App) deleteCurrentDraft() {
@@ -585,7 +588,7 @@ func (a *App) deleteCurrentDraft() {
 		return
 	}
 	if err := a.backend.DeleteDraft(a.selectedSiteID, a.activeDraftID); err != nil {
-		a.setError("删除草稿失败：" + err.Error())
+		a.setError(a.tf("status.deleteDraftErr", err.Error()))
 		return
 	}
 	a.editing = false
@@ -593,7 +596,7 @@ func (a *App) deleteCurrentDraft() {
 	a.activeArticleID = ""
 	a.editorTagsDirty = false
 	a.Reload()
-	a.setStatus("草稿已删除")
+	a.setStatus(a.t("status.draftDeleted"))
 }
 
 func (a *App) currentSite() *store.Site {

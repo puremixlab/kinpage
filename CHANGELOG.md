@@ -4,6 +4,10 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ## [Unreleased]
 
+### Added
+
+- Restored full Native UI internationalization (`zh-CN`, `zh-TW`, `en`) across the sidebar, menus, toolbars, Writing Desk, reader, editor, subscriptions, site settings, integrations, and system tools, with an in-app live language switcher (`界面语言` / `Language`), persistent locale preference in `nativeui-layout.json`, and automatic fallback to `en` for missing languages or keys.
+
 ## [0.0.1-rc.1] - 2026-11-26
 
 ### Changed

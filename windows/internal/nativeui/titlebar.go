@@ -48,70 +48,78 @@ func (a *App) viewSidebarHeader(c *ui.Context) {
 				ui.Icon(c, iconPlanet).Size(18, 18).TextColor(pal.ink)
 			})
 			ui.Row(c).AlignItems(ui.Center).Gap(2).Children(func() {
-				if toolbarIconBtn(c, "tb-toggle-sidebar", lucide.PanelLeftClose(), "收起侧边栏").Clicked() {
+				if toolbarIconBtn(c, "tb-toggle-sidebar", lucide.PanelLeftClose(), a.t("nav.collapseSidebar")).Clicked() {
 					a.sidebarCollapsed = true
 				}
-				if toolbarIconBtn(c, "tb-ai-sparkles", lucide.Sparkles(), "AI 助手").Clicked() {
+				if toolbarIconBtn(c, "tb-ai-sparkles", lucide.Sparkles(), a.t("nav.aiAssistant")).Clicked() {
 					a.openToolsModal(toolsTabAI)
 				}
 			})
 		})
 
-		toolbarIconBtn(c, "tb-sidebar-more", lucide.Ellipsis(), "更多工具").Menu(func(m *ui.Menu) {
-			if m.Item("快捷发文").Shortcut(ui.Ctrl, ui.KeyD).Chosen() {
+		toolbarIconBtn(c, "tb-sidebar-more", lucide.Ellipsis(), a.t("nav.moreTools")).Menu(func(m *ui.Menu) {
+			if m.Item(a.t("menu.quickPost")).Shortcut(ui.Ctrl, ui.KeyD).Chosen() {
 				a.openQuickPost()
 			}
-			if m.Item("打开 IPFS 资源…").Shortcut(ui.Ctrl, ui.KeyO).Chosen() {
+			if m.Item(a.t("menu.openIPFS")).Shortcut(ui.Ctrl, ui.KeyO).Chosen() {
 				a.openIPFSResourceModal()
 			}
-			if m.Item("打赏创作者 (ETH)…").Chosen() {
+			if m.Item(a.t("menu.tipCreator")).Chosen() {
 				a.openTipModal("")
 			}
 			m.Separator()
-			if m.Item("已发布文件夹").Chosen() {
+			if m.Item(a.t("menu.publishedFolders")).Chosen() {
 				a.openFoldersModal()
 			}
-			if m.Item("离线存储").Chosen() {
+			if m.Item(a.t("menu.offlineStorage")).Chosen() {
 				a.openOfflineModal()
 			}
-			if m.Item("回收站").Chosen() {
+			if m.Item(a.t("menu.trash")).Chosen() {
 				a.openRemovedSitesModal()
 			}
 			m.Separator()
-			if m.Item("本地 API").Chosen() {
+			if m.Item(a.t("menu.localAPI")).Chosen() {
 				a.openToolsModal(toolsTabAPI)
 			}
-			if m.Item("密钥管理").Chosen() {
+			if m.Item(a.t("menu.keyManager")).Chosen() {
 				a.openToolsModal(toolsTabKeys)
 			}
-			if m.Item("应用日志").Chosen() {
+			if m.Item(a.t("menu.appLogs")).Chosen() {
 				a.openToolsModal(toolsTabLogs)
 			}
 			m.Separator()
+			m.Submenu(a.t("menu.language"), func(sm *ui.Menu) {
+				for _, loc := range SupportedLocales() {
+					if sm.Item(LocaleDisplayName(loc)).Radio(a.Locale() == loc).Chosen() {
+						a.SetLocale(loc)
+						a.setStatus(a.tf("status.languageSwitched", LocaleDisplayName(loc)))
+					}
+				}
+			})
 			preventSleep := a.backend != nil && a.backend.PreventSleep()
-			if m.Item("运行期间防止系统休眠").Radio(preventSleep).Chosen() {
+			if m.Item(a.t("menu.preventSleep")).Radio(preventSleep).Chosen() {
 				if a.backend != nil {
 					if err := a.backend.SetPreventSleep(!preventSleep); err != nil {
-						a.setError("设置防休眠失败：" + err.Error())
+						a.setError(a.tf("status.preventSleepErr", err.Error()))
 					} else if !preventSleep {
-						a.setStatus("已开启防休眠")
+						a.setStatus(a.t("status.preventSleepOn"))
 					} else {
-						a.setStatus("已关闭防休眠")
+						a.setStatus(a.t("status.preventSleepOff"))
 					}
 				}
 			}
-			if m.Item("迁移数据仓库目录…").Chosen() {
+			if m.Item(a.t("menu.moveDataDir")).Chosen() {
 				if a.backend != nil {
 					if dst, err := a.backend.MoveDataDir(context.Background()); err != nil {
-						a.setError("迁移数据目录失败：" + err.Error())
+						a.setError(a.tf("status.moveDataDirErr", err.Error()))
 					} else if dst != "" {
-						a.setStatus("已迁移至 " + dst + "，重启 Planet 后生效")
+						a.setStatus(a.tf("status.moveDataDirDone", dst))
 					}
 				}
 			}
-			if m.Item("刷新数据").Chosen() {
+			if m.Item(a.t("menu.refreshData")).Chosen() {
 				a.Reload()
-				a.setStatus("已刷新数据")
+				a.setStatus(a.t("status.dataRefreshed"))
 			}
 		})
 	})
@@ -130,7 +138,7 @@ func (a *App) viewListPaneHeader(c *ui.Context, title, subtitle string, isSubMod
 	ui.Row(c).Height(h).Shrink(0).AlignSelf(ui.Stretch).AlignItems(ui.Center).Gap(8).
 		Background(pal.canvas).Padding(0, 10, 0, leftPad).DragWindow().Children(func() {
 		if a.sidebarCollapsed {
-			if toolbarIconBtn(c, "tb-expand-sidebar", lucide.PanelLeftOpen(), "展开侧边栏").Clicked() {
+			if toolbarIconBtn(c, "tb-expand-sidebar", lucide.PanelLeftOpen(), a.t("nav.expandSidebar")).Clicked() {
 				a.sidebarCollapsed = false
 			}
 		}
@@ -145,56 +153,56 @@ func (a *App) viewListPaneHeader(c *ui.Context, title, subtitle string, isSubMod
 		if a.listFilter != listFilterAll {
 			filterColor = pal.accent
 		}
-		toolbarIconBtnColored(c, "list-filter-menu", lucide.ListFilter(), filterColor, "筛选文章", pal).Menu(func(m *ui.Menu) {
-			if m.Item("全部").Radio(a.listFilter == listFilterAll && a.starTypeFilter < 0).Chosen() {
+		toolbarIconBtnColored(c, "list-filter-menu", lucide.ListFilter(), filterColor, a.t("filter.tooltip"), pal).Menu(func(m *ui.Menu) {
+			if m.Item(a.t("common.all")).Radio(a.listFilter == listFilterAll && a.starTypeFilter < 0).Chosen() {
 				a.listFilter = listFilterAll
 				a.starTypeFilter = -1
 			}
 			if isSubMode {
-				if m.Item("未读").Radio(a.listFilter == listFilterUnread).Chosen() {
+				if m.Item(a.t("filter.unread")).Radio(a.listFilter == listFilterUnread).Chosen() {
 					a.listFilter = listFilterUnread
 					a.starTypeFilter = -1
 				}
-				if m.Item("已收藏").Radio(a.listFilter == listFilterStarred && a.starTypeFilter < 0).Chosen() {
+				if m.Item(a.t("filter.starred")).Radio(a.listFilter == listFilterStarred && a.starTypeFilter < 0).Chosen() {
 					a.listFilter = listFilterStarred
 					a.starTypeFilter = -1
 				}
 			} else {
-				if m.Item("独立页面").Radio(a.listFilter == listFilterPages).Chosen() {
+				if m.Item(a.t("filter.pages")).Radio(a.listFilter == listFilterPages).Chosen() {
 					a.listFilter = listFilterPages
 					a.starTypeFilter = -1
 				}
-				if m.Item("导航项").Radio(a.listFilter == listFilterNav).Chosen() {
+				if m.Item(a.t("filter.nav")).Radio(a.listFilter == listFilterNav).Chosen() {
 					a.listFilter = listFilterNav
 					a.starTypeFilter = -1
 				}
 				m.Separator()
-				if m.Item("已置顶").Radio(a.listFilter == listFilterPinned).Chosen() {
+				if m.Item(a.t("filter.pinned")).Radio(a.listFilter == listFilterPinned).Chosen() {
 					a.listFilter = listFilterPinned
 					a.starTypeFilter = -1
 				}
-				if m.Item("已收藏").Radio(a.listFilter == listFilterStarred && a.starTypeFilter < 0).Chosen() {
+				if m.Item(a.t("filter.starred")).Radio(a.listFilter == listFilterStarred && a.starTypeFilter < 0).Chosen() {
 					a.listFilter = listFilterStarred
 					a.starTypeFilter = -1
 				}
 			}
-			m.Submenu("按星标类型", func(sm *ui.Menu) {
-				if sm.Item("全部星标").Radio(a.listFilter == listFilterStarred && a.starTypeFilter < 0).Chosen() {
+			m.Submenu(a.t("star.byType"), func(sm *ui.Menu) {
+				if sm.Item(a.t("star.all")).Radio(a.listFilter == listFilterStarred && a.starTypeFilter < 0).Chosen() {
 					a.listFilter = listFilterStarred
 					a.starTypeFilter = -1
 				}
 				sm.Separator()
 				for _, opt := range allStarTypes {
-					if sm.Item(opt.label).Radio(a.listFilter == listFilterStarred && a.starTypeFilter == opt.id).Chosen() {
+					if sm.Item(a.t(opt.key)).Radio(a.listFilter == listFilterStarred && a.starTypeFilter == opt.id).Chosen() {
 						a.listFilter = listFilterStarred
 						a.starTypeFilter = opt.id
 					}
 				}
 			})
 			m.Separator()
-			searchLabel := "在列表中筛选…"
+			searchLabel := a.t("filter.showSearch")
 			if a.listSearchOpen {
-				searchLabel = "隐藏列表筛选栏"
+				searchLabel = a.t("filter.hideSearch")
 			}
 			if m.Item(searchLabel).Shortcut(ui.Ctrl, ui.KeyF).Chosen() {
 				a.listSearchOpen = !a.listSearchOpen
@@ -224,12 +232,12 @@ func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
 		// Leading group: macOS toolbarPlanetView (always accessible in site/subscription mode).
 		ui.Row(c).AlignItems(ui.Center).Gap(2).Shrink(0).Children(func() {
 			if a.sidebarCollapsed && (a.mode == viewOverview || a.postsCollapsed) {
-				if toolbarIconBtn(c, "tb-expand-sidebar", lucide.PanelLeftOpen(), "展开侧边栏").Clicked() {
+				if toolbarIconBtn(c, "tb-expand-sidebar", lucide.PanelLeftOpen(), a.t("nav.expandSidebar")).Clicked() {
 					a.sidebarCollapsed = false
 				}
 			}
 			if a.mode != viewOverview {
-				if toolbarIconBtn(c, "tb-toggle-posts", lucide.PanelLeft(), "切换文章列表").Clicked() {
+				if toolbarIconBtn(c, "tb-toggle-posts", lucide.PanelLeft(), a.t("nav.togglePosts")).Clicked() {
 					a.postsCollapsed = !a.postsCollapsed
 				}
 			}
@@ -237,17 +245,17 @@ func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
 				if site := a.currentSite(); site != nil {
 					siteID := site.ID
 					ui.Box(c).Width(1).Height(16).MarginX(4).Background(pal.line)
-					if toolbarIconBtn(c, "site-new-post", lucide.Plus(), "写文章").Clicked() {
+					if toolbarIconBtn(c, "site-new-post", lucide.Plus(), a.t("toolbar.writePost")).Clicked() {
 						a.guardUnsaved(func() { a.startNewDraft(siteID) })
 					}
-					if toolbarIconBtn(c, "tb-quick-post", lucide.MessageSquarePlus(), "快捷发文").Clicked() {
+					if toolbarIconBtn(c, "tb-quick-post", lucide.MessageSquarePlus(), a.t("toolbar.quickPost")).Clicked() {
 						a.openQuickPost()
 					}
-					if toolbarIconBtn(c, "site-settings", lucide.Info(), "站点设置").Clicked() {
+					if toolbarIconBtn(c, "site-settings", lucide.Info(), a.t("toolbar.siteSettings")).Clicked() {
 						a.openSiteSettings(*site)
 					}
 					if !a.editing {
-						if toolbarIconBtn(c, "site-publish", lucide.Upload(), "发布站点").Clicked() {
+						if toolbarIconBtn(c, "site-publish", lucide.Upload(), a.t("toolbar.publishSite")).Clicked() {
 							a.triggerPublishSite(*site)
 						}
 					}
@@ -257,24 +265,24 @@ func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
 				if sub := a.currentSubscription(); sub != nil {
 					subURL := sub.URL
 					ui.Box(c).Width(1).Height(16).MarginX(4).Background(pal.line)
-					if toolbarIconBtn(c, "sub-refresh", lucide.RefreshCw(), "刷新订阅").Clicked() {
+					if toolbarIconBtn(c, "sub-refresh", lucide.RefreshCw(), a.t("toolbar.refreshSub")).Clicked() {
 						if _, err := a.backend.RefreshSubscription(subURL); err != nil {
-							a.setError("刷新订阅失败：" + err.Error())
+							a.setError(a.tf("status.refreshSubErr", err.Error()))
 						} else {
 							a.Reload()
-							a.setStatus("已刷新订阅")
+							a.setStatus(a.t("status.refreshedSub"))
 						}
 					}
-					toolbarIconBtn(c, "sub-more", lucide.Info(), "订阅操作").Menu(func(m *ui.Menu) {
-						if m.Item("全部标为已读").Chosen() {
+					toolbarIconBtn(c, "sub-more", lucide.Info(), a.t("toolbar.subActions")).Menu(func(m *ui.Menu) {
+						if m.Item(a.t("menu.subMarkAllRead")).Chosen() {
 							if err := a.backend.MarkSubscriptionRead(subURL); err != nil {
-								a.setError("标记已读失败：" + err.Error())
+								a.setError(a.tf("status.markReadErr", err.Error()))
 							} else {
 								a.Reload()
-								a.setStatus("已全部标记为已读")
+								a.setStatus(a.t("status.markedAllRead"))
 							}
 						}
-						if m.Item("编辑订阅…").Chosen() {
+						if m.Item(a.t("menu.subEdit")).Chosen() {
 							a.editSubOldURL = sub.URL
 							a.editSubNewURL = sub.URL
 							a.editSubTitle = sub.CustomTitle
@@ -282,7 +290,7 @@ func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
 							a.editSubOpen = true
 						}
 						m.Separator()
-						if m.Item("取消关注").Danger().Chosen() {
+						if m.Item(a.t("menu.subUnfollow")).Danger().Chosen() {
 							a.unfollowURL = sub.URL
 							a.unfollowTitle = subscriptionTitle(*sub)
 							a.unfollowOpen = true
@@ -297,7 +305,7 @@ func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
 			ctxTitle := ""
 			if a.mode == viewSite {
 				if site := a.currentSite(); site != nil {
-					ctxTitle = fallbackTitle(site.Name)
+					ctxTitle = a.fallbackTitle(site.Name)
 				}
 			} else if cur, ok := a.currentSubItem(); ok {
 				ctxTitle = cur.subTitle
@@ -313,7 +321,7 @@ func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
 			a.viewDetailToolbarActions(c)
 			if a.mode != viewOverview {
 				ui.Box(c).Width(1).Height(16).MarginX(2).Background(pal.line)
-				if toolbarIconBtn(c, "tb-search", lucide.Search(), "搜索文章").Clicked() {
+				if toolbarIconBtn(c, "tb-search", lucide.Search(), a.t("toolbar.searchPosts")).Clicked() {
 					a.openGlobalSearch()
 				}
 			}
@@ -331,49 +339,49 @@ func (a *App) viewDetailToolbarActions(c *ui.Context) {
 	if a.mode == viewSite {
 		if a.editing {
 			if a.isEditorDirty() {
-				ui.Text(c, "未保存").Font(macPlanetFont).FontSize(11).TextColor(pal.amber).NoWrap().PaddingX(4)
+				ui.Text(c, a.t("toolbar.unsaved")).Font(macPlanetFont).FontSize(11).TextColor(pal.amber).NoWrap().PaddingX(4)
 			}
-			if toolbarIconBtn(c, "editor-save", lucide.Check(), "保存草稿").Clicked() {
+			if toolbarIconBtn(c, "editor-save", lucide.Check(), a.t("toolbar.saveDraft")).Clicked() {
 				a.saveCurrentDraft()
 			}
 			if a.activeDraftID != "" {
-				if toolbarIconBtn(c, "editor-delete", lucide.Trash2(), "删除草稿").Clicked() {
+				if toolbarIconBtn(c, "editor-delete", lucide.Trash2(), a.t("toolbar.deleteDraft")).Clicked() {
 					a.deleteCurrentDraft()
 				}
 			}
-			if macPrimaryButtonSmall(c, "editor-publish", "发布", pal) {
+			if macPrimaryButtonSmall(c, "editor-publish", a.t("common.publish"), pal) {
 				a.publishCurrentDraft()
 			}
 			return
 		}
 
 		if art := a.currentArticle(); art != nil {
-			if toolbarIconBtn(c, "reader-edit", lucide.PencilLine(), "编辑文章").Clicked() {
+			if toolbarIconBtn(c, "reader-edit", lucide.PencilLine(), a.t("toolbar.editArticle")).Clicked() {
 				a.openArticleForEdit(*art)
 			}
-			speakLabel := "朗读"
+			speakLabel := a.t("toolbar.speak")
 			if a.speaker != nil && a.speaker.Speaking() {
-				speakLabel = "停止朗读"
+				speakLabel = a.t("toolbar.stopSpeak")
 			}
-			pinLabel := "置顶"
+			pinLabel := a.t("toolbar.pin")
 			if art.Pinned != nil {
-				pinLabel = "取消置顶"
+				pinLabel = a.t("toolbar.unpin")
 			}
-			toolbarIconBtn(c, "reader-more", lucide.Ellipsis(), "更多文章操作").Menu(func(m *ui.Menu) {
+			toolbarIconBtn(c, "reader-more", lucide.Ellipsis(), a.t("toolbar.moreArticleActions")).Menu(func(m *ui.Menu) {
 				if m.Item(pinLabel).Chosen() {
 					a.toggleArticlePinned(*art)
 				}
-				if m.Item("文章设置").Chosen() {
+				if m.Item(a.t("toolbar.articleSettings")).Chosen() {
 					a.openArticleSettings(*art)
 				}
-				if m.Item("相关文章").Chosen() {
+				if m.Item(a.t("toolbar.relatedArticles")).Chosen() {
 					a.openRelatedArticles(art.SiteID, art.ID, "", "", art.Title)
 				}
 				if m.Item(speakLabel).Chosen() {
 					a.toggleSpeak(art.Title, art.Content)
 				}
 				m.Separator()
-				if m.Item("删除文章").Chosen() {
+				if m.Item(a.t("menu.artDelete")).Chosen() {
 					a.deleteArticleID = art.ID
 					a.deleteArticleTitle = art.Title
 					a.deleteArticleOpen = true
@@ -388,29 +396,29 @@ func (a *App) viewDetailToolbarActions(c *ui.Context) {
 			subURL, key := cur.subURL, cur.effective
 			starIcon := lucide.Star()
 			starColor := pal.secondary
-			starLabel := "星标"
+			starLabel := a.t("toolbar.star")
 			if cur.item.Starred {
 				starIcon = iconStarSolid
 				starColor = pal.yellow
-				starLabel = "取消星标"
+				starLabel = a.t("toolbar.unstar")
 			}
 			if toolbarIconBtnColored(c, "sub-star", starIcon, starColor, starLabel, pal).Clicked() {
 				if err := a.backend.StarSubscription(subURL, key, !cur.item.Starred); err != nil {
-					a.setError("更新星标失败：" + err.Error())
+					a.setError(a.tf("status.starErr", err.Error()))
 				} else {
 					a.Reload()
 				}
 			}
 
-			readLabel := "标为未读"
+			readLabel := a.t("menu.subMarkUnread")
 			readColor := pal.secondary
 			if !cur.item.Read {
-				readLabel = "标为已读"
+				readLabel = a.t("menu.subMarkRead")
 				readColor = pal.accent
 			}
 			if toolbarIconBtnColored(c, "sub-toggle-read", lucide.CircleDot(), readColor, readLabel, pal).Clicked() {
 				if err := a.backend.SetSubscriptionRead(subURL, key, !cur.item.Read); err != nil {
-					a.setError("更新阅读状态失败：" + err.Error())
+					a.setError(a.tf("status.readStateErr", err.Error()))
 				} else {
 					a.Reload()
 				}
@@ -422,26 +430,26 @@ func (a *App) viewDetailToolbarActions(c *ui.Context) {
 			}
 			mdBody := htmlToReadableMarkdown(body)
 			speakIcon := lucide.Volume2()
-			speakLabel := "朗读"
+			speakLabel := a.t("toolbar.speak")
 			if a.speaker != nil && a.speaker.Speaking() {
 				speakIcon = lucide.VolumeX()
-				speakLabel = "停止朗读"
+				speakLabel = a.t("toolbar.stopSpeak")
 			}
 			if toolbarIconBtn(c, "sub-speak", speakIcon, speakLabel).Clicked() {
 				a.toggleSpeak(cur.item.Title, mdBody)
 			}
 
-			if toolbarIconBtn(c, "sub-related", lucide.FileText(), "相关文章").Clicked() {
+			if toolbarIconBtn(c, "sub-related", lucide.FileText(), a.t("toolbar.relatedArticles")).Clicked() {
 				a.openRelatedArticles("", "", subURL, key, cur.item.Title)
 			}
 
 			if link := strings.TrimSpace(cur.item.Link); link != "" {
 				webIcon := lucide.Globe()
-				webLabel := "查看原网页"
+				webLabel := a.t("toolbar.viewOriginalWeb")
 				webColor := pal.secondary
 				if a.subShowWebView {
 					webIcon = lucide.FileText()
-					webLabel = "切换阅读模式"
+					webLabel = a.t("toolbar.switchReaderMode")
 					webColor = pal.accent
 				}
 				if toolbarIconBtnColored(c, "sub-toggle-web", webIcon, webColor, webLabel, pal).Clicked() {
@@ -452,7 +460,7 @@ func (a *App) viewDetailToolbarActions(c *ui.Context) {
 						}
 					} else if a.openExternal != nil {
 						if err := a.openExternal(link); err != nil {
-							a.setError("打开原网页失败：" + err.Error())
+							a.setError(a.tf("status.openWebErr", err.Error()))
 						}
 					}
 				}
@@ -462,10 +470,10 @@ func (a *App) viewDetailToolbarActions(c *ui.Context) {
 	}
 
 	// Overview (Dashboard) mode actions: clean macOS icon buttons matching detail toolbar.
-	if toolbarIconBtn(c, "tb-search", lucide.Search(), "搜索文章").Clicked() {
+	if toolbarIconBtn(c, "tb-search", lucide.Search(), a.t("toolbar.searchPosts")).Clicked() {
 		a.openGlobalSearch()
 	}
-	if toolbarIconBtn(c, "dash-compose", lucide.SquarePen(), "写文章").Clicked() {
+	if toolbarIconBtn(c, "dash-compose", lucide.SquarePen(), a.t("toolbar.writePost")).Clicked() {
 		a.handleDashboardCompose()
 	}
 }

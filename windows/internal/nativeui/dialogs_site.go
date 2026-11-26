@@ -131,22 +131,22 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 
 				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Column(c).Gap(14).AlignSelf(ui.Stretch).Children(func() {
-						navGroup("站点设置", []navSpec{
-							{siteSettingsTabBasic, "基本资料", lucide.SlidersHorizontal(), ui.Hex("#2563eb")},
-							{siteSettingsTabProfile, "社交", lucide.Globe(), ui.Hex("#4f46e5")},
-							{siteSettingsTabTemplates, "模板", lucide.LayoutGrid(), ui.Hex("#0d9488")},
-							{siteSettingsTabCustomCode, "自定义代码", lucide.Code(), ui.Hex("#475569")},
-							{siteSettingsTabPodcast, "播客", lucide.Podcast(), ui.Hex("#7c3aed")},
+						navGroup(a.t("siteSettings.groupSite"), []navSpec{
+							{siteSettingsTabBasic, a.t("siteSettings.navBasic"), lucide.SlidersHorizontal(), ui.Hex("#2563eb")},
+							{siteSettingsTabProfile, a.t("siteSettings.navSocial"), lucide.Globe(), ui.Hex("#4f46e5")},
+							{siteSettingsTabTemplates, a.t("siteSettings.navTemplates"), lucide.LayoutGrid(), ui.Hex("#0d9488")},
+							{siteSettingsTabCustomCode, a.t("siteSettings.navCustomCode"), lucide.Code(), ui.Hex("#475569")},
+							{siteSettingsTabPodcast, a.t("siteSettings.navPodcast"), lucide.Podcast(), ui.Hex("#7c3aed")},
 						})
-						navGroup("发布与固定", []navSpec{
-							{siteSettingsTabDeploy, "部署", lucide.Upload(), ui.Hex("#0284c7")},
-							{siteSettingsTabServices, "服务", lucide.Activity(), ui.Hex("#d97706")},
+						navGroup(a.t("siteSettings.groupPublish"), []navSpec{
+							{siteSettingsTabDeploy, a.t("siteSettings.navDeploy"), lucide.Upload(), ui.Hex("#0284c7")},
+							{siteSettingsTabServices, a.t("siteSettings.navServices"), lucide.Activity(), ui.Hex("#d97706")},
 						})
-						navGroup("内容同步与扩展", []navSpec{
-							{siteSettingsTabX, "X 同步", lucide.Share2(), ui.Hex("#475569")},
-							{siteSettingsTabTelegram, "Telegram", lucide.Send(), ui.Hex("#0ea5e9")},
-							{siteSettingsTabAggregate, "聚合", lucide.Rss(), ui.Hex("#ea580c")},
-							{siteSettingsTabWeb3, "Web3", lucide.Wallet(), ui.Hex("#7c3aed")},
+						navGroup(a.t("siteSettings.groupSync"), []navSpec{
+							{siteSettingsTabX, a.t("siteSettings.navX"), lucide.Share2(), ui.Hex("#475569")},
+							{siteSettingsTabTelegram, a.t("siteSettings.navTelegram"), lucide.Send(), ui.Hex("#0ea5e9")},
+							{siteSettingsTabAggregate, a.t("siteSettings.navAggregate"), lucide.Rss(), ui.Hex("#ea580c")},
+							{siteSettingsTabWeb3, a.t("siteSettings.navWeb3"), lucide.Wallet(), ui.Hex("#7c3aed")},
 						})
 					})
 				})
@@ -158,22 +158,22 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 			// Right pane: soft canvas + elevated white inset cards + cool-tinted footer bar.
 			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
 				tabTitles := map[int]string{
-					siteSettingsTabBasic:      "基本资料",
-					siteSettingsTabProfile:    "社交与域名",
-					siteSettingsTabTemplates:  "模板",
-					siteSettingsTabCustomCode: "自定义代码",
-					siteSettingsTabPodcast:    "播客",
-					siteSettingsTabDeploy:     "部署",
-					siteSettingsTabServices:   "固定服务与统计",
-					siteSettingsTabX:          "X 同步",
-					siteSettingsTabTelegram:   "Telegram 同步",
-					siteSettingsTabAggregate:  "跨源内容聚合",
-					siteSettingsTabWeb3:       "Web3 与捐赠",
+					siteSettingsTabBasic:      a.t("siteSettings.navBasic"),
+					siteSettingsTabProfile:    a.t("siteSettings.titleSocial"),
+					siteSettingsTabTemplates:  a.t("siteSettings.navTemplates"),
+					siteSettingsTabCustomCode: a.t("siteSettings.navCustomCode"),
+					siteSettingsTabPodcast:    a.t("siteSettings.navPodcast"),
+					siteSettingsTabDeploy:     a.t("siteSettings.navDeploy"),
+					siteSettingsTabServices:   a.t("siteSettings.titleServices"),
+					siteSettingsTabX:          a.t("siteSettings.navX"),
+					siteSettingsTabTelegram:   a.t("siteSettings.titleTelegram"),
+					siteSettingsTabAggregate:  a.t("siteSettings.titleAggregate"),
+					siteSettingsTabWeb3:       a.t("siteSettings.titleWeb3"),
 				}
 
 				ui.Row(c).Padding(20, 20, 12, 28).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Text(c, tabTitles[st.tab]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
-					if toolbarIconBtn(c, "ss-close-x", lucide.X(), "关闭").Clicked() {
+					if toolbarIconBtn(c, "ss-close-x", lucide.X(), a.t("common.close")).Clicked() {
 						st.open = false
 					}
 				})
@@ -188,29 +188,29 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 										a.siteAvatar(c, *site, 0, 52)
 									}
 									ui.Column(c).Gap(6).Grow(1).MinWidth(0).Children(func() {
-										ui.Text(c, "站点头像").Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
+										ui.Text(c, a.t("siteSettings.avatarTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
 										ui.Row(c).Gap(8).AlignItems(ui.Center).Wrap().Children(func() {
-											if macSecondaryButton(c, "ss-avatar-pick", "选择本地图片", pal) {
+											if macSecondaryButton(c, "ss-avatar-pick", a.t("siteSettings.avatarPick"), pal) {
 												if _, err := a.backend.SelectSiteAvatar(context.Background(), st.siteID); err != nil {
 													st.err = err.Error()
 												} else {
 													st.err = ""
 													a.Reload()
-													a.setStatus("已更新站点头像")
+													a.setStatus(a.t("status.avatarUpdated"))
 												}
 											}
-											if macSecondaryButton(c, "ss-avatar-rm", "移除头像", pal) {
+											if macSecondaryButton(c, "ss-avatar-rm", a.t("siteSettings.avatarRemove"), pal) {
 												if _, err := a.backend.RemoveSiteAvatar(st.siteID); err != nil {
 													st.err = err.Error()
 												} else {
 													st.err = ""
 													a.Reload()
-													a.setStatus("已移除站点头像")
+													a.setStatus(a.t("status.avatarRemoved"))
 												}
 											}
 										})
 										prevRound := st.roundAvatar
-										ui.Checkbox(c.Key("ss-avatar-round"), &st.roundAvatar, "圆形裁切")
+										ui.Checkbox(c.Key("ss-avatar-round"), &st.roundAvatar, a.t("siteSettings.avatarRound"))
 										if st.roundAvatar != prevRound {
 											if _, err := a.backend.SetSaveRoundAvatar(st.siteID, st.roundAvatar); err != nil {
 												st.err = err.Error()
@@ -223,7 +223,7 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 								if presets := a.backend.PresetAvatars(); len(presets) > 0 {
 									prefsHairlineH(c, pal)
 									ui.Column(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
-										ui.Text(c, "快速选择内置头像").Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
+										ui.Text(c, a.t("siteSettings.avatarPresets")).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
 										ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
 											for i, p := range presets {
 												if i >= 12 {
@@ -252,7 +252,7 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 													} else {
 														st.err = ""
 														a.Reload()
-														a.setStatus("已应用预设头像：" + title)
+														a.setStatus(a.tf("status.presetAvatarApplied", title))
 													}
 												}
 											}
@@ -261,27 +261,27 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 								}
 							})
 							macInsetCard(c, pal, func() {
-								macField(c, "站点名称", "", pal, func() {
-									ui.TextInput(c.Key("ss-name"), &st.name).Label("站点名称").AlignSelf(ui.Stretch)
+								macField(c, a.t("siteSettings.nameField"), "", pal, func() {
+									ui.TextInput(c.Key("ss-name"), &st.name).Label(a.t("siteSettings.nameField")).AlignSelf(ui.Stretch)
 								})
-								macField(c, "简介", "", pal, func() {
-									ui.TextArea(c.Key("ss-about"), &st.about).Lines(3, 5).Label("站点简介").AlignSelf(ui.Stretch)
+								macField(c, a.t("siteSettings.aboutField"), "", pal, func() {
+									ui.TextArea(c.Key("ss-about"), &st.about).Lines(3, 5).Label(a.t("siteSettings.aboutLabel")).AlignSelf(ui.Stretch)
 								})
 								ui.Row(c).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 									ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-										macField(c, "路径别名 (Slug)", "", pal, func() {
-											ui.TextInput(c.Key("ss-slug"), &st.slug).Placeholder("my-planet").Label("站点路径别名").AlignSelf(ui.Stretch)
+										macField(c, a.t("siteSettings.slugField"), "", pal, func() {
+											ui.TextInput(c.Key("ss-slug"), &st.slug).Placeholder("my-planet").Label(a.t("siteSettings.slugLabel")).AlignSelf(ui.Stretch)
 										})
 									})
 									ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-										macField(c, "作者名", "", pal, func() {
-											ui.TextInput(c.Key("ss-author"), &st.author).Placeholder("显示在文章署名中").Label("作者名").AlignSelf(ui.Stretch)
+										macField(c, a.t("siteSettings.authorField"), "", pal, func() {
+											ui.TextInput(c.Key("ss-author"), &st.author).Placeholder(a.t("siteSettings.authorPlaceholder")).Label(a.t("siteSettings.authorField")).AlignSelf(ui.Stretch)
 										})
 									})
 								})
 							})
 							macInsetCard(c, pal, func() {
-								ui.Checkbox(c.Key("ss-noindex"), &st.doNotIndex, "禁止搜索引擎收录 (noindex)")
+								ui.Checkbox(c.Key("ss-noindex"), &st.doNotIndex, a.t("siteSettings.doNotIndex"))
 							})
 							// Danger Zone card at the bottom of Basic settings.
 							ui.Column(c).Padding(14, 18, 14, 18).Gap(6).AlignSelf(ui.Stretch).
@@ -289,21 +289,22 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 								Shadow(0, 1, 3, 0, pal.prefsCardShadow).Children(func() {
 								ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 									ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-										ui.Text(c, "移除此站点").Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.danger)
-										ui.Text(c, "移入后可在回收站恢复").Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
+										ui.Text(c, a.t("siteSettings.dangerTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.danger)
+										ui.Text(c, a.t("siteSettings.dangerDesc")).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
 									})
 									dangerBg := pal.danger.Alpha(0.10)
 									if pal.dark {
 										dangerBg = pal.danger.Alpha(0.16)
 									}
-									rmBtn := ui.ButtonBase(c.Key("ss-remove-site")).Label("移入回收站").Height(30).PaddingX(12).Radius(6).
+									trashBtnLabel := a.t("siteSettings.moveToTrashBtn")
+									rmBtn := ui.ButtonBase(c.Key("ss-remove-site")).Label(trashBtnLabel).Height(30).PaddingX(12).Radius(6).
 										Background(dangerBg).Border(0.5, pal.danger.Alpha(0.35)).Center().Shrink(0).
 										Cursor(ui.CursorPointer).Transition(rowHoverTransition)
 									if rmBtn.Hovered() {
 										rmBtn.Background(pal.danger.Alpha(0.20))
 									}
 									rmBtn.Children(func() {
-										ui.Text(c, "移入回收站").Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.danger).NoWrap()
+										ui.Text(c, trashBtnLabel).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.danger).NoWrap()
 									})
 									if rmBtn.Clicked() {
 										st.removeSiteName = st.name
@@ -314,25 +315,25 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 
 						case siteSettingsTabProfile:
 							macInsetCard(c, pal, func() {
-								macField(c, "自定义域名", "", pal, func() {
-									ui.TextInput(c.Key("ss-domain"), &st.domain).Placeholder("example.com").Label("自定义域名").AlignSelf(ui.Stretch)
+								macField(c, a.t("siteSettings.domainField"), "", pal, func() {
+									ui.TextInput(c.Key("ss-domain"), &st.domain).Placeholder("example.com").Label(a.t("siteSettings.domainField")).AlignSelf(ui.Stretch)
 								})
 								ui.Row(c).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 									ui.Box(c).Grow(1).MinWidth(0).Children(func() {
 										macField(c, "Twitter / X", "", pal, func() {
-											ui.TextInput(c.Key("ss-twitter"), &st.twitter).Label("Twitter 用户名").AlignSelf(ui.Stretch)
+											ui.TextInput(c.Key("ss-twitter"), &st.twitter).Label(a.t("siteSettings.twitterLabel")).AlignSelf(ui.Stretch)
 										})
 									})
 									ui.Box(c).Grow(1).MinWidth(0).Children(func() {
 										macField(c, "GitHub", "", pal, func() {
-											ui.TextInput(c.Key("ss-github"), &st.github).Label("GitHub 用户名").AlignSelf(ui.Stretch)
+											ui.TextInput(c.Key("ss-github"), &st.github).Label(a.t("siteSettings.githubLabel")).AlignSelf(ui.Stretch)
 										})
 									})
 								})
 								ui.Row(c).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 									ui.Box(c).Grow(1).MinWidth(0).Children(func() {
 										macField(c, "Telegram", "", pal, func() {
-											ui.TextInput(c.Key("ss-telegram"), &st.telegram).Label("Telegram 用户名").AlignSelf(ui.Stretch)
+											ui.TextInput(c.Key("ss-telegram"), &st.telegram).Label(a.t("siteSettings.telegramLabel")).AlignSelf(ui.Stretch)
 										})
 									})
 									ui.Box(c).Grow(1).MinWidth(0).Children(func() {
@@ -342,29 +343,29 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 									})
 								})
 								macField(c, "Discord", "", pal, func() {
-									ui.TextInput(c.Key("ss-discord"), &st.discord).Label("Discord 链接").AlignSelf(ui.Stretch)
+									ui.TextInput(c.Key("ss-discord"), &st.discord).Label(a.t("siteSettings.discordLabel")).AlignSelf(ui.Stretch)
 								})
 							})
 
 						case siteSettingsTabCustomCode:
 							macInsetCard(c, pal, func() {
-								ui.Checkbox(c.Key("ss-head-on"), &st.headEnabled, "启用 <head> 自定义代码")
+								ui.Checkbox(c.Key("ss-head-on"), &st.headEnabled, a.t("siteSettings.headCheck"))
 								if st.headEnabled {
-									ui.TextArea(c.Key("ss-head"), &st.head).Lines(3, 5).Label("Head 代码").AlignSelf(ui.Stretch)
+									ui.TextArea(c.Key("ss-head"), &st.head).Lines(3, 5).Label(a.t("siteSettings.headLabel")).AlignSelf(ui.Stretch)
 								}
-								ui.Checkbox(c.Key("ss-bs-on"), &st.bodyStartOn, "启用 <body> 开头自定义代码")
+								ui.Checkbox(c.Key("ss-bs-on"), &st.bodyStartOn, a.t("siteSettings.bodyStartCheck"))
 								if st.bodyStartOn {
-									ui.TextArea(c.Key("ss-bs"), &st.bodyStart).Lines(3, 5).Label("Body 开头代码").AlignSelf(ui.Stretch)
+									ui.TextArea(c.Key("ss-bs"), &st.bodyStart).Lines(3, 5).Label(a.t("siteSettings.bodyStartLabel")).AlignSelf(ui.Stretch)
 								}
-								ui.Checkbox(c.Key("ss-be-on"), &st.bodyEndOn, "启用 <body> 结尾自定义代码")
+								ui.Checkbox(c.Key("ss-be-on"), &st.bodyEndOn, a.t("siteSettings.bodyEndCheck"))
 								if st.bodyEndOn {
-									ui.TextArea(c.Key("ss-be"), &st.bodyEnd).Lines(3, 5).Label("Body 结尾代码").AlignSelf(ui.Stretch)
+									ui.TextArea(c.Key("ss-be"), &st.bodyEnd).Lines(3, 5).Label(a.t("siteSettings.bodyEndLabel")).AlignSelf(ui.Stretch)
 								}
 							})
 							macInsetCard(c, pal, func() {
 								ui.Row(c).Gap(20).Wrap().Children(func() {
-									ui.Checkbox(c.Key("ss-ipns"), &st.publishIPNS, "发布到 IPNS")
-									ui.Checkbox(c.Key("ss-prewarm"), &st.prewarmPost, "新文章发布后预热网关")
+									ui.Checkbox(c.Key("ss-ipns"), &st.publishIPNS, a.t("siteSettings.publishIPNS"))
+									ui.Checkbox(c.Key("ss-prewarm"), &st.prewarmPost, a.t("siteSettings.prewarmPost"))
 								})
 							})
 
@@ -372,17 +373,17 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 							macInsetCard(c, pal, func() {
 								ui.Row(c).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 									ui.Box(c).Width(180).Shrink(0).Children(func() {
-										macField(c, "播客语言", "", pal, func() {
-											ui.TextInput(c.Key("ss-pod-lang"), &st.podcastLang).Placeholder("zh-cn / en").Label("播客语言").AlignSelf(ui.Stretch)
+										macField(c, a.t("siteSettings.podcastLang"), "", pal, func() {
+											ui.TextInput(c.Key("ss-pod-lang"), &st.podcastLang).Placeholder("zh-cn / en").Label(a.t("siteSettings.podcastLang")).AlignSelf(ui.Stretch)
 										})
 									})
 									ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-										macField(c, "播客分类", "逗号分隔", pal, func() {
-											ui.TextInput(c.Key("ss-pod-cats"), &st.podcastCats).Placeholder("Technology, News").Label("播客分类").AlignSelf(ui.Stretch)
+										macField(c, a.t("siteSettings.podcastCats"), a.t("siteSettings.podcastCatsHint"), pal, func() {
+											ui.TextInput(c.Key("ss-pod-cats"), &st.podcastCats).Placeholder("Technology, News").Label(a.t("siteSettings.podcastCats")).AlignSelf(ui.Stretch)
 										})
 									})
 								})
-								ui.Checkbox(c.Key("ss-pod-exp"), &st.podcastExp, "包含成人/敏感内容 (Explicit)")
+								ui.Checkbox(c.Key("ss-pod-exp"), &st.podcastExp, a.t("siteSettings.podcastExplicit"))
 							})
 						case siteSettingsTabTemplates:
 							a.viewIntTemplates(c)
@@ -416,14 +417,14 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 				prefsHairlineH(c, pal)
 				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.prefsFooter).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					if isCoreTab {
-						if macSecondaryButton(c, "ss-cancel", "取消", pal) {
+						if macSecondaryButton(c, "ss-cancel", a.t("common.cancel"), pal) {
 							st.open = false
 						}
-						if macPrimaryButton(c, "ss-save", "保存站点设置", pal) {
+						if macPrimaryButton(c, "ss-save", a.t("siteSettings.saveBtn"), pal) {
 							a.saveSiteSettings()
 						}
 					} else {
-						if macSecondaryButton(c, "ss-close", "关闭", pal) {
+						if macSecondaryButton(c, "ss-close", a.t("common.close"), pal) {
 							st.open = false
 						}
 					}
@@ -433,9 +434,9 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 	})
 
 	if macConfirmSheet(c, &st.removeConfirm,
-		"将站点移入回收站？",
-		fmt.Sprintf("站点“%s”会被移入回收站，可随时在回收站中恢复。", fallbackTitle(st.removeSiteName)),
-		"取消", "移入回收站", true, pal) {
+		a.t("siteSettings.trashConfirmTitle"),
+		a.tf("siteSettings.trashConfirmMsg", a.fallbackTitle(st.removeSiteName)),
+		a.t("common.cancel"), a.t("siteSettings.moveToTrashBtn"), true, pal) {
 		if err := a.backend.RemoveSite(st.siteID); err != nil {
 			st.err = err.Error()
 		} else {
@@ -445,7 +446,7 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 				a.mode = viewOverview
 			}
 			a.Reload()
-			a.setStatus("站点已移入回收站")
+			a.setStatus(a.t("status.siteMovedToTrash"))
 		}
 	}
 }
@@ -456,7 +457,7 @@ func (a *App) saveSiteSettings() {
 	switch st.tab {
 	case siteSettingsTabBasic:
 		if strings.TrimSpace(st.name) == "" {
-			st.err = "站点名称不能为空"
+			st.err = a.t("siteSettings.nameRequired")
 			return
 		}
 		_, err = a.backend.UpdateSiteDetails(st.siteID, strings.TrimSpace(st.name), strings.TrimSpace(st.about), st.doNotIndex, strings.TrimSpace(st.slug), strings.TrimSpace(st.author))
@@ -500,14 +501,14 @@ func (a *App) saveSiteSettings() {
 	st.err = ""
 	st.open = false
 	a.Reload()
-	a.setStatus("站点设置已保存")
+	a.setStatus(a.t("status.siteSettingsSaved"))
 }
 
 func (a *App) triggerPublishSite(site store.Site) {
 	res, err := a.backend.PublishSite(site.ID)
 	a.publishModal = publishModalState{
 		open:     true,
-		siteName: fallbackTitle(site.Name),
+		siteName: a.fallbackTitle(site.Name),
 		result:   res,
 	}
 	if err != nil {
@@ -515,34 +516,35 @@ func (a *App) triggerPublishSite(site store.Site) {
 		return
 	}
 	a.Reload()
-	a.setStatus("站点已发布：" + fallbackTitle(site.Name))
+	a.setStatus(a.tf("status.sitePublished", a.fallbackTitle(site.Name)))
 }
 
 func (a *App) viewPublishModal(c *ui.Context) {
 	pal := a.pal
 	pm := &a.publishModal
 	if macSheet(c, &pm.open, macSheetProps{
-		Title:       "发布详情 · " + pm.siteName,
-		Width:       500,
-		PrimaryText: "完成",
+		Title:        a.tf("publishModal.title", pm.siteName),
+		Width:        500,
+		PrimaryText:  a.t("common.done"),
+		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
 		if pm.err != "" {
-			ui.Text(c, "发布失败："+pm.err).Font(macPlanetFont).FontSize(13).TextColor(pal.danger)
+			ui.Text(c, a.tf("publishModal.failed", pm.err)).Font(macPlanetFont).FontSize(13).TextColor(pal.danger)
 		} else {
 			ui.Column(c).Padding(12).Gap(6).Background(pal.subtle).Border(0.5, pal.line).Radius(6).AlignSelf(ui.Stretch).Children(func() {
 				ui.Text(c, "CID: "+pm.result.CID).Font(macPlanetFont).FontSize(12).TextColor(pal.ink)
 				if pm.result.IPNS != "" {
 					ui.Text(c, "IPNS: "+pm.result.IPNS).Font(macPlanetFont).FontSize(12).TextColor(pal.ink)
 				}
-				ui.Text(c, fmt.Sprintf("版本修订号: %d", pm.result.Revision)).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+				ui.Text(c, a.tf("publishModal.revision", pm.result.Revision)).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 				if pm.result.Pending {
-					ui.Text(c, "IPNS 仍在后台同步中").Font(macPlanetFont).FontSize(12).TextColor(pal.amber)
+					ui.Text(c, a.t("publishModal.ipnsPending")).Font(macPlanetFont).FontSize(12).TextColor(pal.amber)
 				}
 				if pm.result.PinnableWarning != "" {
-					ui.Text(c, "Pinnable 提示："+pm.result.PinnableWarning).Font(macPlanetFont).FontSize(12).TextColor(pal.amber)
+					ui.Text(c, a.tf("publishModal.pinnableWarn", pm.result.PinnableWarning)).Font(macPlanetFont).FontSize(12).TextColor(pal.amber)
 				}
 				if pm.result.TelegramWarning != "" {
-					ui.Text(c, "Telegram 提示："+pm.result.TelegramWarning).Font(macPlanetFont).FontSize(12).TextColor(pal.amber)
+					ui.Text(c, a.tf("publishModal.telegramWarn", pm.result.TelegramWarning)).Font(macPlanetFont).FontSize(12).TextColor(pal.amber)
 				}
 			})
 		}
