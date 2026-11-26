@@ -11,6 +11,36 @@ import (
 	"windows/internal/store"
 )
 
+func (a *App) detailColumnWidth(c *ui.Context, maxW float32) float32 {
+	winW, _ := c.Size()
+	if winW <= 0 {
+		return maxW
+	}
+	used := float32(0)
+	if !a.sidebarCollapsed {
+		sw := a.sidebarWidth
+		if sw < 220 {
+			sw = 228
+		}
+		used += sw
+	}
+	if !a.postsCollapsed {
+		pw := a.postsPanelWidth
+		if pw < 240 {
+			pw = 280
+		}
+		used += pw
+	}
+	avail := winW - used - 72 // 36px left + 36px right
+	if avail < 360 {
+		avail = 360
+	}
+	if avail > maxW {
+		return maxW
+	}
+	return avail
+}
+
 func (a *App) viewDetailPane(c *ui.Context) {
 	ui.Column(c).Fill().Background(a.pal.canvas).Children(func() {
 		a.viewDetailToolbar(c, true)
@@ -45,11 +75,12 @@ func (a *App) viewArticleReader(c *ui.Context) {
 		return
 	}
 
+	colW := a.detailColumnWidth(c, 740)
 	ui.Column(c).Fill().Background(pal.canvas).Children(func() {
 		ui.Scroll(c).TrackScroll(&a.readerScroll).Fill().Background(pal.canvas).Children(func() {
 			ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(36).PaddingY(28).Children(func() {
-				ui.Column(c).AlignSelf(ui.Stretch).MaxWidth(740).Gap(12).Children(func() {
-					ui.Text(c, fallbackTitle(art.Title)).Font(macPlanetFont).FontSize(28).FontWeight(700).LetterSpacing(-0.02).TextColor(pal.ink)
+				ui.Column(c).Width(colW).Gap(12).Children(func() {
+					ui.Text(c, fallbackTitle(art.Title)).Font(macPlanetFont).FontSize(28).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.ink)
 					var meta []string
 					if site := a.currentSite(); site != nil {
 						meta = append(meta, fallbackTitle(site.Name))

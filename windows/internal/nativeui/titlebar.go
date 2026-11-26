@@ -237,7 +237,7 @@ func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
 				if site := a.currentSite(); site != nil {
 					siteID := site.ID
 					ui.Box(c).Width(1).Height(16).MarginX(4).Background(pal.line)
-					if toolbarIconBtn(c, "site-new-post", lucide.SquarePen(), "写文章").Clicked() {
+					if toolbarIconBtn(c, "site-new-post", lucide.Plus(), "写文章").Clicked() {
 						a.guardUnsaved(func() { a.startNewDraft(siteID) })
 					}
 					if toolbarIconBtn(c, "tb-quick-post", lucide.MessageSquarePlus(), "快捷发文").Clicked() {
@@ -317,13 +317,9 @@ func (a *App) viewDetailToolbarActions(c *ui.Context) {
 
 	if a.mode == viewSite {
 		if a.editing {
-			stateText := "已保存本地"
-			stateColor := pal.muted
 			if a.isEditorDirty() {
-				stateText = "未保存"
-				stateColor = pal.amber
+				ui.Text(c, "未保存").Font(macPlanetFont).FontSize(11).TextColor(pal.amber).NoWrap().PaddingX(4)
 			}
-			ui.Text(c, stateText).Font(macPlanetFont).FontSize(11).TextColor(stateColor).NoWrap().PaddingX(4)
 			if toolbarIconBtn(c, "editor-save", lucide.Check(), "保存草稿").Clicked() {
 				a.saveCurrentDraft()
 			}

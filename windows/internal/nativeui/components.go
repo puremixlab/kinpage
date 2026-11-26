@@ -104,11 +104,13 @@ func articleRow(c *ui.Context, p articleRowProps, pal macPalette) ui.Element {
 	metaColor := pal.muted
 	badgeBorder := pal.line
 	if p.selected {
-		restBg, hoverBg = pal.listSelected, pal.listSelected
-		titleColor = ui.Hex("#ffffff")
-		excerptColor = pal.listSelMuted
-		metaColor = pal.listSelMuted
-		badgeBorder = ui.RGBA(255, 255, 255, 0.35)
+		if pal.dark {
+			restBg = ui.RGBA(255, 255, 255, 0.08)
+			hoverBg = ui.RGBA(255, 255, 255, 0.10)
+		} else {
+			restBg = ui.RGBA(15, 23, 42, 0.06)
+			hoverBg = ui.RGBA(15, 23, 42, 0.08)
+		}
 	}
 
 	aria := p.ariaLabel
@@ -117,24 +119,23 @@ func articleRow(c *ui.Context, p articleRowProps, pal macPalette) ui.Element {
 	}
 
 	row := interactiveRow(c, p.key, aria, restBg, hoverBg, pal.active).
-		MinHeight(84).Radius(7).Padding(9, 12, 9, 4).
+		MinHeight(78).Radius(7).Padding(9, 12, 9, 4).
 		Children(func() {
-			ui.Row(c).AlignItems(ui.Start).Gap(2).Grow(1).MinWidth(0).Children(func() {
-				// Left 18px gutter for star / unread dot so all titles stay vertically aligned.
+			ui.Row(c).AlignItems(ui.Stretch).Gap(2).Grow(1).MinWidth(0).Children(func() {
+				// Subtle 2.5px left accent bar when selected (calm monochrome identity).
+				if p.selected {
+					ui.Box(c).Width(2.5).Radius(2).Background(pal.prefsInk).Margin(2, 2, 2, 0).Shrink(0)
+				}
+				// Left 18px gutter for star / unread dot / draft pen so all titles stay vertically aligned.
 				ui.Box(c).Width(18).PaddingY(3).Center().Shrink(0).Children(func() {
 					switch {
 					case p.starred:
 						starIcon, starCol := starTypeVisual(p.starType, pal)
-						if p.selected {
-							starCol = ui.Hex("#ffffff")
-						}
 						ui.Icon(c, starIcon).Size(12, 12).TextColor(starCol)
 					case p.unread:
-						dotCol := pal.accent
-						if p.selected {
-							dotCol = ui.Hex("#ffffff")
-						}
-						ui.Box(c).Size(7, 7).Radius(3.5).Background(dotCol)
+						ui.Box(c).Size(7, 7).Radius(3.5).Background(pal.accent)
+					case p.isDraft:
+						ui.Icon(c, lucide.PenLine()).Size(12, 12).TextColor(pal.muted)
 					}
 				})
 
@@ -142,16 +143,12 @@ func articleRow(c *ui.Context, p articleRowProps, pal macPalette) ui.Element {
 					// Row 1: Pin icon + single-line Title + right-aligned Date.
 					ui.Row(c).AlignItems(ui.Center).Gap(6).AlignSelf(ui.Stretch).Children(func() {
 						if p.pinned {
-							pinCol := pal.accent
-							if p.selected {
-								pinCol = ui.Hex("#ffffff")
-							}
-							ui.Icon(c, lucide.Pin()).Size(12, 12).TextColor(pinCol).Shrink(0)
+							ui.Icon(c, lucide.Pin()).Size(12, 12).TextColor(pal.secondary).Shrink(0)
 						}
 						ui.Text(c, p.title).Font(macPlanetFont).FontSize(13).FontWeight(600).
 							TextColor(titleColor).MaxLines(1).Ellipsis("…").Grow(1)
 						if p.dateText != "" {
-							ui.Text(c, p.dateText).Font(macPlanetFont).FontSize(12).
+							ui.Text(c, p.dateText).Font(macPlanetFont).FontSize(11.5).
 								TextColor(metaColor).NoWrap().Shrink(0)
 						}
 					})
@@ -162,17 +159,14 @@ func articleRow(c *ui.Context, p articleRowProps, pal macPalette) ui.Element {
 							TextColor(excerptColor).MaxLines(2).Ellipsis("…")
 					}
 
-					// Row 3: Compact metadata / media / source tags.
-					hasFooter := p.isDraft || p.isPage || p.navWeight > 0 || p.attachments > 0 || p.sourceLabel != ""
+					// Row 3: Compact metadata / media / source tags (no redundant "草稿" badge).
+					hasFooter := p.isPage || p.navWeight > 0 || p.attachments > 0 || p.sourceLabel != ""
 					if hasFooter {
 						ui.Row(c).AlignItems(ui.Center).Gap(6).AlignSelf(ui.Stretch).Children(func() {
 							outlinedPill := func(text string) {
 								ui.Box(c).Padding(1, 5, 1, 5).Radius(4).Border(0.5, badgeBorder).Shrink(0).Children(func() {
 									ui.Text(c, text).Font(macPlanetFont).FontSize(10.5).TextColor(metaColor).NoWrap()
 								})
-							}
-							if p.isDraft {
-								outlinedPill("草稿")
 							}
 							if p.isPage {
 								outlinedPill("页面")

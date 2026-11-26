@@ -351,10 +351,11 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 		}
 		mdBody := htmlToReadableMarkdownWithBase(body, baseURL)
 
+		colW := a.detailColumnWidth(c, 740)
 		ui.Scroll(c).TrackScroll(&a.subReaderScroll).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
 			ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(36).PaddingY(28).Children(func() {
-				ui.Column(c).AlignSelf(ui.Stretch).MaxWidth(740).Gap(12).Children(func() {
-					ui.Text(c, fallbackTitle(cur.item.Title)).Font(macPlanetFont).FontSize(28).FontWeight(700).LetterSpacing(-0.02).TextColor(pal.ink)
+				ui.Column(c).Width(colW).Gap(12).Children(func() {
+					ui.Text(c, fallbackTitle(cur.item.Title)).Font(macPlanetFont).FontSize(28).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.ink)
 					meta := cur.subTitle
 					if cur.item.Published != "" {
 						meta += "   ·   " + cur.item.Published

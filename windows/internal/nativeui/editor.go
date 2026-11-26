@@ -19,11 +19,12 @@ func (a *App) viewEditor(c *ui.Context) {
 		// Single 760px rail matching mac-planet.css:837-886 & writing-editor.png
 		// (save state, 保存草稿, 发布, 删除 live in the unified top titlebar).
 		ui.Column(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).AlignItems(ui.Center).Background(pal.canvas).Children(func() {
-			maxW := float32(760)
+			maxW := float32(740)
 			if a.editorPaneMode == editorPaneSplit {
 				maxW = 1440
 			}
-			ui.Column(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).MaxWidth(maxW).PaddingX(36).PaddingY(24).Gap(12).Children(func() {
+			colW := a.detailColumnWidth(c, maxW)
+			ui.Column(c).Grow(1).MinHeight(0).Width(colW).PaddingY(24).Gap(12).Children(func() {
 				// 26px SemiBold truly borderless paper title input aligned flush with editor body (+8px).
 				ui.Box(c).AlignSelf(ui.Stretch).PaddingX(8).Children(func() {
 					ui.TextInputBase(c.Key("editor-title"), &a.editorTitle).
@@ -93,7 +94,7 @@ func (a *App) viewMarkdownPreview(c *ui.Context, title, content string, scroll *
 	ui.Scroll(c).TrackScroll(scroll).Fill().Background(pal.canvas).Children(func() {
 		ui.Column(c).PaddingX(8).PaddingY(8).Gap(14).AlignSelf(ui.Stretch).Children(func() {
 			if strings.TrimSpace(title) != "" {
-				ui.Text(c, title).Font(macPlanetFont).FontSize(28).FontWeight(700).LetterSpacing(-0.02).TextColor(pal.ink)
+				ui.Text(c, title).Font(macPlanetFont).FontSize(28).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.ink)
 			}
 			if strings.TrimSpace(content) == "" {
 				display.Empty(c, display.EmptyProps{
