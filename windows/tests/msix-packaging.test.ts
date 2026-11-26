@@ -128,6 +128,8 @@ test("build-msix.ps1 -Store rejects placeholder publisher and non-zero revision"
       payloadDir,
       "-StageDir",
       stageDir,
+      "-Publisher",
+      "CN=KinpageLocalDev",
       "-Store",
       "-AllowPrerelease",
       "-StageOnly",

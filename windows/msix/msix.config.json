@@ -1,8 +1,8 @@
 {
-  "packageName": "dev.puremixlab.kinpage",
-  "publisher": "CN=KinpageLocalDev",
-  "publisherDisplayName": "Kinpage",
-  "displayName": "Kinpage",
+  "packageName": "puremixai.KinPage",
+  "publisher": "CN=70D68E0B-77E2-4210-AD12-95D8EE0C5AA0",
+  "publisherDisplayName": "PureMixLab",
+  "displayName": "KinPage",
   "description": "Decentralized blog publishing and RSS/IPFS/ENS reader for Windows.",
   "backgroundColor": "transparent",
   "minVersion": "10.0.19041.0",

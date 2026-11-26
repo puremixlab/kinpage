@@ -4,6 +4,8 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-26
+
 ### Added
 
 - Added Microsoft Store MSIX packaging configuration (`windows/msix/msix.config.json`, `windows/msix/AppxManifest.template.xml`), automated visual asset generation and `makeappx.exe` build script (`bun run build:msix` / `windows/scripts/build-msix.ps1` with `-Store` validation gates), Bun packaging tests, and setup documentation (`windows/docs/msix-packaging.md`).

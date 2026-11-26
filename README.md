@@ -90,9 +90,9 @@
 
 | Build | Platform | Requirements | Checksums & Notes |
 | --- | --- | --- | --- |
-| **[Planet Windows v0.0.1-rc.1](https://github.com/puremixlab/planet-windows/releases/download/v0.0.1-rc.1/planet-windows-safe-setup-0.0.1-rc.1-amd64.exe)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release page](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-rc.1) (SHA-256, source archive, acceptance evidence) |
+| **[Kinpage v0.1.0](https://github.com/puremixlab/planet-windows/releases/tag/v0.1.0)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release page](https://github.com/puremixlab/planet-windows/releases) (MSIX / NSIS installer, SHA-256, source archive) |
 
-Install into an empty directory, then launch **Kinpage** from the Start menu.
+Install via Microsoft Store (MSIX) or extract/install the Windows x64 setup into an empty directory, then launch **Kinpage** from the Start menu. See [MSIX Packaging Guide](windows/docs/msix-packaging.md) for Store and sideloading builds.
 
 > [!NOTE]
 > **Unsigned release candidate.** Windows SmartScreen may prompt when running the installer — verify the published SHA-256 checksum on the release page before installing. Native desktop GUI, IME, cross-version upgrade, and macOS `.planet` round-trip compatibility remain under verification. See [known limitations](windows/README.md#尚未完成与待验证) and the [rc.1 acceptance scope](docs/acceptance-0.0.1-rc.1.md).
@@ -145,7 +145,7 @@ Run all commands from `windows/`:
 - [Changelog](CHANGELOG.md) — version history and unreleased changes.
 - [Logo & Branding](docs/branding/README.md) — brand guidelines and SVG assets.
 - [Contributing](CONTRIBUTING.md) · [Git Workflow](docs/git-workflow.md) · [Releasing](docs/releasing.md) — development and release workflows.
-- [Security Policy](SECURITY.md) · [Issues](https://github.com/puremixlab/planet-windows/issues) — vulnerability reporting, bugs, and feature requests.
+- [Security Policy](SECURITY.md) · [Privacy Policy](PRIVACY.md) · [Issues](https://github.com/puremixlab/planet-windows/issues) — vulnerability reporting, privacy details, bugs, and feature requests.
 
 ## Acknowledgements
 

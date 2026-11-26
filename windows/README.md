@@ -6,7 +6,7 @@
 >
 > 邻页（Kinpage，原名 Planet Windows）基于上述上游项目，是独立开发的 Windows 原生应用，兼容 `.planet` 备份与 Local API。
 
-[下载 v0.0.1-rc.1](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-rc.1) · [简体中文主页](../README_zh.md) · [English README](../README.md) · [贡献指南](../CONTRIBUTING.md)
+[发行页面（v0.1.0）](https://github.com/puremixlab/planet-windows/releases) · [MSIX 商店打包说明](docs/msix-packaging.md) · [简体中文主页](../README_zh.md) · [English README](../README.md) · [贡献指南](../CONTRIBUTING.md)
 
 [![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/planet-windows)
 
