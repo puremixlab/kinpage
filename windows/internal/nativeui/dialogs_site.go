@@ -152,22 +152,6 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 				})
 
 				// Bottom site identity card (navigation rail stays free of destructive actions).
-				if site := a.findSiteByID(st.siteID); site != nil {
-					ui.Column(c).Gap(6).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-						prefsHairlineH(c, pal)
-						ui.Row(c).Padding(6, 8, 2, 8).Gap(10).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-							a.siteAvatar(c, *site, 0, 28)
-							ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-								ui.Text(c, fallbackTitle(site.Name)).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsInk).MaxLines(1).Ellipsis("…")
-								tpl := site.TemplateName
-								if tpl == "" {
-									tpl = "默认模板"
-								}
-								ui.Text(c, tpl).Font(macPlanetFont).FontSize(11).TextColor(pal.prefsMuted).MaxLines(1).Ellipsis("…")
-							})
-						})
-					})
-				}
 			})
 			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
 
@@ -224,16 +208,16 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 													a.setStatus("已移除站点头像")
 												}
 											}
-											prevRound := st.roundAvatar
-											ui.Checkbox(c.Key("ss-avatar-round"), &st.roundAvatar, "圆形裁切")
-											if st.roundAvatar != prevRound {
-												if _, err := a.backend.SetSaveRoundAvatar(st.siteID, st.roundAvatar); err != nil {
-													st.err = err.Error()
-												} else {
-													a.Reload()
-												}
-											}
 										})
+										prevRound := st.roundAvatar
+										ui.Checkbox(c.Key("ss-avatar-round"), &st.roundAvatar, "圆形裁切")
+										if st.roundAvatar != prevRound {
+											if _, err := a.backend.SetSaveRoundAvatar(st.siteID, st.roundAvatar); err != nil {
+												st.err = err.Error()
+											} else {
+												a.Reload()
+											}
+										}
 									})
 								})
 								if presets := a.backend.PresetAvatars(); len(presets) > 0 {

@@ -303,9 +303,9 @@ func macField(c *ui.Context, label, hint string, pal macPalette, input func()) {
 	})
 }
 
-// prefsNavRow renders a macOS System Settings sidebar item with a soft-tinted
-// 20x20 rounded-square badge icon and an elevated active pill.
-func prefsNavRow(c *ui.Context, key, label string, selected bool, icon *ui.SVG, tint ui.Color, pal macPalette) bool {
+// prefsNavRow renders a macOS System Settings sidebar item with a neutral
+// monochrome 20x20 rounded-square badge icon and an elevated active pill.
+func prefsNavRow(c *ui.Context, key, label string, selected bool, icon *ui.SVG, _ ui.Color, pal macPalette) bool {
 	rest := ui.Transparent
 	hover := pal.hover
 	active := pal.active
@@ -313,9 +313,13 @@ func prefsNavRow(c *ui.Context, key, label string, selected bool, icon *ui.SVG, 
 		rest = pal.prefsNavActiveBg
 		hover = pal.prefsNavActiveBg
 	}
-	badgeAlpha := float32(0.13)
+	badgeBg := ui.RGBA(15, 23, 42, 0.06)
 	if pal.dark {
-		badgeAlpha = 0.22
+		badgeBg = ui.RGBA(255, 255, 255, 0.08)
+	}
+	iconFg := pal.prefsSecondary
+	if selected {
+		iconFg = pal.prefsInk
 	}
 	b := interactiveRow(c, key, label, rest, hover, active).
 		MinHeight(32).Radius(7).Padding(5, 8, 5, 8)
@@ -325,8 +329,8 @@ func prefsNavRow(c *ui.Context, key, label string, selected bool, icon *ui.SVG, 
 	b.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(9).Grow(1).MinWidth(0).Children(func() {
 			if icon != nil {
-				ui.Box(c).Size(20, 20).Radius(5).Background(tint.Alpha(badgeAlpha)).Center().Shrink(0).Children(func() {
-					ui.Icon(c, icon).Size(12, 12).TextColor(tint)
+				ui.Box(c).Size(20, 20).Radius(5).Background(badgeBg).Center().Shrink(0).Children(func() {
+					ui.Icon(c, icon).Size(12, 12).TextColor(iconFg)
 				})
 			}
 			txt := ui.Text(c, label).Font(macPlanetFont).FontSize(13).TextColor(pal.prefsInk).Grow(1).NoWrap()
