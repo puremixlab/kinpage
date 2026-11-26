@@ -90,12 +90,12 @@
 
 | Build | Platform | Requirements | Checksums & Notes |
 | --- | --- | --- | --- |
-| **[Planet Windows v0.0.1-alpha.6](https://github.com/puremixlab/planet-windows/releases/download/v0.0.1-alpha.6/planet-windows-safe-setup-0.0.1-alpha.6-amd64.exe)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release page](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-alpha.6) (SHA-256, source archive, acceptance evidence) |
+| **[Planet Windows v0.0.1-alpha.7](https://github.com/puremixlab/planet-windows/releases/download/v0.0.1-alpha.7/planet-windows-safe-setup-0.0.1-alpha.7-amd64.exe)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release page](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-alpha.7) (SHA-256, source archive, acceptance evidence) |
 
 Install into an empty directory, then launch **Planet Windows** from the Start menu.
 
 > [!NOTE]
-> **Early unsigned alpha.** `v0.0.1-alpha.6` is the latest published installer; newer Native UI redesign and macOS Planet 0.22.0 parity features on `main` are currently unreleased (see [Changelog](CHANGELOG.md)). Windows SmartScreen may prompt when running the installer — verify the published SHA-256 checksum on the release page before installing. Native desktop GUI, IME, cross-version upgrade, and macOS `.planet` round-trip compatibility remain under verification. See [known limitations](windows/README.md#尚未完成与待验证) and the [alpha.6 acceptance scope](docs/acceptance-0.0.1-alpha.6.md).
+> **Early unsigned alpha.** Windows SmartScreen may prompt when running the installer — verify the published SHA-256 checksum on the release page before installing. Native desktop GUI, IME, cross-version upgrade, and macOS `.planet` round-trip compatibility remain under verification. See [known limitations](windows/README.md#尚未完成与待验证) and the [alpha.7 acceptance scope](docs/acceptance-0.0.1-alpha.7.md).
 
 > [!WARNING]
 > Exported `.planet` backups contain **unencrypted IPNS private keys**. Keep backup archives private and stored safely.

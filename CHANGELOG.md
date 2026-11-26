@@ -4,6 +4,8 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ## [Unreleased]
 
+## [0.0.1-alpha.7] - 2026-11-26
+
 ### Added
 
 - Added macOS Planet Local API, Web Client & Web3 parity features: `GET /v0/id`, `GET /v0/planets/my/:uuid/public/*` static site preview hosting, built-in `/app/` Web Client (with custom `Public/app` override support), Farcaster Mini App `.well-known/farcaster.json` configuration and generation, `dWebServices.xyz` hosted IPNS CID sync on publication, and an EIP-681 ETH creator tipping sheet (`打赏创作者 (ETH)…`).
