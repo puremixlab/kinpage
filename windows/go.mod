@@ -12,9 +12,10 @@ require (
 	github.com/lobehub/lobe-mygo v0.0.0-20261116124832-d88b4ad7f238
 	github.com/mmcdole/gofeed v1.5.0
 	github.com/yuin/goldmark v1.8.7
+	golang.org/x/image v0.46.0
 	golang.org/x/net v0.62.0
 	golang.org/x/sys v0.49.0
-	golang.org/x/text v0.43.0
+	golang.org/x/text v0.44.0
 )
 
 require (
@@ -60,8 +61,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
-	golang.org/x/image v0.46.0 // indirect
-	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/sync v0.25.0 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
 	rsc.io/qr v0.2.0 // indirect
 )
