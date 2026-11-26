@@ -84,12 +84,20 @@ func (a *App) Locale() Locale {
 	return a.locale
 }
 
+// SetOnLocaleChange registers a callback invoked whenever the active UI locale changes.
+func (a *App) SetOnLocaleChange(fn func(Locale)) {
+	a.onLocaleChange = fn
+}
+
 // SetLocale switches the active UI locale (falling back to en for unsupported values)
 // and refreshes dynamic editor labels.
 func (a *App) SetLocale(l Locale) {
 	a.locale = NormalizeLocale(string(l))
 	a.syncEditorLocale()
 	a.maybeSaveLayoutPrefs()
+	if a.onLocaleChange != nil {
+		a.onLocaleChange(a.locale)
+	}
 }
 
 func (a *App) syncEditorLocale() {

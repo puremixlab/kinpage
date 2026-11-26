@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -40,6 +41,9 @@ import (
 	"windows/internal/templateinstall"
 	"windows/internal/updates"
 )
+
+//go:embed resources/icon.png
+var appIconPNG []byte
 
 // Library exposes the local authoring functions to the application window.
 type Library struct {
@@ -3550,10 +3554,14 @@ func main() {
 		opts := mygo.WindowOptions{
 			Title: "Planet", Width: 1280, Height: 820, MinWidth: 860, MinHeight: 600,
 			BackgroundColor: "#f7f7f5", StateKey: "main",
-			TitleBarStyle: mygo.TitleBarHidden,
-			Content:       ui.View(nativeApp.View),
+			TitleBarStyle:  mygo.TitleBarHidden,
+			TitleBarHeight: 44,
+			Content:        ui.View(nativeApp.View),
 		}
 		win := mygo.NewWindow(opts)
+		if len(appIconPNG) > 0 {
+			_ = win.SetIcon(appIconPNG)
+		}
 		nativeApp.SetWebViewFactory(func() (nativeui.WebViewHost, error) {
 			wv, err := win.NewWebView(mygo.WebViewOptions{
 				Page: mygo.PageOptions{Untrusted: true},
@@ -3563,9 +3571,106 @@ func main() {
 			}
 			return &mygoWebViewHost{wv: wv}, nil
 		})
+
+		showMainWindow := func() {
+			if win.IsDestroyed() {
+				return
+			}
+			if win.IsMinimized() {
+				win.Restore()
+			}
+			win.Show()
+			win.Focus()
+		}
+
+		var tray *mygo.Tray
+		var quitting atomic.Bool
 		var closing atomic.Bool
+
+		quitApp := func() {
+			if !closing.CompareAndSwap(false, true) {
+				return
+			}
+			go func() {
+				defer closing.Store(false)
+				if library.ActivePublishCount() > 0 {
+					showMainWindow()
+					title, msg, detail, cancelBtn, quitBtn := trayQuitConfirmStrings(nativeApp.Locale())
+					result, err := mygo.Dialog.Message(mygo.MessageOptions{
+						Parent:        win,
+						Type:          mygo.MessageQuestion,
+						Title:         title,
+						Message:       msg,
+						Detail:        detail,
+						Buttons:       []string{cancelBtn, quitBtn},
+						DefaultButton: 0,
+						CancelButton:  0,
+					})
+					if err != nil || result.Button != 1 {
+						return
+					}
+				}
+				quitting.Store(true)
+				if tray != nil {
+					tray.Destroy()
+					tray = nil
+				}
+				nativeApp.Close()
+				if !win.IsDestroyed() {
+					win.Destroy()
+				}
+				mygo.App.Quit()
+			}()
+		}
+
+		buildTrayMenu := func(loc nativeui.Locale) *mygo.Menu {
+			showLabel, quitLabel := trayMenuStrings(loc)
+			return mygo.NewMenu([]*mygo.MenuItem{
+				{
+					Label: showLabel,
+					Click: func(_ *mygo.MenuItem, _ *mygo.Window) {
+						showMainWindow()
+					},
+				},
+				mygo.Separator(),
+				{
+					Label: quitLabel,
+					Click: func(_ *mygo.MenuItem, _ *mygo.Window) {
+						quitApp()
+					},
+				},
+			})
+		}
+
+		if createdTray, err := mygo.NewTray(mygo.TrayOptions{
+			ID:      "planet-windows-tray",
+			Icon:    appIconPNG,
+			ToolTip: "Planet",
+			Menu:    buildTrayMenu(nativeApp.Locale()),
+		}); err == nil {
+			tray = createdTray
+			tray.OnClick(showMainWindow)
+			nativeApp.SetOnLocaleChange(func(loc nativeui.Locale) {
+				if tray != nil {
+					tray.SetMenu(buildTrayMenu(loc))
+				}
+			})
+		} else {
+			log.Printf("system tray unavailable: %v", err)
+		}
+
 		win.OnClose(func(event *mygo.CloseEvent) {
+			if quitting.Load() {
+				return
+			}
 			event.PreventDefault()
+			// Hide to the Windows taskbar system tray so Planet continues running
+			// in the background (IPFS node, Local API, and site maintenance).
+			if tray != nil {
+				win.Hide()
+				return
+			}
+			// Fallback when system tray is unavailable: confirm and exit.
 			if !closing.CompareAndSwap(false, true) {
 				return
 			}
@@ -3577,6 +3682,7 @@ func main() {
 				}
 				result, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: win, Type: mygo.MessageQuestion, Title: "关闭 Planet", Message: "确定关闭窗口？", Detail: detail, Buttons: []string{"取消", "关闭"}, DefaultButton: 0, CancelButton: 0})
 				if err == nil && result.Button == 1 {
+					quitting.Store(true)
 					nativeApp.Close()
 					win.Destroy()
 				}
@@ -3585,6 +3691,28 @@ func main() {
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func trayMenuStrings(loc nativeui.Locale) (showLabel, quitLabel string) {
+	switch loc {
+	case nativeui.LocaleZhCN:
+		return "显示 Planet", "退出 Planet"
+	case nativeui.LocaleZhTW:
+		return "顯示 Planet", "結束 Planet"
+	default:
+		return "Show Planet", "Quit Planet"
+	}
+}
+
+func trayQuitConfirmStrings(loc nativeui.Locale) (title, msg, detail, cancelBtn, quitBtn string) {
+	switch loc {
+	case nativeui.LocaleZhCN:
+		return "退出 Planet", "确定退出 Planet？", "当前正在进行 IPNS 发布，强制退出可能导致发布中断或站点无法解析。", "取消", "退出"
+	case nativeui.LocaleZhTW:
+		return "結束 Planet", "確定要結束 Planet？", "目前正在進行 IPNS 發布，強制結束可能導致發布中斷或站點無法解析。", "取消", "結束"
+	default:
+		return "Quit Planet", "Quit Planet?", "An IPNS publish is currently in progress. Quitting now may interrupt publishing.", "Cancel", "Quit"
 	}
 }
 
