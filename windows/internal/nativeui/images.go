@@ -1,9 +1,13 @@
 package nativeui
 
 import (
+	"bytes"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"net/http"
 	"net/url"
@@ -14,16 +18,19 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	_ "golang.org/x/image/webp"
 )
 
 const (
 	maxMarkdownImageBytes = 10 << 20 // 10 MiB safety cap per remote image
 	maxMarkdownImageDim   = 1600     // cap decoded bitmap longest edge
+	imageErrorCacheTTL    = 30 * time.Second
 )
 
 type cachedImage struct {
-	bmp *ui.Bitmap
+	src ui.ImageSource
 	err error
+	at  time.Time
 }
 
 // imageLoader safely fetches, decodes, and caches Markdown images off the UI
@@ -37,12 +44,16 @@ type imageLoader struct {
 
 func newImageLoader() *imageLoader {
 	return &imageLoader{
-		client: &http.Client{Timeout: 12 * time.Second},
+		client: &http.Client{Timeout: 15 * time.Second},
 		cache:  map[string]cachedImage{},
 	}
 }
 
 func (l *imageLoader) Load(rawURL string) (ui.ImageSource, error) {
+	return l.LoadWithReferer(rawURL, "")
+}
+
+func (l *imageLoader) LoadWithReferer(rawURL, referer string) (ui.ImageSource, error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
 		return nil, errors.New("empty image url")
@@ -50,30 +61,55 @@ func (l *imageLoader) Load(rawURL string) (ui.ImageSource, error) {
 
 	l.mu.Lock()
 	if entry, ok := l.cache[rawURL]; ok {
-		l.mu.Unlock()
-		if entry.err != nil || entry.bmp == nil {
+		if entry.err == nil && entry.src != nil {
+			l.mu.Unlock()
+			return entry.src, nil
+		}
+		if entry.err != nil && time.Since(entry.at) < imageErrorCacheTTL {
+			l.mu.Unlock()
 			return nil, entry.err
 		}
-		return entry.bmp, nil
 	}
 	l.mu.Unlock()
 
-	bmp, err := l.fetchAndDecode(rawURL)
+	src, err := l.fetchAndDecode(rawURL, referer)
 
 	l.mu.Lock()
 	if len(l.cache) > 256 {
 		l.cache = map[string]cachedImage{}
 	}
-	l.cache[rawURL] = cachedImage{bmp: bmp, err: err}
+	l.cache[rawURL] = cachedImage{src: src, err: err, at: time.Now()}
 	l.mu.Unlock()
 
+	if err != nil || src == nil {
+		return nil, err
+	}
+	return src, nil
+}
+
+func decodeImageBytes(data []byte, contentType, rawURL string) (ui.ImageSource, error) {
+	ct := strings.ToLower(contentType)
+	lowerURL := strings.ToLower(rawURL)
+	trimmed := bytes.TrimSpace(data)
+	isSVG := strings.Contains(ct, "image/svg") ||
+		strings.HasSuffix(lowerURL, ".svg") ||
+		bytes.HasPrefix(trimmed, []byte("<svg")) ||
+		(bytes.HasPrefix(trimmed, []byte("<?xml")) && bytes.Contains(trimmed[:min(len(trimmed), 256)], []byte("<svg")))
+	if isSVG {
+		svg, err := ui.ParseSVG(data)
+		if err != nil || svg == nil {
+			return nil, err
+		}
+		return svg, nil
+	}
+	bmp, err := ui.DecodeBitmapScaled(data, maxMarkdownImageDim)
 	if err != nil || bmp == nil {
 		return nil, err
 	}
 	return bmp, nil
 }
 
-func (l *imageLoader) fetchAndDecode(rawURL string) (*ui.Bitmap, error) {
+func (l *imageLoader) fetchAndDecode(rawURL, referer string) (ui.ImageSource, error) {
 	if strings.HasPrefix(strings.ToLower(rawURL), "data:") {
 		idx := strings.Index(rawURL, ",")
 		if idx < 0 {
@@ -94,7 +130,7 @@ func (l *imageLoader) fetchAndDecode(rawURL string) (*ui.Bitmap, error) {
 		if len(data) > maxMarkdownImageBytes {
 			return nil, errors.New("data image too large")
 		}
-		return ui.DecodeBitmapScaled(data, maxMarkdownImageDim)
+		return decodeImageBytes(data, meta, "")
 	}
 
 	parsed, err := url.Parse(rawURL)
@@ -108,8 +144,11 @@ func (l *imageLoader) fetchAndDecode(rawURL string) (*ui.Bitmap, error) {
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Set("User-Agent", "Planet-Windows-NativeUI/1.0")
-		req.Header.Set("Accept", "image/*,*/*;q=0.8")
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+		req.Header.Set("Accept", "image/webp,image/png,image/jpeg,image/gif,image/svg+xml,image/*;q=0.8,*/*;q=0.5")
+		if ref := strings.TrimSpace(referer); strings.HasPrefix(strings.ToLower(ref), "http://") || strings.HasPrefix(strings.ToLower(ref), "https://") {
+			req.Header.Set("Referer", ref)
+		}
 		resp, err := l.client.Do(req)
 		if err != nil {
 			return nil, err
@@ -125,7 +164,7 @@ func (l *imageLoader) fetchAndDecode(rawURL string) (*ui.Bitmap, error) {
 		if len(data) > maxMarkdownImageBytes {
 			return nil, errors.New("remote image exceeds size limit")
 		}
-		return ui.DecodeBitmapScaled(data, maxMarkdownImageDim)
+		return decodeImageBytes(data, resp.Header.Get("Content-Type"), parsed.Path)
 	default:
 		return nil, fmt.Errorf("unsupported image scheme %q", scheme)
 	}
@@ -170,7 +209,7 @@ func (a *App) markdownImageLoader(baseURL, localDir string) func(string) (ui.Ima
 		resolved := resolveRelativeURL(trimmed, baseURL)
 		lower := strings.ToLower(resolved)
 		if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") || strings.HasPrefix(lower, "data:") {
-			return loader.Load(resolved)
+			return loader.LoadWithReferer(resolved, baseURL)
 		}
 		if localDir != "" && !filepath.IsAbs(trimmed) && !strings.Contains(trimmed, "..") {
 			candidate := filepath.Join(localDir, filepath.FromSlash(trimmed))
@@ -181,11 +220,7 @@ func (a *App) markdownImageLoader(baseURL, localDir string) func(string) (ui.Ima
 			if len(data) > maxMarkdownImageBytes {
 				return nil, errors.New("local image exceeds size limit")
 			}
-			bmp, err := ui.DecodeBitmapScaled(data, maxMarkdownImageDim)
-			if err != nil || bmp == nil {
-				return nil, err
-			}
-			return bmp, nil
+			return decodeImageBytes(data, "", candidate)
 		}
 		return nil, fmt.Errorf("unsupported image source %q", trimmed)
 	}

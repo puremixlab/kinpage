@@ -41,15 +41,46 @@ func tinyPNGBytes(t *testing.T) []byte {
 }
 
 func TestHTMLToReadableMarkdownImagesAndFigures(t *testing.T) {
-	raw := `<article><p>开头段落</p><figure><img src="/assets/photo.jpg" alt="河岸风景"><figcaption>傍晚的芦苇</figcaption></figure><p><img data-src="images/lazy.png" alt="延迟加载"></p></article>`
+	raw := `<article><p>开头段落</p><figure><img src="/assets/photo.jpg" alt="河岸风景"><figcaption>傍晚的芦苇</figcaption></figure><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-src="images/lazy.png" alt="延迟加载"></p><p><img srcset="/img/hero-1x.webp 1x, /img/hero-2x.webp 2x" alt="高清封面"></p></article>`
 	md := htmlToReadableMarkdownWithBase(raw, "https://river.example/posts/autumn")
 	for _, want := range []string{
 		"![河岸风景](https://river.example/assets/photo.jpg)",
 		"*傍晚的芦苇*",
 		"![延迟加载](https://river.example/posts/images/lazy.png)",
+		"![高清封面](https://river.example/img/hero-1x.webp)",
 	} {
 		if !strings.Contains(md, want) {
 			t.Fatalf("expected %q in converted markdown:\n%s", want, md)
+		}
+	}
+}
+
+func TestSubscriptionBaseURLAndAttachments(t *testing.T) {
+	app := New(&fakeBackend{})
+	app.ipfsModal.status.Running = true
+	app.ipfsModal.status.Gateway = "http://127.0.0.1:8080"
+	cur := subItemEntry{
+		subURL: "olivida.eth",
+		item: feeds.Item{
+			ContentCID:  "bafybeigdyrzt",
+			ArticleID:   "art-42",
+			Content:     "一段正文",
+			Attachments: []string{"cover.jpg"},
+			Media:       []feeds.RemoteMedia{{URL: "https://cdn.example/pic.webp", Type: "image/webp"}},
+		},
+	}
+	base := app.subscriptionBaseURL(cur)
+	wantBase := "http://127.0.0.1:8080/ipfs/bafybeigdyrzt/art-42/"
+	if base != wantBase {
+		t.Fatalf("subscriptionBaseURL = %q, want %q", base, wantBase)
+	}
+	md := buildSubscriptionMarkdown(cur.item.Content, cur.item, base)
+	for _, want := range []string{
+		"![cover.jpg](http://127.0.0.1:8080/ipfs/bafybeigdyrzt/art-42/cover.jpg)",
+		"![](https://cdn.example/pic.webp)",
+	} {
+		if !strings.Contains(md, want) {
+			t.Fatalf("expected %q in built markdown:\n%s", want, md)
 		}
 	}
 }

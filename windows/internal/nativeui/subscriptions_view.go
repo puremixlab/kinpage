@@ -312,10 +312,7 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 			return
 		}
 
-		baseURL := strings.TrimSpace(cur.item.Link)
-		if baseURL == "" {
-			baseURL = cur.subURL
-		}
+		baseURL := a.subscriptionBaseURL(*cur)
 
 		// Optional embedded WebView original webpage mode (matching macOS Planet).
 		if a.subShowWebView && a.newWebView != nil && strings.TrimSpace(cur.item.Link) != "" {
@@ -349,7 +346,7 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 		if strings.TrimSpace(body) == "" {
 			body = cur.item.Description
 		}
-		mdBody := htmlToReadableMarkdownWithBase(body, baseURL)
+		mdBody := buildSubscriptionMarkdown(body, cur.item, baseURL)
 
 		colW := a.detailColumnWidth(c, 740)
 		ui.Scroll(c).TrackScroll(&a.subReaderScroll).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
@@ -371,7 +368,7 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 							Title: "该订阅条目没有正文内容",
 						})
 					} else {
-						lobemd.Markdown(c, mdBody, lobemd.MarkdownProps{
+						lobemd.Markdown(c.Key("sub-md-"+cur.effective), mdBody, lobemd.MarkdownProps{
 							FontSize:              15,
 							LineHeight:            1.8,
 							HeaderMultiple:        0.65,
@@ -644,25 +641,45 @@ func htmlToReadableMarkdownWithBase(raw, baseURL string) string {
 				return
 			case "img":
 				src := ""
+				lazySrc := ""
+				srcset := ""
 				alt := ""
 				for _, attr := range n.Attr {
 					key := strings.ToLower(attr.Key)
 					val := strings.TrimSpace(attr.Val)
+					if val == "" {
+						continue
+					}
 					switch key {
 					case "src":
-						if val != "" && !strings.HasPrefix(strings.ToLower(val), "data:image/svg+xml") {
+						if !strings.HasPrefix(strings.ToLower(val), "data:image/svg+xml") {
 							src = val
 						}
-					case "data-src", "data-original", "data-lazy-src":
-						if src == "" && val != "" {
-							src = val
+					case "data-src", "data-original", "data-lazy-src", "data-actualsrc":
+						if lazySrc == "" {
+							lazySrc = val
+						}
+					case "srcset", "data-srcset":
+						if srcset == "" {
+							srcset = val
 						}
 					case "alt":
 						alt = val
 					}
 				}
-				if src != "" {
-					resolved := resolveRelativeURL(src, baseURL)
+				// Prefer lazy-load attributes when src is missing or a tiny data: placeholder.
+				chosen := src
+				if lazySrc != "" && (chosen == "" || strings.HasPrefix(strings.ToLower(chosen), "data:")) {
+					chosen = lazySrc
+				}
+				if chosen == "" && srcset != "" {
+					first := strings.TrimSpace(strings.Split(srcset, ",")[0])
+					if parts := strings.Fields(first); len(parts) > 0 {
+						chosen = parts[0]
+					}
+				}
+				if chosen != "" {
+					resolved := resolveRelativeURL(chosen, baseURL)
 					alt = strings.ReplaceAll(alt, "]", "\\]")
 					out.WriteString("\n\n![" + alt + "](" + resolved + ")\n\n")
 				}
@@ -770,4 +787,80 @@ func htmlToReadableMarkdownWithBase(raw, baseURL string) string {
 	}
 	walk(doc)
 	return strings.TrimSpace(out.String())
+}
+
+// subscriptionBaseURL computes the best HTTP(S) base URL for resolving relative
+// image/link references in a subscription item, supporting both normal web feeds
+// and Planet/IPFS/ENS subscriptions (via local Kubo gateway or public gateway).
+func (a *App) subscriptionBaseURL(cur subItemEntry) string {
+	if cid := strings.TrimSpace(cur.item.ContentCID); cid != "" {
+		gw := "https://eth.sucks"
+		if a.ipfsModal.status.Running && strings.TrimSpace(a.ipfsModal.status.Gateway) != "" {
+			gw = strings.TrimRight(strings.TrimSpace(a.ipfsModal.status.Gateway), "/")
+		}
+		parts := []string{gw, "ipfs", cid}
+		if p := strings.Trim(strings.TrimSpace(cur.item.ContentPath), "/"); p != "" {
+			parts = append(parts, p)
+		}
+		if id := strings.Trim(strings.TrimSpace(cur.item.ArticleID), "/"); id != "" {
+			parts = append(parts, id)
+		}
+		return strings.Join(parts, "/") + "/"
+	}
+	if link := strings.TrimSpace(cur.item.Link); strings.HasPrefix(strings.ToLower(link), "http://") || strings.HasPrefix(strings.ToLower(link), "https://") {
+		return link
+	}
+	if sub := strings.TrimSpace(cur.subURL); strings.HasPrefix(strings.ToLower(sub), "http://") || strings.HasPrefix(strings.ToLower(sub), "https://") {
+		return sub
+	}
+	return strings.TrimSpace(cur.item.Link)
+}
+
+func isSubImageFilename(name string) bool {
+	lower := strings.ToLower(strings.TrimSpace(name))
+	for _, ext := range []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"} {
+		if strings.HasSuffix(lower, ext) {
+			return true
+		}
+	}
+	return false
+}
+
+// buildSubscriptionMarkdown converts HTML (if present) to readable Markdown and
+// appends unreferenced Planet image attachments or RSS media image enclosures.
+func buildSubscriptionMarkdown(body string, item feeds.Item, baseURL string) string {
+	md := htmlToReadableMarkdownWithBase(body, baseURL)
+	var extras []string
+	for _, name := range item.Attachments {
+		name = strings.TrimSpace(name)
+		if name == "" || !isSubImageFilename(name) {
+			continue
+		}
+		resolved := resolveRelativeURL(name, baseURL)
+		if strings.Contains(md, name) || strings.Contains(md, resolved) {
+			continue
+		}
+		extras = append(extras, fmt.Sprintf("![%s](%s)", name, resolved))
+	}
+	for _, m := range item.Media {
+		u := strings.TrimSpace(m.URL)
+		if u == "" {
+			continue
+		}
+		if !strings.HasPrefix(strings.ToLower(strings.TrimSpace(m.Type)), "image/") && !isSubImageFilename(u) {
+			continue
+		}
+		resolved := resolveRelativeURL(u, baseURL)
+		if strings.Contains(md, u) || strings.Contains(md, resolved) {
+			continue
+		}
+		extras = append(extras, fmt.Sprintf("![](%s)", resolved))
+	}
+	if len(extras) > 0 {
+		if strings.TrimSpace(md) != "" {
+			md += "\n\n"
+		}
+		md += strings.Join(extras, "\n\n")
+	}
+	return md
 }
