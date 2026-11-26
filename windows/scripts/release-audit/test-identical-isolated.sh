@@ -11,18 +11,18 @@ wineserver -w
 cp /opt/planet-wine-test/bcryptprimitives.dll "$WINEPREFIX/drive_c/windows/system32/bcryptprimitives.dll"
 root="$WINEPREFIX/drive_c/audit"
 old="$root/old"
-data="$WINEPREFIX/drive_c/users/root/AppData/Roaming/Planet Windows"
-shortcut="$WINEPREFIX/drive_c/users/root/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Planet Windows.lnk"
+data="$WINEPREFIX/drive_c/users/root/AppData/Roaming/Kinpage"
+shortcut="$WINEPREFIX/drive_c/users/root/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Kinpage.lnk"
 mkdir -p "$data"
 wine /input/old.exe /S '/D=C:\audit\old'
 wineserver -w
-[ -f "$old/Planet Windows.exe" ] && [ -f "$shortcut" ] || { echo 'FAIL: old safe package was not installed'; exit 1; }
+[ -f "$old/Kinpage.exe" ] && [ -f "$shortcut" ] || { echo 'FAIL: old safe package was not installed'; exit 1; }
 printf 'preserve custom' > "$old/custom.txt"
 printf 'preserve library' > "$data/library.json"
 snapshot_files() { find "$old" -maxdepth 1 -type f -print0 | sort -z | xargs -0 sha256sum; }
 snapshot_registry() {
-  wine reg query 'HKCU\Software\PlanetWindows\InstallerState' /s | tr -d '\r'
-  wine reg query 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\org.planetable.planetwindows' /s | tr -d '\r'
+  wine reg query 'HKCU\Software\Kinpage\InstallerState' /s | tr -d '\r'
+  wine reg query 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\dev.puremixlab.kinpage' /s | tr -d '\r'
 }
 before_files=$(snapshot_files)
 before_registry=$(snapshot_registry)

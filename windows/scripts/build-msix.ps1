@@ -192,7 +192,7 @@ if ($effectiveLanguages.Count -eq 0) {
     throw 'MSIX config must declare at least one language.'
 }
 
-$isPlaceholderPublisher = ($effectivePublisher -eq 'CN=PlanetWindowsLocalDev') -or ($effectivePublisher -match 'REPLACE-WITH')
+$isPlaceholderPublisher = ($effectivePublisher -eq 'CN=KinpageLocalDev') -or ($effectivePublisher -match 'REPLACE-WITH')
 if ($Store -and $isPlaceholderPublisher) {
     throw "Store MSIX packaging requires your real Partner Center Publisher ID (current: '$effectivePublisher'). Update windows/msix/msix.config.json or pass -Publisher."
 }
@@ -215,7 +215,7 @@ if (-not (Test-Path -LiteralPath $PayloadDir -PathType Container)) {
 }
 
 $requiredPayloadFiles = @(
-    'Planet Windows.exe',
+    'Kinpage.exe',
     'ipfs.exe',
     'icon.png',
     'kubo-LICENSE.txt',
@@ -241,7 +241,7 @@ if ([string]::IsNullOrWhiteSpace($StageDir)) {
 if ([string]::IsNullOrWhiteSpace($OutputFile)) {
     $outDir = Join-Path $projectRoot ('.mygo/msix/' + $buildId)
     [System.IO.Directory]::CreateDirectory($outDir) | Out-Null
-    $OutputFile = Join-Path $outDir ("planet-windows-$releaseVersion-x64.msix")
+    $OutputFile = Join-Path $outDir ("kinpage-$releaseVersion-x64.msix")
 } else {
     $outParent = Split-Path -Parent $OutputFile
     if (-not [string]::IsNullOrWhiteSpace($outParent)) {
@@ -263,7 +263,7 @@ if (-not $SkipVersionProbe) {
         $env:APPDATA = $probeProfile
         $env:LOCALAPPDATA = $probeProfile
         $versionProc = New-Object System.Diagnostics.Process
-        $versionProc.StartInfo.FileName = Join-Path $PayloadDir 'Planet Windows.exe'
+        $versionProc.StartInfo.FileName = Join-Path $PayloadDir 'Kinpage.exe'
         $versionProc.StartInfo.Arguments = '--planet-version'
         $versionProc.StartInfo.WorkingDirectory = $PayloadDir
         $versionProc.StartInfo.UseShellExecute = $false

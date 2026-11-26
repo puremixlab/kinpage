@@ -10,7 +10,7 @@ const msixTemplatePath = resolve(windowsDir, "msix/AppxManifest.template.xml");
 const releaseJsonPath = resolve(windowsDir, "release.json");
 
 const requiredPayloadFiles = [
-  "Planet Windows.exe",
+  "Kinpage.exe",
   "ipfs.exe",
   "icon.png",
   "kubo-LICENSE.txt",
@@ -58,7 +58,7 @@ test("MSIX config and manifest template declare required desktop capabilities", 
   expect(template).toContain('Name="internetClient"');
   expect(template).toContain('Name="privateNetworkClientServer"');
   expect(template).toContain('Name="runFullTrust"');
-  expect(template).toContain('Executable="Planet Windows.exe"');
+  expect(template).toContain('Executable="Kinpage.exe"');
 });
 
 test("build-msix.ps1 stages manifest, payload files, and generated PNG assets", () => {

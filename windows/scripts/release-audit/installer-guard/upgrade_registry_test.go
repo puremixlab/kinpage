@@ -80,7 +80,7 @@ func isolatedKeys(t *testing.T) {
 	t.Helper()
 	b := make([]byte, 12)
 	rand.Read(b)
-	base := `Software\PlanetWindows\UpgradeTests-` + hex.EncodeToString(b)
+	base := `Software\Kinpage\UpgradeTests-` + hex.EncodeToString(b)
 	oldState, oldUninstall, oldUpdate, oldVersion := stateKey, uninstallKey, updateKey, releaseVersion
 	stateKey, uninstallKey, updateKey = base+`\State`, base+`\Uninstall`, base+`\Transaction`
 	releaseVersion = "0.3.0"
@@ -97,7 +97,7 @@ func registeredFixture(t *testing.T) (string, string, map[string]string) {
 	isolatedKeys(t)
 	root, source := t.TempDir(), t.TempDir()
 	old, files := map[string]string{}, map[string]string{}
-	for _, name := range []string{"Planet Windows.exe", "ipfs.exe", "icon.png", "kubo-LICENSE.txt", "kubo-LICENSE-MIT.txt", "kubo-LICENSE-APACHE.txt", "LICENSE-PLANET.txt", "THIRD-PARTY-NOTICES.txt", "KUBO-BUILDINFO.txt", "KUBO-DEPENDENCY-LICENSES.txt"} {
+	for _, name := range []string{"Kinpage.exe", "ipfs.exe", "icon.png", "kubo-LICENSE.txt", "kubo-LICENSE-MIT.txt", "kubo-LICENSE-APACHE.txt", "LICENSE-PLANET.txt", "THIRD-PARTY-NOTICES.txt", "KUBO-BUILDINFO.txt", "KUBO-DEPENDENCY-LICENSES.txt"} {
 		if e := os.WriteFile(filepath.Join(root, name), []byte("old:"+name), 0600); e != nil {
 			t.Fatal(e)
 		}
@@ -218,8 +218,8 @@ func TestLegacyOrExpandedPayloadRefusedBeforeCreatingTransaction(t *testing.T) {
 			if exists, e := existsKey(updateKey); e != nil || exists {
 				t.Fatal("failed validation left transaction", e)
 			}
-			b, _ := os.ReadFile(filepath.Join(root, "Planet Windows.exe"))
-			if string(b) != "old:Planet Windows.exe" {
+			b, _ := os.ReadFile(filepath.Join(root, "Kinpage.exe"))
+			if string(b) != "old:Kinpage.exe" {
 				t.Fatal("old executable changed")
 			}
 		})
@@ -229,17 +229,17 @@ func TestUnregisteredForgedJournalCannotAuthorizeUpdate(t *testing.T) {
 	isolatedKeys(t)
 	root, source := t.TempDir(), t.TempDir()
 	os.Mkdir(filepath.Join(root, ".planet-update"), 0700)
-	files := map[string]string{"Planet Windows.exe": digest("new")}
-	os.WriteFile(filepath.Join(root, "Planet Windows.exe"), []byte("user file"), 0600)
-	os.WriteFile(filepath.Join(source, "Planet Windows.exe"), []byte("new"), 0600)
+	files := map[string]string{"Kinpage.exe": digest("new")}
+	os.WriteFile(filepath.Join(root, "Kinpage.exe"), []byte("user file"), 0600)
+	os.WriteFile(filepath.Join(source, "Kinpage.exe"), []byte("new"), 0600)
 	os.WriteFile(filepath.Join(source, "Uninstall.exe"), []byte("new uninstaller"), 0600)
-	j := upgradeJournal{Format: 1, Version: releaseVersion, Old: map[string]string{"Planet Windows.exe": digest("user file")}, New: files, State: map[string]string{"InstallLocation": root}, Uninstall: map[string]string{"InstallLocation": root}}
+	j := upgradeJournal{Format: 1, Version: releaseVersion, Old: map[string]string{"Kinpage.exe": digest("user file")}, New: files, State: map[string]string{"InstallLocation": root}, Uninstall: map[string]string{"InstallLocation": root}}
 	b, _ := json.Marshal(j)
 	os.WriteFile(filepath.Join(root, ".planet-update", "journal.json"), b, 0600)
 	if e := applyUpgrade(root, source, files); e == nil {
 		t.Fatal("forged journal authorized update")
 	}
-	b, _ = os.ReadFile(filepath.Join(root, "Planet Windows.exe"))
+	b, _ = os.ReadFile(filepath.Join(root, "Kinpage.exe"))
 	if string(b) != "user file" {
 		t.Fatal("unregistered content changed")
 	}

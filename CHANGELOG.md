@@ -12,6 +12,7 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ### Changed
 
+- Renamed the application from **Planet Windows** to **Kinpage (邻页)** across the desktop app, tray and notifications, MyGo/NSIS/MSIX packaging metadata (`Kinpage.exe`, `dev.puremixlab.kinpage`, `kinpage-safe-setup-*.exe`), brand SVG wordmarks, and user documentation, while preserving `.planet` backup format and macOS Planet Local API compatibility.
 - Redesigned Native UI settings with a ChatGPT-style progressive disclosure flow: a compact bottom-left `设置` (`Settings`) menu (`新建站点…`, `关注站点…`, `快捷发文`, `打开 IPFS 资源…`, and `更多设置…` / `Ctrl+,`), a unified grouped Global Settings window with sidebar search (`通用`, `数据与存储`, `网络与工具`, `智能与扩展`), and empty-state-first pages with secondary configuration modals across both Global Settings (AI, Local API, Published Folders, IPNS Keys) and Site Settings integrations (Deploy, Services, X, Telegram, Aggregation, Web3); moved the IPFS node status button to the sidebar bottom-right.
 
 ### Fixed

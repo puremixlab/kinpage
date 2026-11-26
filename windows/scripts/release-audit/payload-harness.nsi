@@ -9,7 +9,7 @@ Name "Payload audit test only"
 OutFile "${OUTPUT}"
 Section
   SetOutPath "$INSTDIR"
-  File "${FIXTURE_PATH}\Planet Windows.exe"
+  File "${FIXTURE_PATH}\Kinpage.exe"
   File "${FIXTURE_PATH}\ipfs.exe"
   File "${FIXTURE_PATH}\icon.png"
   File "${FIXTURE_PATH}\kubo-LICENSE.txt"

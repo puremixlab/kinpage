@@ -15,5 +15,5 @@ func checkUpdateReady(executable string) error {
 	if err != nil {
 		return err
 	}
-	return fmt.Errorf("检测到未完成的程序升级。请关闭 Planet，重新运行刚才的同一安装包以恢复升级；资料库尚未打开")
+	return fmt.Errorf("检测到未完成的程序升级。请关闭邻页（Kinpage），重新运行刚才的同一安装包以恢复升级；资料库尚未打开")
 }

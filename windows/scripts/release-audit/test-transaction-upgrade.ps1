@@ -12,8 +12,8 @@ $old = (Resolve-Path -LiteralPath $OldInstaller).Path
 $new = (Resolve-Path -LiteralPath $NewInstaller).Path
 $legacySafe = (Resolve-Path -LiteralPath $LegacySafeInstaller).Path
 $legacy = (Resolve-Path -LiteralPath $LegacyInstaller).Path
-$exe = Join-Path ([IO.Path]::GetDirectoryName($new)) 'Planet Windows.exe'
-if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'New installer directory must include the matching standalone Planet Windows.exe.' }
+$exe = Join-Path ([IO.Path]::GetDirectoryName($new)) 'Kinpage.exe'
+if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'New installer directory must include the matching standalone Kinpage.exe.' }
 $expected = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
 $test = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot 'test-transaction-upgrade.sh')).Path
 & docker run --rm --network none --read-only --tmpfs /tmp:rw,exec,size=2g `

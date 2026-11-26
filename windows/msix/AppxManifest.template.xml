@@ -25,8 +25,8 @@
   </Resources>
   <Applications>
     <Application
-      Id="PlanetWindows"
-      Executable="Planet Windows.exe"
+      Id="Kinpage"
+      Executable="Kinpage.exe"
       EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="{{DISPLAY_NAME}}"

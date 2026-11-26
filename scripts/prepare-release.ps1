@@ -53,7 +53,7 @@ foreach ($taskEntry in $taskSignatureRecords) {
 }
 $taskFirstPartySignatures = @()
 $taskCompleteSignatures = $true
-foreach ($taskFile in @('Planet Windows.exe', $taskAudit.installer)) {
+foreach ($taskFile in @('Kinpage.exe', $taskAudit.installer)) {
     $taskEntries = @($taskSignatureRecords | Where-Object { $_.file -ieq $taskFile })
     if ($taskEntries.Count -ne 1) { $taskCompleteSignatures = $false }
     $taskFirstPartySignatures += $taskEntries
@@ -83,7 +83,7 @@ if ($SourceManifest) {
     if ($taskSource.schemaVersion -ne 1 -or $taskSource.sourceCommit -cne $taskCommit -or $taskSource.version -cne $taskMetadata.version) {
         throw 'Source manifest does not match the checked-out commit and version.'
     }
-    if ($taskSource.archive -cnotmatch '^planet-windows-source-[A-Za-z0-9.-]+\.zip$' -or $taskSource.archiveSha256 -cnotmatch '^[0-9a-f]{64}$') {
+    if ($taskSource.archive -cnotmatch '^kinpage-source-[A-Za-z0-9.-]+\.zip$' -or $taskSource.archiveSha256 -cnotmatch '^[0-9a-f]{64}$') {
         throw 'Source manifest has an invalid archive name or SHA-256.'
     }
     $taskSourceArchive = Join-Path (Split-Path -Parent $taskSourceManifestPath) $taskSource.archive

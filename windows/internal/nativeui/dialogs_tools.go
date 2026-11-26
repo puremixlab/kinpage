@@ -68,7 +68,7 @@ type toolsModalState struct {
 	logs      []applog.Entry
 }
 
-var logCategories = []string{"", "Planet", "IPFS", "API"}
+var logCategories = []string{"", "Kinpage", "IPFS", "API"}
 
 func (a *App) openToolsModal(tab int) {
 	a.toolsModal.open = true
@@ -875,7 +875,7 @@ func (a *App) viewToolsLogs(c *ui.Context) {
 	m := &a.toolsModal
 	ui.Row(c).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
 		prev := m.logCatIdx
-		macSegmented(c, "log-cat", &m.logCatIdx, []string{a.t("common.all"), "Planet", "IPFS", "API"}, pal)
+		macSegmented(c, "log-cat", &m.logCatIdx, []string{a.t("common.all"), "Kinpage", "IPFS", "API"}, pal)
 		if m.logCatIdx != prev {
 			a.refreshToolsTab(toolsTabLogs)
 		}

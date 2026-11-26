@@ -8,13 +8,13 @@ Unicode true
   !endif
   !include "${HOOK}"
 !endif
-Name "Planet Windows uninstall hook test"
+Name "Kinpage uninstall hook test"
 OutFile "${OUTPUT}"
-InstallDir "$LOCALAPPDATA\Programs\Planet Windows test"
+InstallDir "$LOCALAPPDATA\Programs\Kinpage test"
 RequestExecutionLevel user
 Section
   SetOutPath "$INSTDIR"
-  FileOpen $0 "$INSTDIR\Planet Windows.exe" w
+  FileOpen $0 "$INSTDIR\Kinpage.exe" w
   FileWrite $0 "test-only payload"
   FileClose $0
   FileOpen $0 "$INSTDIR\ipfs.exe" w

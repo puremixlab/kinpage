@@ -143,7 +143,7 @@ func run(args []string, output io.Writer) error {
 			return errors.New("installer size or read failed")
 		}
 		now := time.Now().UTC().Truncate(time.Second)
-		r := release{Schema: 1, App: "org.planetable.planetwindows", Platform: "windows-amd64", Version: *version, MinimumVersion: *minimum, URL: *downloadURL, SHA256: hex.EncodeToString(hash.Sum(nil)), Size: size, PublishedAt: now, ExpiresAt: now.Add(time.Duration(*days) * 24 * time.Hour)}
+		r := release{Schema: 1, App: "dev.puremixlab.kinpage", Platform: "windows-amd64", Version: *version, MinimumVersion: *minimum, URL: *downloadURL, SHA256: hex.EncodeToString(hash.Sum(nil)), Size: size, PublishedAt: now, ExpiresAt: now.Add(time.Duration(*days) * 24 * time.Hour)}
 		payload, err := json.Marshal(r)
 		if err != nil {
 			return errors.New("cannot encode release")

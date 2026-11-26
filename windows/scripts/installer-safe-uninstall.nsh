@@ -3,7 +3,7 @@
 ; nonexistent child of NSIS's private plugin directory, never the install path.
 ; Unrecognized files and nonempty directories are intentionally preserved.
 !macro customUnInstall
-  Delete "$INSTDIR\Planet Windows.exe"
+  Delete "$INSTDIR\Kinpage.exe"
   Delete "$INSTDIR\ipfs.exe"
   Delete "$INSTDIR\icon.png"
   Delete "$INSTDIR\kubo-LICENSE.txt"

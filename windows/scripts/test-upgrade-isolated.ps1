@@ -15,7 +15,7 @@ $scratch = Join-Path $project ('.mygo/release-audit-tests/preflight-' + [guid]::
 [IO.Directory]::CreateDirectory($scratch) | Out-Null
 $guard = Join-Path $scratch 'guard.exe'
 $holder = Join-Path $scratch 'holder.exe'
-$names = @('Planet Windows.exe', 'ipfs.exe', 'icon.png', 'kubo-LICENSE.txt', 'kubo-LICENSE-MIT.txt', 'kubo-LICENSE-APACHE.txt', 'LICENSE-PLANET.txt', 'THIRD-PARTY-NOTICES.txt', 'KUBO-BUILDINFO.txt', 'KUBO-DEPENDENCY-LICENSES.txt')
+$names = @('Kinpage.exe', 'ipfs.exe', 'icon.png', 'kubo-LICENSE.txt', 'kubo-LICENSE-MIT.txt', 'kubo-LICENSE-APACHE.txt', 'LICENSE-PLANET.txt', 'THIRD-PARTY-NOTICES.txt', 'KUBO-BUILDINFO.txt', 'KUBO-DEPENDENCY-LICENSES.txt')
 $fixtureManifest = [ordered]@{}
 foreach ($name in $names) { $fixtureManifest[$name] = '0' * 64 }
 $json = ConvertTo-Json -Compress -InputObject $fixtureManifest

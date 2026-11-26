@@ -2,8 +2,8 @@
 
 <a href="docs/branding/README.md">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/planet-horizontal-reversed.svg">
-    <img src="docs/branding/planet-horizontal-color.svg" alt="Planet Windows" width="320">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/kinpage-horizontal-reversed.svg">
+    <img src="docs/branding/kinpage-horizontal-color.svg" alt="邻页 · Kinpage" width="320">
   </picture>
 </a>
 
@@ -29,9 +29,9 @@
 
 <br />
 
-<img src="docs/screenshots/workspace-dashboard.png" alt="Planet Windows 原生写作台，展示日期刊头、紧凑写作活动热力条、草稿大纸面与 3:2 活版印纸文章卡片" width="900">
+<img src="docs/screenshots/workspace-dashboard.png" alt="邻页（Kinpage）原生写作台，展示日期刊头、紧凑写作活动热力条、草稿大纸面与 3:2 活版印纸文章卡片" width="900">
 
-<p><sub>基于 macOS 原版 <a href="https://github.com/Planetable/Planet">Planetable/Planet</a> 独立开发的 Windows 移植版本，采用 MyGo 原生桌面界面构建。</sub></p>
+<p><sub><strong>邻页 · Kinpage</strong> — 基于 macOS 原版 <a href="https://github.com/Planetable/Planet">Planetable/Planet</a> 独立开发的 Windows 原生桌面应用，采用 MyGo 原生界面构建。</sub></p>
 
 </div>
 
@@ -67,7 +67,7 @@
 <table>
   <tr>
     <td width="50%" align="center" valign="top">
-      <img src="docs/screenshots/subscription-reader.png" alt="Planet Windows 三栏阅读界面，展示订阅列表、文章列表与图文正文" width="100%">
+      <img src="docs/screenshots/subscription-reader.png" alt="邻页（Kinpage）三栏阅读界面，展示订阅列表、文章列表与图文正文" width="100%">
       <br />
       <sub><strong>三栏订阅阅读</strong> — 订阅导航、文章列表与原生图文阅读视图。</sub>
     </td>
@@ -92,7 +92,7 @@
 | --- | --- | --- | --- |
 | **[Planet Windows v0.0.1-rc.1](https://github.com/puremixlab/planet-windows/releases/download/v0.0.1-rc.1/planet-windows-safe-setup-0.0.1-rc.1-amd64.exe)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release 页面](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-rc.1)（含 SHA-256、源码归档与验收附件） |
 
-安装到空目录后，从开始菜单打开 **Planet Windows** 即可使用。
+安装到空目录后，从开始菜单打开 **Kinpage** 即可使用。
 
 > [!NOTE]
 > **未签名 RC 预发布版本。** 运行安装包时 Windows SmartScreen 可能会给出提示，安装前建议核对 Release 页面提供的 SHA-256 校验值。完整桌面界面、输入法、跨版本升级及真实 Mac `.planet` 备份双向兼容仍在持续验证中，详见[已知限制](windows/README.md#尚未完成与待验证)与 [rc.1 验收范围](docs/acceptance-0.0.1-rc.1.md)。
@@ -130,7 +130,7 @@ bun run dev
 | `bun run check` | 运行完整质量检查：文档、Go 格式、`go vet`、工具与发布脚本测试、Go 测试 |
 | `bun run check:docs` | 仅修改[文档白名单](docs/git-workflow.md#纯文档检查)时的轻量检查（仅需 Git 和 Bun） |
 | `bun run security:check` | 运行依赖漏洞安全扫描（需联网） |
-| `bun run build` | 构建程序与独立安装包，输出到 `windows/build/windows-amd64/`（构建前先关闭 Planet/Kubo） |
+| `bun run build` | 构建程序与独立安装包，输出到 `windows/build/windows-amd64/`（构建前先关闭 Kinpage/Kubo） |
 
 ## 技术栈
 
@@ -149,7 +149,7 @@ bun run dev
 
 ## 致谢
 
-Planet Windows 是基于 [Planetable/Planet](https://github.com/Planetable/Planet) 独立开发的 Windows 移植版本，感谢上游项目以及 [MyGo](https://github.com/egoist/mygo) 和 [IPFS Kubo](https://github.com/ipfs/kubo) 社区。
+邻页（Kinpage）是基于 [Planetable/Planet](https://github.com/Planetable/Planet) 独立开发的 Windows 移植版本，感谢上游项目以及 [MyGo](https://github.com/egoist/mygo) 和 [IPFS Kubo](https://github.com/ipfs/kubo) 社区。
 
 ## 许可证
 
