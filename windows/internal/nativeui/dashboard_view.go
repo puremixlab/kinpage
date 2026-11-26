@@ -55,39 +55,6 @@ func (a *App) handleDashboardCompose() {
 	}
 }
 
-func (a *App) writingStatsSummary() (last30 int, streak int) {
-	counts := make(map[string]int, len(a.activity))
-	for _, item := range a.activity {
-		counts[item.Date] = item.Articles + item.Drafts
-	}
-	today := time.Now()
-	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.Local)
-	for i := range 30 {
-		key := today.AddDate(0, 0, -i).Format("2006-01-02")
-		last30 += counts[key]
-	}
-	for i := 0; i < 365; i++ {
-		key := today.AddDate(0, 0, -i).Format("2006-01-02")
-		if counts[key] > 0 {
-			streak++
-		} else if i > 0 {
-			break
-		}
-	}
-	return last30, streak
-}
-
-// paperDeskPalette returns tactile desk + paper-sheet colors tailored for
-// the monochrome Linear workbench + physical paper card aesthetic.
-func paperDeskColors(pal macPalette) (deskBg, paperBg, paperHover, paperEdge, paperShadow ui.Color) {
-	if pal.dark {
-		return ui.Hex("#161618"), ui.Hex("#202124"), ui.Hex("#26282c"),
-			ui.RGBA(255, 255, 255, 0.085), ui.RGBA(0, 0, 0, 0.34)
-	}
-	return ui.Hex("#f5f5f4"), ui.Hex("#ffffff"), ui.Hex("#fcfcfb"),
-		ui.RGBA(15, 23, 42, 0.09), ui.RGBA(15, 23, 42, 0.055)
-}
-
 func (a *App) dashboardInnerWidth(c *ui.Context) float32 {
 	winW, _ := c.Size()
 	if winW <= 0 {
@@ -107,156 +74,259 @@ func (a *App) dashboardInnerWidth(c *ui.Context) float32 {
 	return inner
 }
 
-func dashboardCardColumns(innerW float32) int {
-	switch {
-	case innerW >= 1400:
-		return 6
-	case innerW >= 1120:
-		return 5
-	case innerW >= 820:
-		return 4
-	case innerW >= 580:
-		return 3
-	default:
+func dashboardCardColumns(containerW float32) int {
+	if containerW < 680 {
 		return 2
 	}
+	return 3
+}
+
+func formatMastheadDate(t time.Time) string {
+	weekdays := [...]string{"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"}
+	return fmt.Sprintf("%d月%d日 · %s", int(t.Month()), t.Day(), weekdays[t.Weekday()])
+}
+
+func formatWordCount(n int) string {
+	if n <= 0 {
+		return "暂无正文"
+	}
+	if n >= 1000 {
+		return fmt.Sprintf("%d,%03d 字", n/1000, n%1000)
+	}
+	return fmt.Sprintf("%d 字", n)
+}
+
+func letterpressSurfaceColors(pal macPalette) (hoverBg, hoverBorder, topHighlight ui.Color) {
+	if pal.dark {
+		return ui.Hex("#282a30"), ui.RGBA(255, 255, 255, 0.13), ui.RGBA(255, 255, 255, 0.065)
+	}
+	return ui.Hex("#fafbfd"), ui.RGBA(15, 23, 42, 0.13), ui.RGBA(255, 255, 255, 0.94)
+}
+
+// viewDashboardToolbar renders a single unified top toolbar seamless with
+// pal.prefsCanvas, preserving window drag + caption button insets while hosting
+// Search, Quick Post, and the sole primary "写文章" CTA.
+func (a *App) viewDashboardToolbar(c *ui.Context) {
+	pal := a.pal
+	h := a.topBarHeight(c)
+	rightPad := a.topBarRightPad(c)
+	leftPad := float32(16)
+	if a.sidebarCollapsed {
+		leftPad = a.topBarLeftPad(c)
+	}
+	ui.Column(c).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
+		ui.Row(c).Height(h).Padding(0, rightPad, 0, leftPad).AlignItems(ui.Center).Justify(ui.SpaceBetween).
+			AlignSelf(ui.Stretch).DragWindow().Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(4).Shrink(0).Children(func() {
+				if a.sidebarCollapsed {
+					if toolbarIconBtn(c, "tb-expand-sidebar", lucide.PanelLeftOpen(), "展开侧边栏").Clicked() {
+						a.sidebarCollapsed = false
+					}
+				}
+			})
+			ui.Row(c).AlignItems(ui.Center).Gap(8).Shrink(0).Children(func() {
+				if toolbarIconBtn(c, "dash-tb-search", lucide.Search(), "搜索文章").Clicked() {
+					a.openGlobalSearch()
+				}
+				if len(a.sites) > 0 {
+					if macSecondaryButton(c, "dash-hero-quick", "快捷发文", pal) {
+						a.openQuickPost()
+					}
+				}
+				btn := ui.ButtonBase(c.Key("dash-hero-compose")).Label("写文章").
+					Height(28).PaddingX(14).Radius(6).Background(pal.prefsInk).
+					Center().Cursor(ui.CursorPointer)
+				if btn.Hovered() {
+					btn.Background(pal.prefsInk.Alpha(0.86))
+				}
+				btn.Children(func() {
+					ui.Text(c, "写文章").Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsCanvas).NoWrap()
+				})
+				if btn.Clicked() {
+					a.handleDashboardCompose()
+				}
+			})
+		})
+		ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
+	})
 }
 
 func (a *App) viewDashboard(c *ui.Context) {
 	pal := a.pal
-	deskBg, paperBg, _, paperEdge, paperShadow := paperDeskColors(pal)
 	innerW := a.dashboardInnerWidth(c)
+	containerW := min(innerW, float32(1120))
 
-	ui.Scroll(c).TrackScroll(&a.dashboardScroll).Grow(1).MinHeight(0).Background(deskBg).Children(func() {
-		ui.Column(c).AlignSelf(ui.Stretch).PaddingX(36).PaddingY(24).Gap(20).Children(func() {
-			// Title-less compact utility row: understated stats on left, monochrome actions on right.
-			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-				ui.Text(c, fmt.Sprintf("%d 站点  ·  %d 篇文章  ·  %d 篇草稿",
-					a.dashboard.SiteCount, a.dashboard.ArticleCount, a.dashboard.DraftCount)).
-					Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
-				ui.Row(c).AlignItems(ui.Center).Gap(8).Shrink(0).Children(func() {
-					if len(a.sites) > 0 {
-						if macSecondaryButton(c, "dash-hero-quick", "快捷发文", pal) {
-							a.openQuickPost()
-						}
-					}
-					btn := ui.ButtonBase(c.Key("dash-hero-compose")).Label("写文章").
-						Height(28).PaddingX(14).Radius(6).Background(pal.ink).
-						Center().Cursor(ui.CursorPointer).Transition(rowHoverTransition)
-					if btn.Hovered() {
-						btn.Background(pal.ink.Alpha(0.86))
-					}
-					btn.Children(func() {
-						ui.Text(c, "写文章").Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.canvas).NoWrap()
-					})
-					if btn.Clicked() {
-						a.handleDashboardCompose()
-					}
-				})
-			})
-
-			if a.dashboard.SiteCount == 0 {
-				ui.Column(c).AlignSelf(ui.Stretch).Padding(40).Radius(8).
-					Background(paperBg).Border(0.5, paperEdge).Shadow(0, 2, 6, 0, paperShadow).Children(func() {
-					display.Empty(c, display.EmptyProps{
-						Icon:        lucide.Globe(),
-						Title:       "还没有创建站点",
-						Description: "创建一个站点后即可开始本地写作、管理草稿与发布到 IPFS。",
-						Action: func() {
-							ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-								if macPrimaryButton(c, "dash-create-first", "创建第一个站点", pal) {
-									a.createSiteOpen = true
-								}
-								if len(a.subscriptions) == 0 {
-									if macSecondaryButton(c, "dash-follow-featured", "关注精选站点", pal) {
-										a.followFeaturedPlanets()
+	ui.Scroll(c).TrackScroll(&a.dashboardScroll).Grow(1).MinHeight(0).Background(pal.prefsCanvas).Children(func() {
+		ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(36).PaddingY(28).Children(func() {
+			ui.Column(c).Width(containerW).Gap(24).Children(func() {
+				if a.dashboard.SiteCount == 0 {
+					ui.Column(c).AlignSelf(ui.Stretch).Padding(40).Radius(12).
+						Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).
+						Shadow(0, 4, 14, 0, pal.prefsCardShadow).Children(func() {
+						display.Empty(c, display.EmptyProps{
+							Icon:        lucide.Globe(),
+							Title:       "还没有创建站点",
+							Description: "创建一个站点后即可开始本地写作、管理草稿与发布到 IPFS。",
+							Action: func() {
+								ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+									if macPrimaryButton(c, "dash-create-first", "创建第一个站点", pal) {
+										a.createSiteOpen = true
 									}
-								}
-							})
-						},
+									if len(a.subscriptions) == 0 {
+										if macSecondaryButton(c, "dash-follow-featured", "关注精选站点", pal) {
+											a.followFeaturedPlanets()
+										}
+									}
+								})
+							},
+						})
 					})
-				})
-				return
-			}
-
-			// 1. Sleek full-width monochrome activity strip.
-			a.viewLinearActivityStrip(c, innerW)
-
-			// 2. Unified site & draft bookmark shelf + responsive portrait paper card grid (drafts first).
-			a.viewDashboardArticles(c, innerW)
-
-			// Minimal quiet footer.
-			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).PaddingY(2).Children(func() {
-				ui.Text(c, "所有草稿与站点均保存在本地").Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
-				if ghostIconButton(c, "dash-refresh", "刷新数据", "刷新数据", pal) {
-					a.Reload()
-					a.setStatus("已刷新数据")
+					return
 				}
+
+				// 1. Editorial Date Masthead (left) + compact 14-week monochrome mini-heatmap (right).
+				a.viewDashboardMasthead(c)
+
+				// 2. Single Elevated Manuscript Paper Sheet (focal point: most recent draft or blank sheet).
+				a.viewDashboardHeroPaper(c)
+
+				// 3. Site Filter Shelf + 3:2 Letterpress Magazine Cards.
+				a.viewDashboardArticles(c, containerW)
 			})
 		})
 	})
 }
 
-func (a *App) viewLinearActivityStrip(c *ui.Context, innerW float32) {
+func (a *App) viewDashboardMasthead(c *ui.Context) {
 	pal := a.pal
-	_, paperBg, _, paperEdge, paperShadow := paperDeskColors(pal)
 	counts := make(map[string]int, len(a.activity))
 	for _, item := range a.activity {
 		counts[item.Date] = item.Articles + item.Drafts
 	}
 
-	trackBg := ui.RGBA(15, 23, 42, 0.055)
-	pillActiveBg := paperBg
-	pillActiveShadow := ui.RGBA(15, 23, 42, 0.08)
-	if pal.dark {
-		trackBg = ui.RGBA(255, 255, 255, 0.07)
-		pillActiveBg = ui.RGBA(255, 255, 255, 0.14)
-		pillActiveShadow = ui.RGBA(0, 0, 0, 0.25)
-	}
+	ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).Children(func() {
+		ui.Text(c, formatMastheadDate(time.Now())).
+			Font(macPlanetFont).FontSize(26).FontWeight(600).LetterSpacing(-0.02).
+			TextColor(pal.prefsInk).NoWrap()
+		a.viewMiniHeatmap(c, counts)
+	})
+}
 
-	ui.Column(c).AlignSelf(ui.Stretch).Padding(18, 22, 16, 22).Gap(14).
-		Background(paperBg).Radius(16).
-		Border(0.5, paperEdge).Shadow(0, 1, 4, 0, paperShadow).Children(func() {
-		// Minimal top header: title on left, pill segmented control on right.
-		ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
-			ui.Text(c, "写作活动").Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink)
-			ui.Row(c).Padding(3).Radius(999).Background(trackBg).Gap(2).AlignItems(ui.Center).Children(func() {
-				modes := []struct {
-					id    int
-					label string
-				}{
-					{activityModeDaily, "每日"},
-					{activityModeWeekly, "每周"},
-					{activityModeCumulative, "累计"},
-				}
-				for _, m := range modes {
-					active := a.activityMode == m.id
-					col := pal.secondary
-					if active {
-						col = pal.ink
-					}
-					btn := ui.ButtonBase(c.Key(fmt.Sprintf("act-mode-%d", m.id))).Label(m.label).
-						Padding(4, 12, 4, 12).Radius(999).Cursor(ui.CursorPointer).Transition(rowHoverTransition)
-					if active {
-						btn.Background(pillActiveBg).Shadow(0, 1, 2, 0, pillActiveShadow)
-					} else if btn.Hovered() {
-						btn.Background(pal.hover)
-					}
-					btn.Children(func() {
-						t := ui.Text(c, m.label).Font(macPlanetFont).FontSize(12).TextColor(col).NoWrap()
-						if active {
-							t.FontWeight(500)
-						}
-					})
-					if btn.Clicked() {
-						a.activityMode = m.id
-					}
+func (a *App) viewMiniHeatmap(c *ui.Context, counts map[string]int) {
+	pal := a.pal
+	const weeks = 14
+	today := time.Now()
+	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.Local)
+	endOffset := int(time.Saturday - today.Weekday())
+	endDay := today.AddDate(0, 0, endOffset)
+	startDay := endDay.AddDate(0, 0, -(weeks*7 - 1))
+
+	ui.Row(c).AlignItems(ui.Center).Gap(3).Children(func() {
+		for w := range weeks {
+			ui.Column(c.Key(fmt.Sprintf("hm-mw-%d", w))).Gap(3).Children(func() {
+				for d := range 7 {
+					day := startDay.AddDate(0, 0, w*7+d)
+					key := day.Format("2006-01-02")
+					n := counts[key]
+					ui.Box(c.Key("hm-m-"+key)).Size(9, 9).Radius(2).
+						Background(heatmapColor(n, pal)).
+						Tooltip(fmt.Sprintf("%s：%d 次写作活动", key, n))
 				}
 			})
-		})
-
-		a.viewHeatmapGrid(c, counts, innerW-44)
+		}
 	})
+}
+
+func (a *App) viewDashboardHeroPaper(c *ui.Context) {
+	pal := a.pal
+	hoverBg, hoverBorder, topHighlight := letterpressSurfaceColors(pal)
+
+	if len(a.dashboard.RecentDrafts) == 0 {
+		card := ui.ButtonBase(c.Key("dash-hero-empty-sheet")).Label("开始写作").
+			AlignSelf(ui.Stretch).AlignItems(ui.Stretch).Radius(12).
+			Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).
+			Shadow(0, 4, 14, 0, pal.prefsCardShadow).
+			Cursor(ui.CursorPointer)
+		if card.Hovered() {
+			card.Background(hoverBg).Border(0.5, hoverBorder)
+		}
+		card.Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Radius(12).Clip().AlignItems(ui.Stretch).Children(func() {
+				ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(topHighlight)
+				ui.Column(c).AlignSelf(ui.Stretch).Padding(22, 24, 20, 24).Gap(8).AlignItems(ui.Start).Children(func() {
+					ui.Text(c, "空白稿纸").Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted)
+					ui.Text(c, "写下今天的想法").Font(macPlanetFont).FontSize(20).FontWeight(600).LetterSpacing(-0.02).TextColor(pal.prefsInk)
+					ui.Text(c, "所有草稿都保存在本地，随时可以继续润色并发布到站点。").Font(macPlanetFont).FontSize(13.5).TextColor(pal.prefsSecondary)
+					ui.Box(c).Height(4)
+					ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
+					ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Padding(8, 0, 0, 0).Children(func() {
+						ui.Text(c, "本地创作").Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted)
+						ui.Text(c, "开始写作 →").Font(macPlanetFont).FontSize(12).FontWeight(500).TextColor(pal.prefsInk)
+					})
+				})
+			})
+		})
+		if card.Clicked() {
+			a.handleDashboardCompose()
+		}
+		return
+	}
+
+	d := a.dashboard.RecentDrafts[0]
+	siteID, draftID := d.SiteID, d.ID
+	title := fallbackTitle(d.Title)
+	siteName := fallbackTitle(d.SiteName)
+	label := fmt.Sprintf("%s  ·  %s", title, siteName)
+	key := "draft:" + siteID + ":" + draftID
+	excerpt := ""
+	wordCount := 0
+	if a.articleExcerpts != nil {
+		excerpt = a.articleExcerpts[key]
+	}
+	if a.articleWordCounts != nil {
+		wordCount = a.articleWordCounts[key]
+	}
+	if excerpt == "" {
+		excerpt = "本地草稿，点击继续写作。"
+	}
+
+	card := ui.ButtonBase(c.Key("dash-hero-draft-"+draftID)).Label(label).
+		AlignSelf(ui.Stretch).AlignItems(ui.Stretch).Radius(12).
+		Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).
+		Shadow(0, 4, 14, 0, pal.prefsCardShadow).
+		Cursor(ui.CursorPointer)
+	if card.Hovered() {
+		card.Background(hoverBg).Border(0.5, hoverBorder)
+	}
+	card.Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Radius(12).Clip().AlignItems(ui.Stretch).Children(func() {
+			// Top 0.5px specular light edge for tactile letterpress paper feel.
+			ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(topHighlight)
+			ui.Column(c).AlignSelf(ui.Stretch).Padding(22, 24, 18, 24).Gap(8).AlignItems(ui.Start).Children(func() {
+				ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
+					ui.Text(c, "继续写作 · "+siteName).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted).NoWrap()
+					ui.Text(c, formatShortDate(d.Modified)).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted).NoWrap()
+				})
+				ui.Text(c, title).Font(macPlanetFont).FontSize(20).FontWeight(600).LetterSpacing(-0.02).
+					TextColor(pal.prefsInk).MaxLines(2).Ellipsis("…")
+				ui.Text(c, excerpt).Font(macPlanetFont).FontSize(13.5).TextColor(pal.prefsSecondary).
+					MaxLines(3).Ellipsis("…")
+				ui.Box(c).Height(6)
+				ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
+				ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Padding(8, 0, 0, 0).Children(func() {
+					meta := "本地草稿"
+					if wordCount > 0 {
+						meta += " · " + formatWordCount(wordCount)
+					}
+					ui.Text(c, meta).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted).NoWrap()
+					ui.Text(c, "继续写作 →").Font(macPlanetFont).FontSize(12).FontWeight(500).TextColor(pal.prefsInk).NoWrap()
+				})
+			})
+		})
+	})
+	if card.Clicked() {
+		a.openDraftByID(siteID, draftID)
+	}
 }
 
 type dashboardCardItem struct {
@@ -264,18 +334,25 @@ type dashboardCardItem struct {
 	isDraft bool
 }
 
-func (a *App) viewDashboardArticles(c *ui.Context, innerW float32) {
+func (a *App) siteStatusDotColor(siteID string) ui.Color {
 	pal := a.pal
-	_, paperBg, paperHover, paperEdge, paperShadow := paperDeskColors(pal)
-
-	draftPaperBg := ui.Hex("#fbfaf6")
-	draftPaperHover := ui.Hex("#f7f5ee")
-	draftPaperEdge := ui.RGBA(15, 23, 42, 0.14)
-	if pal.dark {
-		draftPaperBg = ui.Hex("#242427")
-		draftPaperHover = ui.Hex("#2a2b2f")
-		draftPaperEdge = ui.RGBA(255, 255, 255, 0.14)
+	for _, s := range a.dashboard.Sites {
+		if s.ID == siteID {
+			if s.PublishPending {
+				return pal.amber
+			}
+			if s.HasPublished {
+				return pal.green
+			}
+			return pal.prefsMuted
+		}
 	}
+	return pal.prefsMuted
+}
+
+func (a *App) viewDashboardArticles(c *ui.Context, containerW float32) {
+	pal := a.pal
+	hoverBg, hoverBorder, topHighlight := letterpressSurfaceColors(pal)
 
 	if a.articleFilterSiteID == dashboardFilterDrafts && len(a.dashboard.RecentDrafts) == 0 {
 		a.articleFilterSiteID = ""
@@ -292,14 +369,14 @@ func (a *App) viewDashboardArticles(c *ui.Context, innerW float32) {
 		}
 	}
 
-	ui.Column(c).AlignSelf(ui.Stretch).Gap(12).Children(func() {
-		// Unified Site & Draft Bookmark Shelf: filters drafts/sites while showing publish status dots.
+	ui.Column(c).AlignSelf(ui.Stretch).Gap(16).Children(func() {
+		// Unified Site Bookmark Shelf.
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(8).AlignSelf(ui.Stretch).Children(func() {
 			ui.Row(c).Gap(6).Wrap().AlignItems(ui.Center).Grow(1).MinWidth(0).Children(func() {
 				a.siteBookmarkChip(c, "art-filter-all", "全部", nil, -1, ui.Transparent, a.articleFilterSiteID == "", func() {
 					a.articleFilterSiteID = ""
 				})
-				if len(a.dashboard.RecentDrafts) > 0 {
+				if len(a.dashboard.RecentDrafts) > 1 {
 					a.draftBookmarkChip(c, fmt.Sprintf("草稿 · %d", len(a.dashboard.RecentDrafts)), a.articleFilterSiteID == dashboardFilterDrafts, func() {
 						if a.articleFilterSiteID == dashboardFilterDrafts {
 							a.articleFilterSiteID = ""
@@ -310,12 +387,7 @@ func (a *App) viewDashboardArticles(c *ui.Context, innerW float32) {
 				}
 				for i, s := range a.dashboard.Sites {
 					idx, sid := i, s.ID
-					dotColor := pal.muted
-					if s.PublishPending {
-						dotColor = pal.amber
-					} else if s.HasPublished {
-						dotColor = pal.green
-					}
+					dotColor := a.siteStatusDotColor(sid)
 					var fullSite store.Site
 					fullSite.Name = s.Name
 					for _, candidate := range a.sites {
@@ -334,7 +406,7 @@ func (a *App) viewDashboardArticles(c *ui.Context, innerW float32) {
 					})
 				}
 			})
-			if macIconButton(c, "dash-sites-add", iconPlus, 26, 13, pal.muted, "新建站点") {
+			if macIconButton(c, "dash-sites-add", iconPlus, 26, 13, pal.prefsMuted, "新建站点") {
 				a.newSiteName = ""
 				a.newSiteAbout = ""
 				a.createSiteError = ""
@@ -342,15 +414,22 @@ func (a *App) viewDashboardArticles(c *ui.Context, innerW float32) {
 			}
 		})
 
-		// Unified 4-column portrait book-sheet cards: drafts pinned first, followed by published articles.
+		// Collect cards: when "全部" is active, the first draft is already showcased in the Hero Paper Sheet.
 		var items []dashboardCardItem
-		for _, d := range a.dashboard.RecentDrafts {
-			if a.articleFilterSiteID != "" && a.articleFilterSiteID != dashboardFilterDrafts && d.SiteID != a.articleFilterSiteID {
-				continue
+		if a.articleFilterSiteID == dashboardFilterDrafts {
+			for _, d := range a.dashboard.RecentDrafts {
+				items = append(items, dashboardCardItem{entry: d, isDraft: true})
 			}
-			items = append(items, dashboardCardItem{entry: d, isDraft: true})
-		}
-		if a.articleFilterSiteID != dashboardFilterDrafts {
+		} else {
+			for i, d := range a.dashboard.RecentDrafts {
+				if a.articleFilterSiteID == "" && i == 0 {
+					continue
+				}
+				if a.articleFilterSiteID != "" && d.SiteID != a.articleFilterSiteID {
+					continue
+				}
+				items = append(items, dashboardCardItem{entry: d, isDraft: true})
+			}
 			for _, art := range a.dashboard.RecentArticles {
 				if a.articleFilterSiteID != "" && art.SiteID != a.articleFilterSiteID {
 					continue
@@ -358,20 +437,16 @@ func (a *App) viewDashboardArticles(c *ui.Context, innerW float32) {
 				items = append(items, dashboardCardItem{entry: art, isDraft: false})
 			}
 		}
+
 		if len(items) == 0 {
-			ui.Column(c).AlignSelf(ui.Stretch).Padding(20).Radius(12).Background(paperBg).Border(0.5, paperEdge).Children(func() {
-				ui.Text(c, "暂无匹配的文章或草稿").Font(macPlanetFont).FontSize(12.5).TextColor(pal.muted)
+			ui.Column(c).AlignSelf(ui.Stretch).Padding(24).Radius(10).
+				Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).Children(func() {
+				ui.Text(c, "暂无匹配的文章").Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
 			})
 			return
 		}
 
-		artBadgeBg := ui.RGBA(15, 23, 42, 0.065)
-		artBadgeFg := pal.secondary
-		if pal.dark {
-			artBadgeBg = ui.RGBA(255, 255, 255, 0.09)
-		}
-
-		cols := dashboardCardColumns(innerW)
+		cols := dashboardCardColumns(containerW)
 		ui.Column(c).AlignSelf(ui.Stretch).Gap(16).Children(func() {
 			for rowStart := 0; rowStart < len(items); rowStart += cols {
 				ui.Row(c).AlignSelf(ui.Stretch).Gap(16).Children(func() {
@@ -387,63 +462,73 @@ func (a *App) viewDashboardArticles(c *ui.Context, innerW float32) {
 						title := fallbackTitle(entry.Title)
 						siteName := fallbackTitle(entry.SiteName)
 						label := fmt.Sprintf("%s  ·  %s", title, siteName)
+						prefix := "art:"
+						cardKey := "dash-art-" + itemID
+						if item.isDraft {
+							prefix = "draft:"
+							cardKey = "dash-draft-" + itemID
+						}
+						cacheKey := prefix + siteID + ":" + itemID
 						excerpt := ""
+						wordCount := 0
 						if a.articleExcerpts != nil {
-							prefix := "art:"
-							if item.isDraft {
-								prefix = "draft:"
-							}
-							excerpt = a.articleExcerpts[prefix+siteID+":"+itemID]
+							excerpt = a.articleExcerpts[cacheKey]
+						}
+						if a.articleWordCounts != nil {
+							wordCount = a.articleWordCounts[cacheKey]
 						}
 						if item.isDraft && excerpt == "" {
 							excerpt = "本地草稿，点击继续写作。"
 						}
 
-						cardBg, cardHover, cardEdge := paperBg, paperHover, paperEdge
-						badgeBg, badgeFg := artBadgeBg, artBadgeFg
-						badgeText := siteName
-						cardKey := "dash-art-" + itemID
+						metaLeft := siteName
 						if item.isDraft {
-							cardBg, cardHover, cardEdge = draftPaperBg, draftPaperHover, draftPaperEdge
-							badgeBg, badgeFg = pal.ink, pal.canvas
-							badgeText = "草稿 · " + siteName
-							cardKey = "dash-draft-" + itemID
+							metaLeft = siteName + " · 草稿"
 						}
+						dotColor := a.siteStatusDotColor(siteID)
 
 						card := ui.ButtonBase(c.Key(cardKey)).Label(label).
-							Grow(1).MinWidth(0).Height(228).Radius(12).
-							Background(cardBg).Border(0.5, cardEdge).
-							Shadow(0, 3, 10, 0, paperShadow).
-							Cursor(ui.CursorPointer).Transition(rowHoverTransition)
-						if card.Hovered() {
-							card.Background(cardHover)
+							Grow(1).MinWidth(0).MinHeight(184).Radius(10).
+							Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).
+							Shadow(0, 2, 8, 0, pal.prefsCardShadow).
+							Cursor(ui.CursorPointer)
+						hovered := card.Hovered()
+						if hovered {
+							card.Background(hoverBg).Border(0.5, hoverBorder)
 						}
 						card.Children(func() {
-							ui.Column(c).Fill().Radius(12).Clip().AlignItems(ui.Start).Children(func() {
-								// Top-left corner bookmark tag: charcoal for drafts, soft stone for published articles.
-								ui.Box(c).Padding(5, 12, 5, 12).Background(badgeBg).Radius(12, 0, 8, 0).Children(func() {
-									ui.Text(c, badgeText).Font(macPlanetFont).FontSize(11).FontWeight(500).TextColor(badgeFg).NoWrap()
-								})
-								// Portrait book-sheet typography body.
-								ui.Column(c).Fill().Padding(14, 15, 13, 15).Gap(8).AlignItems(ui.Start).Children(func() {
-									ui.Text(c, title).Font(macPlanetFont).FontSize(15.5).FontWeight(700).LetterSpacing(-0.015).
-										TextColor(pal.ink).MaxLines(2).Ellipsis("…")
+							ui.Column(c).Fill().Radius(10).Clip().AlignItems(ui.Start).Children(func() {
+								// Top 0.5px specular light edge (Letterpress Paper).
+								ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(topHighlight)
+								ui.Column(c).Fill().Padding(18, 20, 15, 20).Gap(8).AlignItems(ui.Start).Children(func() {
+									// Top metadata: site dot + site name on left, date on right.
+									ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(8).Children(func() {
+										ui.Row(c).AlignItems(ui.Center).Gap(6).MinWidth(0).Children(func() {
+											ui.Box(c).Size(5.5, 5.5).Radius(3).Background(dotColor).Shrink(0)
+											ui.Text(c, metaLeft).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted).NoWrap().Ellipsis("…")
+										})
+										ui.Text(c, formatShortDate(entry.Modified)).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted).Shrink(0).NoWrap()
+									})
+									// Bold editorial title.
+									ui.Text(c, title).Font(macPlanetFont).FontSize(15.5).FontWeight(600).LetterSpacing(-0.015).
+										TextColor(pal.prefsInk).MaxLines(2).Ellipsis("…")
+									// Prose excerpt.
 									if excerpt != "" {
-										ui.Text(c, excerpt).Font(macPlanetFont).FontSize(12).TextColor(pal.secondary).
-											MaxLines(4).Ellipsis("…")
+										ui.Text(c, excerpt).Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsSecondary).
+											MaxLines(3).Ellipsis("…")
 									}
 									ui.Box(c).Grow(1)
-									ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(paperEdge)
-									ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Padding(4, 0, 0, 0).Children(func() {
-										if item.isDraft {
-											ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
-												ui.Icon(c, lucide.PenLine()).Size(11.5, 11.5).TextColor(pal.secondary)
-												ui.Text(c, "继续写作").Font(macPlanetFont).FontSize(11).FontWeight(500).TextColor(pal.secondary).NoWrap()
-											})
-										} else {
-											ui.Icon(c, lucide.FileText()).Size(12, 12).TextColor(pal.muted)
+									// Subtle hairline footer: word count left, hover-revealed action right.
+									ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
+									ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Padding(6, 0, 0, 0).Children(func() {
+										ui.Text(c, formatWordCount(wordCount)).Font(macPlanetFont).FontSize(11).TextColor(pal.prefsMuted).NoWrap()
+										if hovered {
+											actionText := "阅读 ↗"
+											if item.isDraft {
+												actionText = "继续写作 →"
+											}
+											ui.Text(c, actionText).Font(macPlanetFont).FontSize(11).FontWeight(500).TextColor(pal.prefsInk).NoWrap()
 										}
-										ui.Text(c, formatShortDate(entry.Modified)).Font(macPlanetFont).FontSize(11).TextColor(pal.muted).NoWrap()
 									})
 								})
 							})
@@ -464,18 +549,17 @@ func (a *App) viewDashboardArticles(c *ui.Context, innerW float32) {
 
 func (a *App) draftBookmarkChip(c *ui.Context, label string, active bool, onClick func()) {
 	pal := a.pal
-	_, paperBg, _, paperEdge, _ := paperDeskColors(pal)
 	bg := ui.Transparent
-	fg := pal.secondary
+	fg := pal.prefsSecondary
 	if active {
-		bg = paperBg
-		fg = pal.ink
+		bg = pal.prefsNavActiveBg
+		fg = pal.prefsInk
 	}
 	btn := ui.ButtonBase(c.Key("art-filter-drafts-btn")).Label(label).
 		Radius(6).Padding(5, 10, 5, 9).Background(bg).
-		Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+		Cursor(ui.CursorPointer)
 	if active {
-		btn.Border(0.5, paperEdge).Shadow(0, 1, 2, 0, pal.prefsNavActiveShadow)
+		btn.Border(0.5, pal.prefsCardBorder).Shadow(0, 1, 2, 0, pal.prefsNavActiveShadow)
 	} else if btn.Hovered() {
 		btn.Background(pal.hover)
 	}
@@ -495,18 +579,17 @@ func (a *App) draftBookmarkChip(c *ui.Context, label string, active bool, onClic
 
 func (a *App) siteBookmarkChip(c *ui.Context, key, label string, site *store.Site, siteIdx int, dotColor ui.Color, active bool, onClick func()) {
 	pal := a.pal
-	_, paperBg, _, paperEdge, _ := paperDeskColors(pal)
 	bg := ui.Transparent
-	fg := pal.secondary
+	fg := pal.prefsSecondary
 	if active {
-		bg = paperBg
-		fg = pal.ink
+		bg = pal.prefsNavActiveBg
+		fg = pal.prefsInk
 	}
 	btn := ui.ButtonBase(c.Key(key+"-btn")).Label(label).
 		Radius(6).Padding(5, 10, 5, 8).Background(bg).
-		Cursor(ui.CursorPointer).Transition(rowHoverTransition)
+		Cursor(ui.CursorPointer)
 	if active {
-		btn.Border(0.5, paperEdge).Shadow(0, 1, 2, 0, pal.prefsNavActiveShadow)
+		btn.Border(0.5, pal.prefsCardBorder).Shadow(0, 1, 2, 0, pal.prefsNavActiveShadow)
 	} else if btn.Hovered() {
 		btn.Background(pal.hover)
 	}
@@ -527,107 +610,6 @@ func (a *App) siteBookmarkChip(c *ui.Context, key, label string, site *store.Sit
 	if btn.Clicked() {
 		onClick()
 	}
-}
-
-func (a *App) viewHeatmapGrid(c *ui.Context, counts map[string]int, cardInnerW float32) {
-	pal := a.pal
-	const weeks = 52
-	today := time.Now()
-	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.Local)
-	endOffset := int(time.Saturday - today.Weekday())
-	endDay := today.AddDate(0, 0, endOffset)
-	startDay := endDay.AddDate(0, 0, -(weeks*7 - 1))
-
-	// Scale square cells smoothly to the card's inner width so 52 weeks stay balanced
-	// from compact windows up to 1920px+ fullscreen without stretched gaps.
-	cellSize := float32(11.5)
-	if cardInnerW > 0 {
-		s := cardInnerW / 68.0
-		if s < 10.5 {
-			s = 10.5
-		} else if s > 20 {
-			s = 20
-		}
-		cellSize = s
-	}
-	cellGap := max(float32(3.0), cellSize*0.28)
-	cellRadius := max(float32(3.0), cellSize*0.26)
-
-	renderCell := func(key string, level int, tip string) {
-		ui.Box(c.Key(key)).Size(cellSize, cellSize).Radius(cellRadius).Background(heatmapColor(level, pal)).Tooltip(tip)
-	}
-
-	ui.Column(c).AlignSelf(ui.Stretch).Gap(10).Children(func() {
-		switch a.activityMode {
-		case activityModeWeekly:
-			barMaxH := cellSize*7 + cellGap*6
-			ui.Row(c).AlignSelf(ui.Stretch).Justify(ui.SpaceBetween).AlignItems(ui.End).Height(barMaxH).Children(func() {
-				for w := range weeks {
-					sum := 0
-					for d := range 7 {
-						day := startDay.AddDate(0, 0, w*7+d)
-						sum += counts[day.Format("2006-01-02")]
-					}
-					h := float32(8)
-					if sum > 0 {
-						h = min(barMaxH-4, float32(18+sum*10))
-					}
-					tip := fmt.Sprintf("第 %d 周：%d 次", w+1, sum)
-					ui.Box(c.Key(fmt.Sprintf("hm-week-%d", w))).Size(cellSize, h).Radius(cellRadius).Background(heatmapColor(sum, pal)).Tooltip(tip)
-				}
-			})
-		case activityModeCumulative:
-			running := 0
-			ui.Row(c).AlignSelf(ui.Stretch).Justify(ui.SpaceBetween).Children(func() {
-				for w := range weeks {
-					ui.Column(c.Key(fmt.Sprintf("hm-cw-%d", w))).Gap(cellGap).Children(func() {
-						for d := range 7 {
-							day := startDay.AddDate(0, 0, w*7+d)
-							key := day.Format("2006-01-02")
-							running += counts[key]
-							level := 0
-							switch {
-							case running >= 12:
-								level = 6
-							case running >= 6:
-								level = 4
-							case running >= 3:
-								level = 2
-							case running >= 1:
-								level = 1
-							}
-							renderCell("hm-c-"+key, level, fmt.Sprintf("%s：累计 %d 次", key, running))
-						}
-					})
-				}
-			})
-		default:
-			ui.Row(c).AlignSelf(ui.Stretch).Justify(ui.SpaceBetween).Children(func() {
-				for w := range weeks {
-					ui.Column(c.Key(fmt.Sprintf("hm-w-%d", w))).Gap(cellGap).Children(func() {
-						for d := range 7 {
-							day := startDay.AddDate(0, 0, w*7+d)
-							key := day.Format("2006-01-02")
-							n := counts[key]
-							renderCell("hm-"+key, n, fmt.Sprintf("%s：%d 次", key, n))
-						}
-					})
-				}
-			})
-		}
-
-		// Dynamic 12-month axis aligned evenly across the 52-week span.
-		var months []string
-		for m := 11; m >= 0; m-- {
-			t := time.Date(today.Year(), today.Month()-time.Month(m), 1, 0, 0, 0, 0, time.Local)
-			months = append(months, fmt.Sprintf("%d月", int(t.Month())))
-		}
-		ui.Row(c).AlignSelf(ui.Stretch).Justify(ui.SpaceBetween).Padding(0, 12, 0, 0).Children(func() {
-			for _, label := range months {
-				ui.Text(c, label).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted).NoWrap()
-			}
-		})
-	})
 }
 
 func (a *App) viewComposePickerModal(c *ui.Context) {
@@ -664,19 +646,19 @@ func (a *App) viewComposePickerModal(c *ui.Context) {
 func heatmapColor(count int, pal macPalette) ui.Color {
 	if count <= 0 {
 		if pal.dark {
-			return ui.RGBA(255, 255, 255, 0.06)
+			return ui.RGBA(255, 255, 255, 0.09)
 		}
 		return ui.RGBA(15, 23, 42, 0.06)
 	}
 	switch {
 	case count == 1:
-		return pal.ink.Alpha(0.28)
+		return pal.prefsInk.Alpha(0.26)
 	case count <= 3:
-		return pal.ink.Alpha(0.50)
+		return pal.prefsInk.Alpha(0.48)
 	case count <= 5:
-		return pal.ink.Alpha(0.72)
+		return pal.prefsInk.Alpha(0.70)
 	default:
-		return pal.ink.Alpha(0.92)
+		return pal.prefsInk.Alpha(0.90)
 	}
 }
 
