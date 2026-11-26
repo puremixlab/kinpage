@@ -372,17 +372,68 @@ func macPrimaryButtonSized(c *ui.Context, key, label string, height, padX, fontS
 	return b.Clicked()
 }
 
-func macSecondaryButton(c *ui.Context, key, label string, _ macPalette) bool {
-	return action.Button(c.Key(key), label, action.ButtonProps{
-		Variant: action.Default,
-	}).Clicked()
+func macSecondaryButton(c *ui.Context, key, label string, pal macPalette) bool {
+	bg := ui.Hex("#ffffff")
+	hoverBg := ui.Hex("#f4f4f5")
+	activeBg := ui.Hex("#e5e7eb")
+	border := ui.RGBA(15, 23, 42, 0.12)
+	if pal.dark {
+		bg = ui.RGBA(255, 255, 255, 0.08)
+		hoverBg = ui.RGBA(255, 255, 255, 0.13)
+		activeBg = ui.RGBA(255, 255, 255, 0.18)
+		border = ui.RGBA(255, 255, 255, 0.11)
+	}
+	b := ui.ButtonBase(c.Key(key)).Label(label).Height(28).PaddingX(12).Radius(6).
+		Border(0.5, border).Center().Cursor(ui.CursorPointer)
+	switch {
+	case b.Pressed():
+		b.Background(activeBg)
+	case b.Hovered():
+		b.Background(hoverBg)
+	default:
+		b.Background(bg)
+	}
+	b.Children(func() {
+		ui.Text(c, label).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsInk).NoWrap()
+	})
+	return b.Clicked()
 }
 
-// macSegmented uses lobe-mygo's animated sliding-pill Segmented component.
-func macSegmented(c *ui.Context, key string, selected *int, options []string, _ macPalette) {
-	action.Segmented(c.Key(key), selected, options, action.SegmentedProps{
-		Variant: action.SegmentedFilled,
-		Size:    theme.Small,
+// macSegmented renders a crisp pill segmented control with balanced light & dark tokens.
+func macSegmented(c *ui.Context, key string, selected *int, options []string, pal macPalette) {
+	trackBg := ui.RGBA(15, 23, 42, 0.055)
+	pillBg := ui.Hex("#ffffff")
+	pillShadow := ui.RGBA(15, 23, 42, 0.08)
+	if pal.dark {
+		trackBg = ui.RGBA(255, 255, 255, 0.06)
+		pillBg = ui.RGBA(255, 255, 255, 0.14)
+		pillShadow = ui.RGBA(0, 0, 0, 0.24)
+	}
+	ui.Row(c.Key(key)).Padding(2.5).Radius(7).Background(trackBg).Gap(2).AlignItems(ui.Center).Children(func() {
+		for i, opt := range options {
+			idx := i
+			active := selected != nil && *selected == idx
+			fg := pal.prefsSecondary
+			if active {
+				fg = pal.prefsInk
+			}
+			btn := ui.ButtonBase(c.Key(fmt.Sprintf("%s-%d", key, idx))).Label(opt).
+				Padding(4, 11, 4, 11).Radius(5).Cursor(ui.CursorPointer)
+			if active {
+				btn.Background(pillBg).Shadow(0, 1, 2, 0, pillShadow)
+			} else if btn.Hovered() {
+				btn.Background(pal.hover)
+			}
+			btn.Children(func() {
+				t := ui.Text(c, opt).Font(macPlanetFont).FontSize(12).TextColor(fg).NoWrap()
+				if active {
+					t.FontWeight(500)
+				}
+			})
+			if btn.Clicked() && selected != nil {
+				*selected = idx
+			}
+		}
 	})
 }
 

@@ -195,7 +195,7 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 				})
 
 				ui.Scroll(c).TrackScroll(&st.scroll).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
-					ui.Column(c).Padding(4, 28, 24, 28).Gap(16).AlignSelf(ui.Stretch).Children(func() {
+					ui.Column(c).Padding(4, 28, 36, 28).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 						switch st.tab {
 						case siteSettingsTabBasic:
 							macInsetCard(c, pal, func() {

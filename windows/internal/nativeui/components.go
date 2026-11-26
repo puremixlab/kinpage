@@ -272,12 +272,15 @@ func macPreferencesWindow(c *ui.Context, open *bool, maxWidth, maxHeight float32
 	if maxHeight <= 0 {
 		maxHeight = 680
 	}
-	dim := ui.RGBA(15, 23, 42, 0.28)
+	if _, winH := c.Size(); winH > 200 && maxHeight > winH-56 {
+		maxHeight = winH - 56
+	}
+	dim := ui.RGBA(0, 0, 0, 0.18)
 	if pal.dark {
-		dim = ui.RGBA(0, 0, 0, 0.56)
+		dim = ui.RGBA(0, 0, 0, 0.45)
 	}
 	ui.DialogBase(c, open, func(backdrop, panel ui.Element) {
-		backdrop.Center().Padding(28).Background(dim)
+		backdrop.Center().Padding(24).Background(dim)
 		panel.WidthPercent(100).MaxWidth(maxWidth).HeightPercent(100).MaxHeight(maxHeight).
 			Radius(14).Background(pal.prefsCanvas).Border(0.5, pal.prefsCardBorder).
 			Shadow(0, 18, 44, 0, pal.shadowColor).Clip()
