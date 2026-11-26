@@ -3550,8 +3550,9 @@ func main() {
 		opts := mygo.WindowOptions{
 			Title: "Planet", Width: 1280, Height: 820, MinWidth: 860, MinHeight: 600,
 			BackgroundColor: "#f7f7f5", StateKey: "main",
-			TitleBarStyle: mygo.TitleBarHidden,
-			Content:       ui.View(nativeApp.View),
+			TitleBarStyle:  mygo.TitleBarHidden,
+			TitleBarHeight: 44,
+			Content:        ui.View(nativeApp.View),
 		}
 		win := mygo.NewWindow(opts)
 		nativeApp.SetWebViewFactory(func() (nativeui.WebViewHost, error) {

@@ -12,6 +12,10 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 - Redesigned Native UI settings with a ChatGPT-style progressive disclosure flow: a compact bottom-left `设置` (`Settings`) menu (`新建站点…`, `关注站点…`, `快捷发文`, `打开 IPFS 资源…`, and `更多设置…` / `Ctrl+,`), a unified grouped Global Settings window with sidebar search (`通用`, `数据与存储`, `网络与工具`, `智能与扩展`), and empty-state-first pages with secondary configuration modals across both Global Settings (AI, Local API, Published Folders, IPNS Keys) and Site Settings integrations (Deploy, Services, X, Telegram, Aggregation, Web3); moved the IPFS node status button to the sidebar bottom-right.
 
+### Fixed
+
+- Set `TitleBarHeight: 44` on the main Windows window so native minimize/maximize/close caption buttons vertically align with the 44px Native UI toolbar.
+
 ## [0.0.1-rc.1] - 2026-11-26
 
 ### Changed
