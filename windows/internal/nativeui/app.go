@@ -196,6 +196,7 @@ type App struct {
 	subWebViewURL    string
 	pal              macPalette
 	locale           Locale
+	onLocaleChange   func(Locale)
 	bitmapCache      map[string]*ui.Bitmap
 	settingsMenuOpen bool
 	sidebarCollapsed bool
