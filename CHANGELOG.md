@@ -6,6 +6,7 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ### Added
 
+- Added Microsoft Store MSIX packaging configuration (`windows/msix/msix.config.json`, `windows/msix/AppxManifest.template.xml`), automated visual asset generation and `makeappx.exe` build script (`bun run build:msix` / `windows/scripts/build-msix.ps1` with `-Store` validation gates), Bun packaging tests, and setup documentation (`windows/docs/msix-packaging.md`).
 - Added Windows taskbar window icon (`win.SetIcon`) and system tray icon (`mygo.NewTray`) with background running: closing the main window hides Planet to the taskbar tray so IPFS, Local API, and site maintenance keep running, left-clicking restores the window, and the localized tray menu provides Show and Quit actions.
 - Restored full Native UI internationalization (`zh-CN`, `zh-TW`, `en`) across the sidebar, menus, toolbars, Writing Desk, reader, editor, subscriptions, site settings, integrations, and system tools, with an in-app live language switcher (`界面语言` / `Language`), persistent locale preference in `nativeui-layout.json`, and automatic fallback to `en` for missing languages or keys.
 
