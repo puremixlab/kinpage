@@ -358,9 +358,9 @@ func macSheetFrame(c *ui.Context, open *bool, width float32, pal macPalette, con
 	if width <= 0 {
 		width = 520
 	}
-	dim := ui.RGBA(0, 0, 0, 0.24)
+	dim := ui.RGBA(0, 0, 0, 0.18)
 	if pal.dark {
-		dim = ui.RGBA(0, 0, 0, 0.50)
+		dim = ui.RGBA(0, 0, 0, 0.45)
 	}
 	ui.DialogBase(c, open, func(backdrop, panel ui.Element) {
 		backdrop.Justify(ui.Start).AlignItems(ui.Center).Padding(44, 16, 24, 16).Background(dim)

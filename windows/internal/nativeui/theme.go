@@ -81,7 +81,7 @@ func paletteFor(dark bool) macPalette {
 			controlLine:     ui.Hex("#48484a"),
 			ink:             ui.Hex("#f5f5f7"),
 			secondary:       ui.Hex("#c7c7cc"),
-			muted:           ui.Hex("#8e8e93"),
+			muted:           ui.Hex("#9ca3af"),
 			accent:          ui.Hex("#0a84ff"),
 			accentHover:     ui.Hex("#3399ff"),
 			accentActive:    ui.Hex("#0070e0"),
@@ -359,15 +359,15 @@ func macPrimaryButtonSmall(c *ui.Context, key, label string, pal macPalette) boo
 func macPrimaryButtonSized(c *ui.Context, key, label string, height, padX, fontSize float32, pal macPalette) bool {
 	b := ui.ButtonBase(c.Key(key)).Label(label).Height(height).PaddingX(padX).Radius(6).
 		Center().Cursor(ui.CursorPointer)
-	bg := pal.accent
+	bg := pal.prefsInk
 	switch {
 	case b.Pressed():
-		bg = pal.accentActive
+		bg = pal.prefsInk.Alpha(0.76)
 	case b.Hovered():
-		bg = pal.accentHover
+		bg = pal.prefsInk.Alpha(0.86)
 	}
 	b.Background(bg).Children(func() {
-		ui.Text(c, label).Font(macPlanetFont).FontSize(fontSize).FontWeight(500).TextColor(ui.Hex("#ffffff")).NoWrap()
+		ui.Text(c, label).Font(macPlanetFont).FontSize(fontSize).FontWeight(500).TextColor(pal.prefsCanvas).NoWrap()
 	})
 	return b.Clicked()
 }
