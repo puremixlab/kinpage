@@ -3472,6 +3472,14 @@ func (l *Library) ExportWebsite(ctx context.Context, siteID string) (string, err
 }
 
 func main() {
+	// MyGo CLI invokes the executable with MYGO_GENERATE set during builds.
+	// Return early before touching user data directories or acquiring locks.
+	if os.Getenv("MYGO_GENERATE") != "" {
+		if err := mygo.App.Run(); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if len(os.Args) == 2 && os.Args[1] == "--planet-version" {
 		fmt.Println(appVersion)
 		return
