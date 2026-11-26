@@ -90,9 +90,9 @@
 
 | 版本 | 适用平台 | 运行环境 | 校验与说明 |
 | --- | --- | --- | --- |
-| **[Planet Windows v0.0.1-rc.1](https://github.com/puremixlab/planet-windows/releases/download/v0.0.1-rc.1/planet-windows-safe-setup-0.0.1-rc.1-amd64.exe)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release 页面](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-rc.1)（含 SHA-256、源码归档与验收附件） |
+| **[邻页 · Kinpage v0.1.0](https://github.com/puremixlab/planet-windows/releases/tag/v0.1.0)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release 页面](https://github.com/puremixlab/planet-windows/releases)（支持 Microsoft Store MSIX / 独立 NSIS 安装包、SHA-256 与源码归档） |
 
-安装到空目录后，从开始菜单打开 **Kinpage** 即可使用。
+可通过 Microsoft Store（MSIX）安装，或将独立安装包安装到空目录后，从开始菜单打开 **Kinpage** 即可使用。商店打包与侧载说明见 [MSIX 打包文档](windows/docs/msix-packaging.md)。
 
 > [!NOTE]
 > **未签名 RC 预发布版本。** 运行安装包时 Windows SmartScreen 可能会给出提示，安装前建议核对 Release 页面提供的 SHA-256 校验值。完整桌面界面、输入法、跨版本升级及真实 Mac `.planet` 备份双向兼容仍在持续验证中，详见[已知限制](windows/README.md#尚未完成与待验证)与 [rc.1 验收范围](docs/acceptance-0.0.1-rc.1.md)。
@@ -145,7 +145,7 @@ bun run dev
 - [更新日志](CHANGELOG.md) — 各版本变更与未发布改动记录。
 - [Logo 与品牌规范](docs/branding/README.md) — 品牌视觉说明与矢量素材。
 - [贡献指南](CONTRIBUTING.md) · [Git 协作指南](docs/git-workflow.md) · [发布流程](docs/releasing.md) — 开发协作与发版规范。
-- [安全政策](SECURITY.md) · [GitHub Issues](https://github.com/puremixlab/planet-windows/issues) — 漏洞反馈、缺陷提交与功能建议。
+- [安全政策](SECURITY.md) · [隐私政策](PRIVACY.md) · [GitHub Issues](https://github.com/puremixlab/planet-windows/issues) — 漏洞反馈、隐私说明、缺陷提交与功能建议。
 
 ## 致谢
 
