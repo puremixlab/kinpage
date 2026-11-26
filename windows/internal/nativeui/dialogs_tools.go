@@ -188,30 +188,32 @@ func (a *App) viewToolsAI(c *ui.Context) {
 		macField(c, "API Key", "", pal, func() {
 			ui.TextInput(c.Key("ai-tok"), &m.aiToken).Password().Placeholder("本地模型可留空").AlignSelf(ui.Stretch)
 		})
-		ui.Row(c).Gap(8).Wrap().Children(func() {
-			if macSecondaryButton(c, "ai-probe", "探测本地服务与模型", pal) {
-				if res, err := a.backend.ProbeAI(strings.TrimSpace(m.aiBaseURL)); err != nil {
-					m.err = err.Error()
-				} else {
-					m.aiProbe = res
-					m.err = ""
-					m.msg = fmt.Sprintf("探测完成：发现 %d 个模型", len(res.Models))
-					if m.aiModel == "" && len(res.Models) > 0 {
-						m.aiModel = res.Models[0]
+		ui.Row(c).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
+			ui.Row(c).Gap(8).Wrap().Children(func() {
+				if macSecondaryButton(c, "ai-probe", "探测本地服务与模型", pal) {
+					if res, err := a.backend.ProbeAI(strings.TrimSpace(m.aiBaseURL)); err != nil {
+						m.err = err.Error()
+					} else {
+						m.aiProbe = res
+						m.err = ""
+						m.msg = fmt.Sprintf("探测完成：发现 %d 个模型", len(res.Models))
+						if m.aiModel == "" && len(res.Models) > 0 {
+							m.aiModel = res.Models[0]
+						}
 					}
 				}
-			}
-			if macSecondaryButton(c, "ai-save", "保存 AI 配置", pal) {
+				if len(m.aiHistory) > 0 {
+					if macSecondaryButton(c, "ai-clear", "清空对话", pal) {
+						m.aiHistory = nil
+					}
+				}
+			})
+			if macPrimaryButtonSmall(c, "ai-save", "保存 AI 配置", pal) {
 				if _, err := a.backend.ConfigureAI(strings.TrimSpace(m.aiBaseURL), strings.TrimSpace(m.aiModel), strings.TrimSpace(m.aiToken)); err != nil {
 					m.err = err.Error()
 				} else {
 					m.err = ""
 					m.msg = "AI 配置已保存"
-				}
-			}
-			if len(m.aiHistory) > 0 {
-				if macSecondaryButton(c, "ai-clear", "清空对话", pal) {
-					m.aiHistory = nil
 				}
 			}
 		})
@@ -230,31 +232,33 @@ func (a *App) viewToolsAI(c *ui.Context) {
 		}
 	})
 
-	// Conversation history rendered natively with Markdown.
-	for i, msg := range m.aiHistory {
-		roleLabel := "你"
-		bg := pal.subtle
-		if msg.Role == "assistant" {
-			roleLabel = "AI 助手"
-			bg = pal.canvas
-		}
-		ui.Column(c.Key(fmt.Sprintf("ai-msg-%d", i))).Padding(12).Gap(4).Background(bg).Border(0.5, pal.line).Radius(8).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, roleLabel).Font(macPlanetFont).FontWeight(600).FontSize(11).TextColor(pal.muted)
+	// Conversation card clearly separated from configuration above.
+	macInsetCard(c, pal, func() {
+		ui.Text(c, "对话测试").Font(macPlanetFont).FontSize(12.5).FontWeight(600).TextColor(pal.prefsInk)
+		for i, msg := range m.aiHistory {
+			roleLabel := "你"
+			bg := pal.prefsCanvas
 			if msg.Role == "assistant" {
-				markdown.View(c, msg.Content, &a.markdownOpts)
-			} else {
-				ui.Text(c, msg.Content).Font(macPlanetFont).FontSize(13).TextColor(pal.ink)
+				roleLabel = "AI 助手"
+				bg = pal.prefsCard
+			}
+			ui.Column(c.Key(fmt.Sprintf("ai-msg-%d", i))).Padding(12).Gap(4).Background(bg).Border(0.5, pal.prefsCardBorder).Radius(8).AlignSelf(ui.Stretch).Children(func() {
+				ui.Text(c, roleLabel).Font(macPlanetFont).FontWeight(600).FontSize(11).TextColor(pal.prefsMuted)
+				if msg.Role == "assistant" {
+					markdown.View(c, msg.Content, &a.markdownOpts)
+				} else {
+					ui.Text(c, msg.Content).Font(macPlanetFont).FontSize(13).TextColor(pal.prefsInk)
+				}
+			})
+		}
+		ui.Row(c).Gap(8).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
+			if ui.TextInput(c.Key("ai-prompt"), &m.aiPrompt).Placeholder("输入问题（自动附带当前文章上下文）…").Grow(1).Submitted() {
+				a.sendAIPrompt()
+			}
+			if macSecondaryButton(c, "ai-send", "发送", pal) {
+				a.sendAIPrompt()
 			}
 		})
-	}
-
-	ui.Row(c).Gap(8).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-		if ui.TextInput(c.Key("ai-prompt"), &m.aiPrompt).Placeholder("输入问题（自动附带当前文章上下文）…").Grow(1).Submitted() {
-			a.sendAIPrompt()
-		}
-		if macPrimaryButtonSmall(c, "ai-send", "发送", pal) {
-			a.sendAIPrompt()
-		}
 	})
 }
 

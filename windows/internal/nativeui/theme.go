@@ -70,8 +70,8 @@ func paletteFor(dark bool) macPalette {
 		return macPalette{
 			dark:            true,
 			sidebar:         ui.Hex("#232325"),
-			canvas:          ui.Hex("#1c1c1e"),
-			subtle:          ui.Hex("#2c2c2e"),
+			canvas:          ui.Hex("#18191c"),
+			subtle:          ui.Hex("#23252a"),
 			footer:          ui.Hex("#242426"),
 			hover:           ui.RGBA(255, 255, 255, 0.07),
 			active:          ui.RGBA(255, 255, 255, 0.12),
@@ -114,8 +114,8 @@ func paletteFor(dark bool) macPalette {
 	return macPalette{
 		dark:            false,
 		sidebar:         ui.Hex("#ececec"),
-		canvas:          ui.Hex("#ffffff"),
-		subtle:          ui.Hex("#f5f5f7"),
+		canvas:          ui.Hex("#f7f8fa"),
+		subtle:          ui.Hex("#ffffff"),
 		footer:          ui.Hex("#f7f7f9"),
 		hover:           ui.RGBA(0, 0, 0, 0.05),
 		active:          ui.RGBA(0, 0, 0, 0.09),

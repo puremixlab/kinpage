@@ -54,13 +54,19 @@ func TestNativeUITTSSpeakAndTemplateBrowserPreview(t *testing.T) {
 	if err := tt.Click("朗读站"); err != nil {
 		t.Fatalf("failed to select site: %v", err)
 	}
-	if err := tt.Click("朗读"); err != nil {
+	if err := tt.Click("更多文章操作"); err != nil {
+		t.Fatalf("failed to open reader more menu: %v", err)
+	}
+	if err := tt.ChooseMenuItem("朗读"); err != nil {
 		t.Fatalf("failed to click speak: %v", err)
 	}
 	if !speaker.speaking || !strings.Contains(speaker.lastText, "今天天气不错") {
 		t.Fatalf("expected speaker active with article text, got %+v", speaker)
 	}
-	if err := tt.Click("停止朗读"); err != nil {
+	if err := tt.Click("更多文章操作"); err != nil {
+		t.Fatalf("failed to open reader more menu: %v", err)
+	}
+	if err := tt.ChooseMenuItem("停止朗读"); err != nil {
 		t.Fatalf("failed to click stop speak: %v", err)
 	}
 	if speaker.speaking {

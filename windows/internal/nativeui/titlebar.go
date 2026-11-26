@@ -292,8 +292,21 @@ func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
 			}
 		})
 
-		// Flexible draggable middle spacer.
-		ui.Box(c).Grow(1).MinWidth(12).Height(h).DragWindow()
+		// Flexible draggable middle area with subtle context title (site or subscription name).
+		ui.Row(c).Grow(1).MinWidth(12).Height(h).AlignItems(ui.Center).PaddingX(8).DragWindow().Children(func() {
+			ctxTitle := ""
+			if a.mode == viewSite {
+				if site := a.currentSite(); site != nil {
+					ctxTitle = fallbackTitle(site.Name)
+				}
+			} else if cur, ok := a.currentSubItem(); ok {
+				ctxTitle = cur.subTitle
+			}
+			if ctxTitle != "" {
+				ui.Text(c, ctxTitle).Font(macPlanetFont).FontSize(13).FontWeight(500).
+					TextColor(pal.secondary).MaxLines(1).Ellipsis("…")
+			}
+		})
 
 		// Trailing group: document/mode actions + global search & share.
 		ui.Row(c).AlignItems(ui.Center).Gap(4).Shrink(0).Children(func() {
@@ -335,38 +348,37 @@ func (a *App) viewDetailToolbarActions(c *ui.Context) {
 		}
 
 		if art := a.currentArticle(); art != nil {
-			if toolbarIconBtn(c, "reader-related", lucide.FileText(), "相关文章").Clicked() {
-				a.openRelatedArticles(art.SiteID, art.ID, "", "", art.Title)
-			}
-			speakIcon := lucide.Volume2()
-			speakLabel := "朗读"
-			if a.speaker != nil && a.speaker.Speaking() {
-				speakIcon = lucide.VolumeX()
-				speakLabel = "停止朗读"
-			}
-			if toolbarIconBtn(c, "reader-speak", speakIcon, speakLabel).Clicked() {
-				a.toggleSpeak(art.Title, art.Content)
-			}
-			pinLabel := "置顶"
-			pinColor := pal.secondary
-			if art.Pinned != nil {
-				pinLabel = "取消置顶"
-				pinColor = pal.accent
-			}
-			if toolbarIconBtnColored(c, "reader-pin", lucide.Pin(), pinColor, pinLabel, pal).Clicked() {
-				a.toggleArticlePinned(*art)
-			}
-			if toolbarIconBtn(c, "reader-settings", lucide.Settings(), "文章设置").Clicked() {
-				a.openArticleSettings(*art)
-			}
 			if toolbarIconBtn(c, "reader-edit", lucide.PencilLine(), "编辑文章").Clicked() {
 				a.openArticleForEdit(*art)
 			}
-			if toolbarIconBtn(c, "reader-delete", lucide.Trash2(), "删除文章").Clicked() {
-				a.deleteArticleID = art.ID
-				a.deleteArticleTitle = art.Title
-				a.deleteArticleOpen = true
+			speakLabel := "朗读"
+			if a.speaker != nil && a.speaker.Speaking() {
+				speakLabel = "停止朗读"
 			}
+			pinLabel := "置顶"
+			if art.Pinned != nil {
+				pinLabel = "取消置顶"
+			}
+			toolbarIconBtn(c, "reader-more", lucide.Ellipsis(), "更多文章操作").Menu(func(m *ui.Menu) {
+				if m.Item(pinLabel).Chosen() {
+					a.toggleArticlePinned(*art)
+				}
+				if m.Item("文章设置").Chosen() {
+					a.openArticleSettings(*art)
+				}
+				if m.Item("相关文章").Chosen() {
+					a.openRelatedArticles(art.SiteID, art.ID, "", "", art.Title)
+				}
+				if m.Item(speakLabel).Chosen() {
+					a.toggleSpeak(art.Title, art.Content)
+				}
+				m.Separator()
+				if m.Item("删除文章").Chosen() {
+					a.deleteArticleID = art.ID
+					a.deleteArticleTitle = art.Title
+					a.deleteArticleOpen = true
+				}
+			})
 		}
 		return
 	}

@@ -985,16 +985,22 @@ func TestNativeUIUnsavedGuardAndArticleActions(t *testing.T) {
 		t.Fatalf("expected 3 articles after quick post, got %d", len(backend.articles))
 	}
 
-	// Pin current article and verify it sorts first.
-	if err := tt.Click("置顶"); err != nil {
+	// Pin current article via reader more menu and verify it sorts first.
+	if err := tt.Click("更多文章操作"); err != nil {
+		t.Fatalf("failed to open reader more menu: %v", err)
+	}
+	if err := tt.ChooseMenuItem("置顶"); err != nil {
 		t.Fatalf("failed to pin article: %v", err)
 	}
 	if app.articles[0].Title != "快讯" || app.articles[0].Pinned == nil {
 		t.Fatalf("expected pinned article first, got %+v", app.articles[0])
 	}
 
-	// Open article settings and save slug.
-	if err := tt.Click("文章设置"); err != nil {
+	// Open article settings via reader more menu and save slug.
+	if err := tt.Click("更多文章操作"); err != nil {
+		t.Fatalf("failed to open reader more menu: %v", err)
+	}
+	if err := tt.ChooseMenuItem("文章设置"); err != nil {
 		t.Fatalf("failed to open article settings: %v", err)
 	}
 	app.articleSettingsSlug = "quick-news"
