@@ -41,17 +41,117 @@ func tinyPNGBytes(t *testing.T) []byte {
 }
 
 func TestHTMLToReadableMarkdownImagesAndFigures(t *testing.T) {
-	raw := `<article><p>开头段落</p><figure><img src="/assets/photo.jpg" alt="河岸风景"><figcaption>傍晚的芦苇</figcaption></figure><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-src="images/lazy.png" alt="延迟加载"></p><p><img srcset="/img/hero-1x.webp 1x, /img/hero-2x.webp 2x" alt="高清封面"></p></article>`
+	raw := `<article>` +
+		`<p>开头段落</p>` +
+		`<figure><a href="https://river.example/full"><img src="/assets/photo.jpg" alt="河岸风景"></a><figcaption>傍晚的芦苇</figcaption></figure>` +
+		`<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-src="images/lazy.png" alt="延迟加载"></p>` +
+		`<p><img srcset="/img/hero-1x.webp 1x, /img/hero-2x.webp 2x" alt="高清封面"></p>` +
+		`<picture><source srcset="https://cdn.example/pic-1.webp 1x, https://cdn.example/pic-2.webp 2x"><img alt="画册"></picture>` +
+		`</article>`
 	md := htmlToReadableMarkdownWithBase(raw, "https://river.example/posts/autumn")
 	for _, want := range []string{
 		"![河岸风景](https://river.example/assets/photo.jpg)",
 		"*傍晚的芦苇*",
 		"![延迟加载](https://river.example/posts/images/lazy.png)",
 		"![高清封面](https://river.example/img/hero-1x.webp)",
+		"![画册](https://cdn.example/pic-1.webp)",
 	} {
 		if !strings.Contains(md, want) {
 			t.Fatalf("expected %q in converted markdown:\n%s", want, md)
 		}
+	}
+}
+
+func TestPromoteMarkdownImages(t *testing.T) {
+	raw := "前言 [![封面](https://cdn.example/a.jpg)](https://example.com) 后记\n\n`![code](https://ignore.example/x.png)`\n\n文字 ![插图](https://cdn.example/b.png) 续文"
+	got := promoteMarkdownImages(raw)
+	if !strings.Contains(got, "\n\n![封面](https://cdn.example/a.jpg)\n\n") {
+		t.Fatalf("expected linked image promoted to standalone paragraph:\n%s", got)
+	}
+	if !strings.Contains(got, "\n\n![插图](https://cdn.example/b.png)\n\n") {
+		t.Fatalf("expected inline image promoted to standalone paragraph:\n%s", got)
+	}
+	if !strings.Contains(got, "`![code](https://ignore.example/x.png)`") {
+		t.Fatalf("expected inline code image to stay untouched:\n%s", got)
+	}
+}
+
+func TestImageLoaderReferer403Fallback(t *testing.T) {
+	pngBytes := tinyPNGBytes(t)
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		if r.Header.Get("Referer") != "" {
+			http.Error(w, "hotlink blocked", http.StatusForbidden)
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(pngBytes)
+	}))
+	defer srv.Close()
+
+	loader := newImageLoader()
+	src, err := loader.LoadWithReferer(srv.URL+"/wechat.png", "https://blog.example/post")
+	if err != nil || src == nil {
+		t.Fatalf("expected retry without Referer to succeed, src=%v err=%v", src, err)
+	}
+	if hits.Load() != 2 {
+		t.Fatalf("expected 2 requests (with Referer -> 403, then without Referer -> 200), got %d", hits.Load())
+	}
+}
+
+func TestSubscriptionReaderLoadsHTTPImageEndToEnd(t *testing.T) {
+	pngBytes := tinyPNGBytes(t)
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(pngBytes)
+	}))
+	defer srv.Close()
+
+	imgURL := srv.URL + "/article-photo.png"
+	backend := &fakeBackend{
+		subscriptions: []store.Subscription{{
+			URL: "https://example.com/feed.xml",
+			Feed: feeds.Feed{
+				Title: "图片测试源",
+				Items: []feeds.Item{{
+					Key:     "img-1",
+					Title:   "带外链图的订阅文章",
+					Link:    "https://example.com/posts/img-1",
+					Content: `<p>开头</p><p><a href="https://example.com/full"><img src="` + imgURL + `" alt="远端图片"></a></p>`,
+				}},
+			},
+		}},
+	}
+	app := New(backend)
+	tt := ui.NewTester(app.View, 1280, 800)
+	tt.Frame()
+	if err := tt.Click("图片测试源"); err != nil {
+		t.Fatalf("select subscription: %v", err)
+	}
+	// Wait briefly for the async LoadImage goroutine to fetch and decode the HTTP image.
+	var cached cachedImage
+	var found bool
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		tt.Frame()
+		if app.imgLoader != nil {
+			app.imgLoader.mu.Lock()
+			cached, found = app.imgLoader.cache[imgURL]
+			app.imgLoader.mu.Unlock()
+			if found {
+				break
+			}
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	if hits.Load() == 0 {
+		t.Fatalf("expected subscription reader to fetch HTTP image %q, got 0 requests", imgURL)
+	}
+	if !found || cached.err != nil || cached.src == nil {
+		t.Fatalf("expected HTTP image to decode and cache cleanly, found=%v src=%v err=%v", found, cached.src, cached.err)
 	}
 }
 

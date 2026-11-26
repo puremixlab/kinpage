@@ -2,6 +2,7 @@ package nativeui
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -42,10 +44,31 @@ type imageLoader struct {
 	cache map[string]cachedImage
 }
 
+func newImageHTTPTransport() *http.Transport {
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		// Prefer HTTP/1.1 for remote image fetches to avoid HTTP/2 EOF issues
+		// through local TUN/proxy setups and strict image CDNs.
+		ForceAttemptHTTP2:     false,
+		TLSNextProto:          map[string]func(string, *tls.Conn) http.RoundTripper{},
+		MaxIdleConns:          32,
+		IdleConnTimeout:       60 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+}
+
 func newImageLoader() *imageLoader {
 	return &imageLoader{
-		client: &http.Client{Timeout: 15 * time.Second},
-		cache:  map[string]cachedImage{},
+		client: &http.Client{
+			Timeout:   20 * time.Second,
+			Transport: newImageHTTPTransport(),
+		},
+		cache: map[string]cachedImage{},
 	}
 }
 
@@ -140,34 +163,76 @@ func (l *imageLoader) fetchAndDecode(rawURL, referer string) (ui.ImageSource, er
 	scheme := strings.ToLower(parsed.Scheme)
 	switch scheme {
 	case "http", "https":
-		req, err := http.NewRequest(http.MethodGet, rawURL, nil)
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-		req.Header.Set("Accept", "image/webp,image/png,image/jpeg,image/gif,image/svg+xml,image/*;q=0.8,*/*;q=0.5")
-		if ref := strings.TrimSpace(referer); strings.HasPrefix(strings.ToLower(ref), "http://") || strings.HasPrefix(strings.ToLower(ref), "https://") {
-			req.Header.Set("Referer", ref)
-		}
-		resp, err := l.client.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return nil, fmt.Errorf("image http %d", resp.StatusCode)
-		}
-		data, err := io.ReadAll(io.LimitReader(resp.Body, maxMarkdownImageBytes+1))
-		if err != nil {
-			return nil, err
-		}
-		if len(data) > maxMarkdownImageBytes {
-			return nil, errors.New("remote image exceeds size limit")
-		}
-		return decodeImageBytes(data, resp.Header.Get("Content-Type"), parsed.Path)
+		return l.fetchHTTPImage(rawURL, parsed, referer)
 	default:
 		return nil, fmt.Errorf("unsupported image scheme %q", scheme)
 	}
+}
+
+func (l *imageLoader) doImageGet(rawURL, referer string) ([]byte, string, int, error) {
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, "", 0, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "image/webp,image/png,image/jpeg,image/gif,image/svg+xml,image/*;q=0.8,*/*;q=0.5")
+	if ref := strings.TrimSpace(referer); strings.HasPrefix(strings.ToLower(ref), "http://") || strings.HasPrefix(strings.ToLower(ref), "https://") {
+		req.Header.Set("Referer", ref)
+	}
+	resp, err := l.client.Do(req)
+	if err != nil {
+		return nil, "", 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, "", resp.StatusCode, fmt.Errorf("image http %d", resp.StatusCode)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxMarkdownImageBytes+1))
+	if err != nil {
+		return nil, "", resp.StatusCode, err
+	}
+	if len(data) > maxMarkdownImageBytes {
+		return nil, "", resp.StatusCode, errors.New("remote image exceeds size limit")
+	}
+	return data, resp.Header.Get("Content-Type"), resp.StatusCode, nil
+}
+
+func (l *imageLoader) fetchHTTPImage(rawURL string, parsed *url.URL, referer string) (ui.ImageSource, error) {
+	// Build a small ordered list of Referer strategies so both anti-hotlink CDNs
+	// (requiring article/origin Referer) and strict CDNs (rejecting foreign Referer,
+	// e.g. WeChat/Bilibili/Imgur) succeed on the first load.
+	var attempts []string
+	ref := strings.TrimSpace(referer)
+	originRef := ""
+	if parsed != nil && parsed.Host != "" {
+		originRef = parsed.Scheme + "://" + parsed.Host + "/"
+	}
+	if ref != "" {
+		attempts = append(attempts, ref, "")
+		if originRef != "" && !strings.EqualFold(originRef, ref) {
+			attempts = append(attempts, originRef)
+		}
+	} else {
+		attempts = append(attempts, "")
+		if originRef != "" {
+			attempts = append(attempts, originRef)
+		}
+	}
+
+	var lastErr error
+	for i, tryRef := range attempts {
+		data, ct, status, err := l.doImageGet(rawURL, tryRef)
+		if err == nil {
+			return decodeImageBytes(data, ct, parsed.Path)
+		}
+		lastErr = err
+		// Only retry with alternate Referer on 400/401/403 responses.
+		if i+1 < len(attempts) && (status == http.StatusForbidden || status == http.StatusUnauthorized || status == http.StatusBadRequest) {
+			continue
+		}
+		break
+	}
+	return nil, lastErr
 }
 
 // resolveRelativeURL resolves a potentially relative image/link URL against baseURL.

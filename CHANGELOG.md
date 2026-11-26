@@ -10,7 +10,7 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ### Fixed
 
-- Restored image rendering in the Native UI subscription reader for Planet/IPFS/ENS relative image paths, unreferenced Planet attachments and RSS `<media:content>`/`<enclosure>` images, lazy-loaded HTML `data-src`/`srcset` attributes, WebP and SVG images, and hotlink-protected CDNs (with desktop `User-Agent`/`Referer` headers and expiring error cache).
+- Restored image rendering in the Native UI subscription reader for HTTP(S) images inside `<a href><img ...></a>` and `<picture><source>` elements, linked/inline Markdown images, Planet/IPFS/ENS relative image paths, unreferenced Planet attachments and RSS `<media:content>`/`<enclosure>` images, lazy-loaded HTML `data-src`/`srcset` attributes, WebP and SVG images, and hotlink-protected or HTTP/2-sensitive CDNs (using HTTP/1.1 transport, automatic `Referer` fallback on 403, and expiring error cache).
 
 ## [0.0.1-alpha.7] - 2026-11-26
 
