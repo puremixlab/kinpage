@@ -61,11 +61,11 @@ func (a *App) viewArticleReader(c *ui.Context) {
 		ui.Column(c).Fill().Background(pal.canvas).Center().Children(func() {
 			display.Empty(c, display.EmptyProps{
 				Icon:        lucide.BookOpen(),
-				Title:       "选择一篇文章开始阅读",
-				Description: "或创建一篇新文章，草稿会先安全保存在本地",
+				Title:       a.t("reader.emptyTitle"),
+				Description: a.t("reader.emptyDesc"),
 				Action: func() {
 					if site := a.currentSite(); site != nil {
-						if macPrimaryButton(c, "empty-compose", "写新文章", pal) {
+						if macPrimaryButton(c, "empty-compose", a.t("reader.writeNewPost"), pal) {
 							a.startNewDraft(site.ID)
 						}
 					}
@@ -80,22 +80,22 @@ func (a *App) viewArticleReader(c *ui.Context) {
 		ui.Scroll(c).TrackScroll(&a.readerScroll).Fill().Background(pal.canvas).Children(func() {
 			ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(36).PaddingY(28).Children(func() {
 				ui.Column(c).Width(colW).Gap(12).Children(func() {
-					ui.Text(c, fallbackTitle(art.Title)).Font(macPlanetFont).FontSize(28).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.ink)
+					ui.Text(c, a.fallbackTitle(art.Title)).Font(macPlanetFont).FontSize(28).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.ink)
 					var meta []string
 					if site := a.currentSite(); site != nil {
-						meta = append(meta, fallbackTitle(site.Name))
+						meta = append(meta, a.fallbackTitle(site.Name))
 					}
 					if !art.Modified.IsZero() {
-						meta = append(meta, formatReaderDate(art.Modified))
+						meta = append(meta, a.formatReaderDate(art.Modified))
 					}
 					if art.Pinned != nil {
-						meta = append(meta, "已置顶")
+						meta = append(meta, a.t("reader.pinnedBadge"))
 					}
 					if art.Slug != "" {
 						meta = append(meta, "/"+art.Slug)
 					}
 					if len(art.Tags) > 0 {
-						meta = append(meta, fmt.Sprintf("%d 标签", len(art.Tags)))
+						meta = append(meta, a.tf("reader.tagCount", len(art.Tags)))
 					}
 					if len(meta) > 0 {
 						ui.Text(c, strings.Join(meta, "   ·   ")).Font(macPlanetFont).FontSize(12.5).TextColor(pal.muted)
@@ -109,7 +109,7 @@ func (a *App) viewArticleReader(c *ui.Context) {
 							}
 						}
 						macInsetCard(c, pal, func() {
-							ui.Text(c, fmt.Sprintf("待办事项 (%d/%d)", doneCount, len(todos))).
+							ui.Text(c, a.tf("reader.todosHeading", doneCount, len(todos))).
 								Font(macPlanetFont).FontSize(12).FontWeight(600).TextColor(pal.muted)
 							for _, td := range todos {
 								item := td
@@ -117,7 +117,7 @@ func (a *App) viewArticleReader(c *ui.Context) {
 								ui.Checkbox(c.Key(fmt.Sprintf("todo-%s-%d", art.ID, item.LineIndex)), &checked, item.Text)
 								if checked != item.Checked && a.backend != nil {
 									if _, err := a.backend.ToggleArticleTodo(art.SiteID, art.ID, item.LineIndex); err != nil {
-										a.setError("更新待办状态失败：" + err.Error())
+										a.setError(a.tf("status.todoToggleErr", err.Error()))
 									} else {
 										a.Reload()
 									}

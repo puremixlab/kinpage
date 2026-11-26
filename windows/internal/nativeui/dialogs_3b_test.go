@@ -35,9 +35,12 @@ func TestNativeUIIntegrationsModalBatch3B(t *testing.T) {
 		t.Fatalf("expected Plain template applied, got %q", backend.sites[0].TemplateName)
 	}
 
-	// 2. Deploy tab.
+	// 2. Deploy tab (empty state -> secondary modal -> configured card -> deploy now).
 	if err := tt.Click("部署"); err != nil {
 		t.Fatalf("failed to switch to deploy tab: %v", err)
+	}
+	if err := tt.Click("添加"); err != nil {
+		t.Fatalf("failed to open deploy secondary modal: %v", err)
 	}
 	app.integrations.deployName = "my-blog"
 	app.integrations.deployToken = "secret"
@@ -52,9 +55,12 @@ func TestNativeUIIntegrationsModalBatch3B(t *testing.T) {
 		t.Fatalf("expected 2 deploy calls, got %+v", backend.deployCalls)
 	}
 
-	// 3. X Sync tab.
+	// 3. X Sync tab (empty state -> secondary modal -> save).
 	if err := tt.Click("X 同步"); err != nil {
 		t.Fatalf("failed to switch to X tab: %v", err)
+	}
+	if err := tt.Click("添加"); err != nil {
+		t.Fatalf("failed to open X secondary modal: %v", err)
 	}
 	if err := tt.Click("保存 X 配置"); err != nil {
 		t.Fatalf("failed to save X config: %v", err)
@@ -63,9 +69,12 @@ func TestNativeUIIntegrationsModalBatch3B(t *testing.T) {
 		t.Fatal("expected X sync configured")
 	}
 
-	// 4. Telegram tab.
+	// 4. Telegram tab (empty state -> secondary modal -> save).
 	if err := tt.Click("Telegram"); err != nil {
 		t.Fatalf("failed to switch to Telegram tab: %v", err)
+	}
+	if err := tt.Click("添加"); err != nil {
+		t.Fatalf("failed to open Telegram secondary modal: %v", err)
 	}
 	if err := tt.Click("保存 Telegram"); err != nil {
 		t.Fatalf("failed to save Telegram config: %v", err)
@@ -74,9 +83,12 @@ func TestNativeUIIntegrationsModalBatch3B(t *testing.T) {
 		t.Fatal("expected Telegram configured")
 	}
 
-	// 5. Aggregation tab.
+	// 5. Aggregation tab (empty state -> secondary modal -> configured list -> sync).
 	if err := tt.Click("聚合"); err != nil {
 		t.Fatalf("failed to switch to aggregation tab: %v", err)
+	}
+	if err := tt.Click("添加"); err != nil {
+		t.Fatalf("failed to open aggregation secondary modal: %v", err)
 	}
 	app.integrations.aggSources = "https://a.example/rss"
 	tt.Frame()
@@ -90,9 +102,12 @@ func TestNativeUIIntegrationsModalBatch3B(t *testing.T) {
 		t.Fatalf("expected aggSynced=1, got %d", backend.aggSynced)
 	}
 
-	// 6. Web3 tab.
+	// 6. Web3 tab (empty state -> secondary modal -> save).
 	if err := tt.Click("Web3"); err != nil {
 		t.Fatalf("failed to switch to Web3 tab: %v", err)
+	}
+	if err := tt.Click("配置"); err != nil {
+		t.Fatalf("failed to open Web3 secondary modal: %v", err)
 	}
 	app.integrations.web3Donate = true
 	app.integrations.web3ETH = "vitalik.eth"

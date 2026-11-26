@@ -38,9 +38,9 @@ func (a *App) followFeaturedPlanets() {
 	}
 	a.Reload()
 	if followed > 0 {
-		a.setStatus(fmt.Sprintf("已关注 %d 个精选站点", followed))
+		a.setStatus(a.tf("status.followedFeatured", followed))
 	} else if lastErr != nil {
-		a.setError("关注精选站点失败：" + lastErr.Error())
+		a.setError(a.tf("status.followFeaturedErr", lastErr.Error()))
 	}
 }
 
@@ -119,28 +119,29 @@ func (a *App) viewDashboardToolbar(c *ui.Context) {
 			AlignSelf(ui.Stretch).DragWindow().Children(func() {
 			ui.Row(c).AlignItems(ui.Center).Gap(4).Shrink(0).Children(func() {
 				if a.sidebarCollapsed {
-					if toolbarIconBtn(c, "tb-expand-sidebar", lucide.PanelLeftOpen(), "展开侧边栏").Clicked() {
+					if toolbarIconBtn(c, "tb-expand-sidebar", lucide.PanelLeftOpen(), a.t("nav.expandSidebar")).Clicked() {
 						a.sidebarCollapsed = false
 					}
 				}
 			})
 			ui.Row(c).AlignItems(ui.Center).Gap(8).Shrink(0).Children(func() {
-				if toolbarIconBtn(c, "dash-tb-search", lucide.Search(), "搜索文章").Clicked() {
+				if toolbarIconBtn(c, "dash-tb-search", lucide.Search(), a.t("toolbar.searchPosts")).Clicked() {
 					a.openGlobalSearch()
 				}
 				if len(a.sites) > 0 {
-					if macSecondaryButton(c, "dash-hero-quick", "快捷发文", pal) {
+					if macSecondaryButton(c, "dash-hero-quick", a.t("toolbar.quickPost"), pal) {
 						a.openQuickPost()
 					}
 				}
-				btn := ui.ButtonBase(c.Key("dash-hero-compose")).Label("写文章").
+				composeLabel := a.t("toolbar.writePost")
+				btn := ui.ButtonBase(c.Key("dash-hero-compose")).Label(composeLabel).
 					Height(28).PaddingX(14).Radius(6).Background(pal.prefsInk).
 					Center().Cursor(ui.CursorPointer)
 				if btn.Hovered() {
 					btn.Background(pal.prefsInk.Alpha(0.86))
 				}
 				btn.Children(func() {
-					ui.Text(c, "写文章").Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsCanvas).NoWrap()
+					ui.Text(c, composeLabel).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsCanvas).NoWrap()
 				})
 				if btn.Clicked() {
 					a.handleDashboardCompose()
@@ -165,15 +166,15 @@ func (a *App) viewDashboard(c *ui.Context) {
 						Shadow(0, 4, 14, 0, pal.prefsCardShadow).Children(func() {
 						display.Empty(c, display.EmptyProps{
 							Icon:        lucide.Globe(),
-							Title:       "还没有创建站点",
-							Description: "创建一个站点后即可开始本地写作、管理草稿与发布到 IPFS。",
+							Title:       a.t("dashboard.emptyTitle"),
+							Description: a.t("dashboard.emptyDesc"),
 							Action: func() {
 								ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-									if macPrimaryButton(c, "dash-create-first", "创建第一个站点", pal) {
+									if macPrimaryButton(c, "dash-create-first", a.t("dashboard.createFirstSite"), pal) {
 										a.createSiteOpen = true
 									}
 									if len(a.subscriptions) == 0 {
-										if macSecondaryButton(c, "dash-follow-featured", "关注精选站点", pal) {
+										if macSecondaryButton(c, "dash-follow-featured", a.t("dashboard.followFeatured"), pal) {
 											a.followFeaturedPlanets()
 										}
 									}
@@ -205,7 +206,7 @@ func (a *App) viewDashboardMasthead(c *ui.Context) {
 	}
 
 	ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).Children(func() {
-		ui.Text(c, formatMastheadDate(time.Now())).
+		ui.Text(c, a.formatMastheadDate(time.Now())).
 			Font(macPlanetFont).FontSize(26).FontWeight(600).LetterSpacing(-0.02).
 			TextColor(pal.prefsInk).NoWrap()
 		a.viewMiniHeatmap(c, counts)
@@ -230,7 +231,7 @@ func (a *App) viewMiniHeatmap(c *ui.Context, counts map[string]int) {
 					n := counts[key]
 					ui.Box(c.Key("hm-m-"+key)).Size(9, 9).Radius(2).
 						Background(heatmapColor(n, pal)).
-						Tooltip(fmt.Sprintf("%s：%d 次写作活动", key, n))
+						Tooltip(a.tf("dashboard.heatmapTooltip", key, n))
 				}
 			})
 		}
@@ -242,7 +243,7 @@ func (a *App) viewDashboardHeroPaper(c *ui.Context) {
 	hoverBg, hoverBorder, topHighlight := letterpressSurfaceColors(pal)
 
 	if len(a.dashboard.RecentDrafts) == 0 {
-		card := ui.ButtonBase(c.Key("dash-hero-empty-sheet")).Label("开始写作").
+		card := ui.ButtonBase(c.Key("dash-hero-empty-sheet")).Label(a.t("dashboard.startWritingLabel")).
 			AlignSelf(ui.Stretch).AlignItems(ui.Stretch).Radius(12).
 			Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).
 			Shadow(0, 4, 14, 0, pal.prefsCardShadow).
@@ -254,14 +255,14 @@ func (a *App) viewDashboardHeroPaper(c *ui.Context) {
 			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Radius(12).Clip().AlignItems(ui.Stretch).Children(func() {
 				ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(topHighlight)
 				ui.Column(c).AlignSelf(ui.Stretch).Padding(22, 24, 20, 24).Gap(8).AlignItems(ui.Start).Children(func() {
-					ui.Text(c, "空白稿纸").Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted)
-					ui.Text(c, "写下今天的想法").Font(macPlanetFont).FontSize(20).FontWeight(600).LetterSpacing(-0.02).TextColor(pal.prefsInk)
-					ui.Text(c, "所有草稿都保存在本地，随时可以继续润色并发布到站点。").Font(macPlanetFont).FontSize(13.5).TextColor(pal.prefsSecondary)
+					ui.Text(c, a.t("dashboard.blankPaper")).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted)
+					ui.Text(c, a.t("dashboard.writeToday")).Font(macPlanetFont).FontSize(20).FontWeight(600).LetterSpacing(-0.02).TextColor(pal.prefsInk)
+					ui.Text(c, a.t("dashboard.blankPaperDesc")).Font(macPlanetFont).FontSize(13.5).TextColor(pal.prefsSecondary)
 					ui.Box(c).Height(4)
 					ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
 					ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Padding(8, 0, 0, 0).Children(func() {
-						ui.Text(c, "本地创作").Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted)
-						ui.Text(c, "开始写作 →").Font(macPlanetFont).FontSize(12).FontWeight(500).TextColor(pal.prefsInk)
+						ui.Text(c, a.t("dashboard.localWriting")).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted)
+						ui.Text(c, a.t("dashboard.startWritingAction")).Font(macPlanetFont).FontSize(12).FontWeight(500).TextColor(pal.prefsInk)
 					})
 				})
 			})
@@ -274,8 +275,8 @@ func (a *App) viewDashboardHeroPaper(c *ui.Context) {
 
 	d := a.dashboard.RecentDrafts[0]
 	siteID, draftID := d.SiteID, d.ID
-	title := fallbackTitle(d.Title)
-	siteName := fallbackTitle(d.SiteName)
+	title := a.fallbackTitle(d.Title)
+	siteName := a.fallbackTitle(d.SiteName)
 	label := fmt.Sprintf("%s  ·  %s", title, siteName)
 	key := "draft:" + siteID + ":" + draftID
 	excerpt := ""
@@ -287,7 +288,7 @@ func (a *App) viewDashboardHeroPaper(c *ui.Context) {
 		wordCount = a.articleWordCounts[key]
 	}
 	if excerpt == "" {
-		excerpt = "本地草稿，点击继续写作。"
+		excerpt = a.t("dashboard.localDraftHint")
 	}
 
 	card := ui.ButtonBase(c.Key("dash-hero-draft-"+draftID)).Label(label).
@@ -304,8 +305,8 @@ func (a *App) viewDashboardHeroPaper(c *ui.Context) {
 			ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(topHighlight)
 			ui.Column(c).AlignSelf(ui.Stretch).Padding(22, 24, 18, 24).Gap(8).AlignItems(ui.Start).Children(func() {
 				ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
-					ui.Text(c, "继续写作 · "+siteName).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted).NoWrap()
-					ui.Text(c, formatShortDate(d.Modified)).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted).NoWrap()
+					ui.Text(c, a.tf("dashboard.continueWritingPrefix", siteName)).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted).NoWrap()
+					ui.Text(c, a.formatShortDate(d.Modified)).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted).NoWrap()
 				})
 				ui.Text(c, title).Font(macPlanetFont).FontSize(20).FontWeight(600).LetterSpacing(-0.02).
 					TextColor(pal.prefsInk).MaxLines(2).Ellipsis("…")
@@ -314,12 +315,12 @@ func (a *App) viewDashboardHeroPaper(c *ui.Context) {
 				ui.Box(c).Height(6)
 				ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
 				ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Padding(8, 0, 0, 0).Children(func() {
-					meta := "本地草稿"
+					meta := a.t("dashboard.localDraft")
 					if wordCount > 0 {
-						meta += " · " + formatWordCount(wordCount)
+						meta += " · " + a.formatWordCount(wordCount)
 					}
 					ui.Text(c, meta).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted).NoWrap()
-					ui.Text(c, "继续写作 →").Font(macPlanetFont).FontSize(12).FontWeight(500).TextColor(pal.prefsInk).NoWrap()
+					ui.Text(c, a.t("dashboard.continueWritingAction")).Font(macPlanetFont).FontSize(12).FontWeight(500).TextColor(pal.prefsInk).NoWrap()
 				})
 			})
 		})
@@ -373,11 +374,11 @@ func (a *App) viewDashboardArticles(c *ui.Context, containerW float32) {
 		// Unified Site Bookmark Shelf.
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(8).AlignSelf(ui.Stretch).Children(func() {
 			ui.Row(c).Gap(6).Wrap().AlignItems(ui.Center).Grow(1).MinWidth(0).Children(func() {
-				a.siteBookmarkChip(c, "art-filter-all", "全部", nil, -1, ui.Transparent, a.articleFilterSiteID == "", func() {
+				a.siteBookmarkChip(c, "art-filter-all", a.t("common.all"), nil, -1, ui.Transparent, a.articleFilterSiteID == "", func() {
 					a.articleFilterSiteID = ""
 				})
 				if len(a.dashboard.RecentDrafts) > 1 {
-					a.draftBookmarkChip(c, fmt.Sprintf("草稿 · %d", len(a.dashboard.RecentDrafts)), a.articleFilterSiteID == dashboardFilterDrafts, func() {
+					a.draftBookmarkChip(c, a.tf("dashboard.draftsChip", len(a.dashboard.RecentDrafts)), a.articleFilterSiteID == dashboardFilterDrafts, func() {
 						if a.articleFilterSiteID == dashboardFilterDrafts {
 							a.articleFilterSiteID = ""
 						} else {
@@ -397,7 +398,7 @@ func (a *App) viewDashboardArticles(c *ui.Context, containerW float32) {
 						}
 					}
 					fs := fullSite
-					a.siteBookmarkChip(c, "art-filter-"+sid, fallbackTitle(s.Name), &fs, idx, dotColor, a.articleFilterSiteID == sid, func() {
+					a.siteBookmarkChip(c, "art-filter-"+sid, a.fallbackTitle(s.Name), &fs, idx, dotColor, a.articleFilterSiteID == sid, func() {
 						if a.articleFilterSiteID == sid {
 							a.selectSite(sid)
 						} else {
@@ -406,7 +407,7 @@ func (a *App) viewDashboardArticles(c *ui.Context, containerW float32) {
 					})
 				}
 			})
-			if macIconButton(c, "dash-sites-add", iconPlus, 26, 13, pal.prefsMuted, "新建站点") {
+			if macIconButton(c, "dash-sites-add", iconPlus, 26, 13, pal.prefsMuted, a.t("dashboard.newSiteTooltip")) {
 				a.newSiteName = ""
 				a.newSiteAbout = ""
 				a.createSiteError = ""
@@ -441,7 +442,7 @@ func (a *App) viewDashboardArticles(c *ui.Context, containerW float32) {
 		if len(items) == 0 {
 			ui.Column(c).AlignSelf(ui.Stretch).Padding(24).Radius(10).
 				Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).Children(func() {
-				ui.Text(c, "暂无匹配的文章").Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
+				ui.Text(c, a.t("dashboard.noMatchingPosts")).Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
 			})
 			return
 		}
@@ -462,8 +463,8 @@ func (a *App) viewDashboardArticles(c *ui.Context, containerW float32) {
 						item := items[idx]
 						entry := item.entry
 						siteID, itemID := entry.SiteID, entry.ID
-						title := fallbackTitle(entry.Title)
-						siteName := fallbackTitle(entry.SiteName)
+						title := a.fallbackTitle(entry.Title)
+						siteName := a.fallbackTitle(entry.SiteName)
 						label := fmt.Sprintf("%s  ·  %s", title, siteName)
 						prefix := "art:"
 						cardKey := "dash-art-" + itemID
@@ -481,12 +482,12 @@ func (a *App) viewDashboardArticles(c *ui.Context, containerW float32) {
 							wordCount = a.articleWordCounts[cacheKey]
 						}
 						if item.isDraft && excerpt == "" {
-							excerpt = "本地草稿，点击继续写作。"
+							excerpt = a.t("dashboard.localDraftHint")
 						}
 
 						metaLeft := siteName
 						if item.isDraft {
-							metaLeft = siteName + " · 草稿"
+							metaLeft = a.tf("dashboard.draftSuffix", siteName)
 						}
 						dotColor := a.siteStatusDotColor(siteID)
 
@@ -510,7 +511,7 @@ func (a *App) viewDashboardArticles(c *ui.Context, containerW float32) {
 											ui.Box(c).Size(5.5, 5.5).Radius(3).Background(dotColor).Shrink(0)
 											ui.Text(c, metaLeft).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted).NoWrap().Ellipsis("…")
 										})
-										ui.Text(c, formatShortDate(entry.Modified)).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted).Shrink(0).NoWrap()
+										ui.Text(c, a.formatShortDate(entry.Modified)).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted).Shrink(0).NoWrap()
 									})
 									// Bold editorial title.
 									ui.Text(c, title).Font(macPlanetFont).FontSize(15.5).FontWeight(600).LetterSpacing(-0.015).
@@ -524,11 +525,11 @@ func (a *App) viewDashboardArticles(c *ui.Context, containerW float32) {
 									// Subtle hairline footer: word count left, hover-revealed action right.
 									ui.Box(c).Height(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
 									ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Padding(6, 0, 0, 0).Children(func() {
-										ui.Text(c, formatWordCount(wordCount)).Font(macPlanetFont).FontSize(11).TextColor(pal.prefsMuted).NoWrap()
+										ui.Text(c, a.formatWordCount(wordCount)).Font(macPlanetFont).FontSize(11).TextColor(pal.prefsMuted).NoWrap()
 										if hovered {
-											actionText := "阅读 ↗"
+											actionText := a.t("dashboard.readAction")
 											if item.isDraft {
-												actionText = "继续写作 →"
+												actionText = a.t("dashboard.continueWritingAction")
 											}
 											ui.Text(c, actionText).Font(macPlanetFont).FontSize(11).FontWeight(500).TextColor(pal.prefsInk).NoWrap()
 										}
@@ -618,18 +619,19 @@ func (a *App) siteBookmarkChip(c *ui.Context, key, label string, site *store.Sit
 func (a *App) viewComposePickerModal(c *ui.Context) {
 	pal := a.pal
 	macSheet(c, &a.composePickerOpen, macSheetProps{
-		Title:      "选择要写作的站点",
-		Width:      380,
-		HideFooter: true,
+		Title:        a.t("dashboard.composePickerTitle"),
+		Width:        380,
+		HideFooter:   true,
+		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
-		ui.Text(c, "请选择新文章所属的站点：").Font(macPlanetFont).FontSize(12).TextColor(pal.secondary)
+		ui.Text(c, a.t("dashboard.composePickerPrompt")).Font(macPlanetFont).FontSize(12).TextColor(pal.secondary)
 		ui.Column(c).Gap(4).AlignSelf(ui.Stretch).Children(func() {
 			for i, s := range a.sites {
 				if s.Archived {
 					continue
 				}
 				idx, site := i, s
-				siteID, siteName := site.ID, fallbackTitle(site.Name)
+				siteID, siteName := site.ID, a.fallbackTitle(site.Name)
 				if interactiveRow(c, "compose-pick-"+siteID, siteName, pal.subtle, pal.hover, pal.active).
 					Radius(6).PaddingX(12).PaddingY(8).
 					Children(func() {

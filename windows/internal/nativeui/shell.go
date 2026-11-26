@@ -32,6 +32,9 @@ func (a *App) View(c *ui.Context) {
 		if c.Shortcut(ui.Ctrl, ui.KeyD) {
 			a.openQuickPost()
 		}
+		if c.Shortcut(ui.Ctrl, ui.KeyComma) {
+			a.openToolsModal(toolsTabGeneral)
+		}
 		if a.mode == viewSite && !a.editing && c.Shortcut(ui.Ctrl, ui.KeyE) {
 			if art := a.currentArticle(); art != nil {
 				a.openArticleForEdit(*art)
@@ -139,20 +142,21 @@ func (a *App) viewDashboardPane(c *ui.Context) {
 func (a *App) viewCreateSiteModal(c *ui.Context) {
 	pal := a.pal
 	if macSheet(c, &a.createSiteOpen, macSheetProps{
-		Title:       "新建站点",
-		Width:       440,
-		PrimaryText: "创建",
-		CancelText:  "取消",
+		Title:        a.t("dialog.createSite.title"),
+		Width:        440,
+		PrimaryText:  a.t("common.create"),
+		CancelText:   a.t("common.cancel"),
+		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
-		ui.TextInput(c.Key("modal-site-name"), &a.newSiteName).Placeholder("站点名称").Label("站点名称").AutoFocus().AlignSelf(ui.Stretch)
-		ui.TextArea(c.Key("modal-site-about"), &a.newSiteAbout).Placeholder("站点简介（可选）").Label("站点简介").Lines(2, 4).AlignSelf(ui.Stretch)
+		ui.TextInput(c.Key("modal-site-name"), &a.newSiteName).Placeholder(a.t("dialog.createSite.namePlaceholder")).Label(a.t("dialog.createSite.nameLabel")).AutoFocus().AlignSelf(ui.Stretch)
+		ui.TextArea(c.Key("modal-site-about"), &a.newSiteAbout).Placeholder(a.t("dialog.createSite.aboutPlaceholder")).Label(a.t("dialog.createSite.aboutLabel")).Lines(2, 4).AlignSelf(ui.Stretch)
 		if a.createSiteError != "" {
 			ui.Text(c, a.createSiteError).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
 		}
 	}) {
 		name := strings.TrimSpace(a.newSiteName)
 		if name == "" {
-			a.createSiteError = "请输入站点名称"
+			a.createSiteError = a.t("dialog.createSite.nameRequired")
 			return
 		}
 		site, err := a.backend.CreateSite(name, strings.TrimSpace(a.newSiteAbout))
@@ -164,6 +168,6 @@ func (a *App) viewCreateSiteModal(c *ui.Context) {
 		a.createSiteError = ""
 		a.Reload()
 		a.selectSite(site.ID)
-		a.setStatus("已创建站点：" + site.Name)
+		a.setStatus(a.tf("status.siteCreated", site.Name))
 	}
 }

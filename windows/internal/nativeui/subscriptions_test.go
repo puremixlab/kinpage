@@ -16,11 +16,11 @@ func TestNativeUISubscriptionsFollowStarEditAndUnfollow(t *testing.T) {
 	tt := ui.NewTester(app.View, 1280, 860)
 	tt.Frame()
 
-	// Follow a new subscription via bottom-bar '+' menu.
-	if err := tt.Click("新建或关注"); err != nil {
-		t.Fatalf("failed to open add menu: %v", err)
+	// Follow a new subscription via bottom-left Settings popover.
+	if err := tt.Click("设置"); err != nil {
+		t.Fatalf("failed to open settings popover: %v", err)
 	}
-	if err := tt.ChooseMenuItem("关注站点…"); err != nil {
+	if err := tt.Click("关注站点…"); err != nil {
 		t.Fatalf("failed to open follow modal: %v", err)
 	}
 	app.followAddress = "https://example.com/feed.xml"

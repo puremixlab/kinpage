@@ -4,6 +4,14 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ## [Unreleased]
 
+### Added
+
+- Restored full Native UI internationalization (`zh-CN`, `zh-TW`, `en`) across the sidebar, menus, toolbars, Writing Desk, reader, editor, subscriptions, site settings, integrations, and system tools, with an in-app live language switcher (`界面语言` / `Language`), persistent locale preference in `nativeui-layout.json`, and automatic fallback to `en` for missing languages or keys.
+
+### Changed
+
+- Redesigned Native UI settings with a ChatGPT-style progressive disclosure flow: a compact bottom-left `设置` (`Settings`) menu (`新建站点…`, `关注站点…`, `快捷发文`, `打开 IPFS 资源…`, and `更多设置…` / `Ctrl+,`), a unified grouped Global Settings window with sidebar search (`通用`, `数据与存储`, `网络与工具`, `智能与扩展`), and empty-state-first pages with secondary configuration modals across both Global Settings (AI, Local API, Published Folders, IPNS Keys) and Site Settings integrations (Deploy, Services, X, Telegram, Aggregation, Web3); moved the IPFS node status button to the sidebar bottom-right.
+
 ## [0.0.1-rc.1] - 2026-11-26
 
 ### Changed
