@@ -47,13 +47,14 @@ type App struct {
 	mode           viewMode
 	selectedSiteID string
 
-	dashboard       store.DashboardSnapshot
-	activity        []store.DailyActivity
-	sites           []store.Site
-	drafts          []store.Draft
-	articles        []store.Article
-	subscriptions   []store.Subscription
-	articleExcerpts map[string]string
+	dashboard         store.DashboardSnapshot
+	activity          []store.DailyActivity
+	sites             []store.Site
+	drafts            []store.Draft
+	articles          []store.Article
+	subscriptions     []store.Subscription
+	articleExcerpts   map[string]string
+	articleWordCounts map[string]int
 
 	// Reading / editing selection within the selected site.
 	editing           bool
@@ -314,7 +315,9 @@ func (a *App) Reload() {
 }
 
 func (a *App) refreshDashboardExcerpts() {
-	excerpts := make(map[string]string, len(a.dashboard.RecentArticles)+len(a.dashboard.RecentDrafts))
+	capHint := len(a.dashboard.RecentArticles) + len(a.dashboard.RecentDrafts)
+	excerpts := make(map[string]string, capHint)
+	wordCounts := make(map[string]int, capHint)
 	seenArtSites := map[string]bool{}
 	for _, entry := range a.dashboard.RecentArticles {
 		if entry.SiteID == "" || seenArtSites[entry.SiteID] {
@@ -323,7 +326,9 @@ func (a *App) refreshDashboardExcerpts() {
 		seenArtSites[entry.SiteID] = true
 		if arts, err := a.backend.Articles(entry.SiteID); err == nil {
 			for _, art := range arts {
-				excerpts["art:"+art.SiteID+":"+art.ID] = excerptText(art.Content, 110)
+				k := "art:" + art.SiteID + ":" + art.ID
+				excerpts[k] = excerptText(art.Content, 120)
+				wordCounts[k] = countBodyChars(art.Content)
 			}
 		}
 	}
@@ -335,11 +340,24 @@ func (a *App) refreshDashboardExcerpts() {
 		seenDraftSites[entry.SiteID] = true
 		if drafts, err := a.backend.Drafts(entry.SiteID); err == nil {
 			for _, d := range drafts {
-				excerpts["draft:"+d.SiteID+":"+d.ID] = excerptText(d.Content, 110)
+				k := "draft:" + d.SiteID + ":" + d.ID
+				excerpts[k] = excerptText(d.Content, 140)
+				wordCounts[k] = countBodyChars(d.Content)
 			}
 		}
 	}
 	a.articleExcerpts = excerpts
+	a.articleWordCounts = wordCounts
+}
+
+func countBodyChars(raw string) int {
+	n := 0
+	for _, r := range raw {
+		if r != ' ' && r != '\t' && r != '\n' && r != '\r' {
+			n++
+		}
+	}
+	return n
 }
 
 func (a *App) loadSiteItems(siteID string) {

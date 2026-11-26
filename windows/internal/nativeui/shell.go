@@ -132,7 +132,7 @@ func (a *App) View(c *ui.Context) {
 }
 
 func (a *App) viewDashboardPane(c *ui.Context) {
-	a.viewDetailToolbar(c, true)
+	a.viewDashboardToolbar(c)
 	a.viewDashboard(c)
 }
 
