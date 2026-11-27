@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 	"log"
 	"os"
@@ -13,13 +12,12 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+	"windows/internal/desktopshortcut"
 	"windows/internal/nativeui"
 	"windows/internal/services"
 	"windows/internal/store"
+	"windows/resources"
 )
-
-//go:embed resources/icon.png
-var appIconPNG []byte
 
 func main() {
 	// MyGo CLI invokes the executable with MYGO_GENERATE set during builds.
@@ -105,8 +103,9 @@ func main() {
 			Content:        ui.View(nativeApp.View),
 		}
 		win := mygo.NewWindow(opts)
-		if len(appIconPNG) > 0 {
-			_ = win.SetIcon(appIconPNG)
+		appIconPNG := nativeApp.AppIcon().PNG()
+		if err := win.SetIcon(appIconPNG); err != nil {
+			log.Printf("window icon unavailable: %v", err)
 		}
 		nativeApp.SetWebViewFactory(func() (nativeui.WebViewHost, error) {
 			wv, err := win.NewWebView(mygo.WebViewOptions{
@@ -230,6 +229,16 @@ func main() {
 		} else {
 			log.Printf("system tray unavailable: %v", err)
 		}
+		nativeApp.SetAppIconHandlers(func(icon resources.AppIcon) error {
+			png := icon.PNG()
+			if err := win.SetIcon(png); err != nil {
+				return err
+			}
+			if tray != nil {
+				return tray.SetIcon(png, false)
+			}
+			return nil
+		}, desktopshortcut.Apply)
 
 		win.OnClose(func(event *mygo.CloseEvent) {
 			if quitting.Load() {

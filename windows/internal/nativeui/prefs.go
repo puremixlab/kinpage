@@ -2,6 +2,7 @@ package nativeui
 
 import (
 	"encoding/json"
+	"errors"
 	"maps"
 	"math"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"windows/internal/store"
+	"windows/resources"
 )
 
 type badgePos struct {
@@ -19,6 +21,7 @@ type badgePos struct {
 
 type layoutPrefs struct {
 	Locale           string              `json:"locale,omitempty"`
+	AppIcon          resources.AppIcon   `json:"appIcon,omitempty"`
 	SidebarWidth     float32             `json:"sidebarWidth"`
 	PostsPanelWidth  float32             `json:"postsPanelWidth"`
 	SidebarCollapsed bool                `json:"sidebarCollapsed"`
@@ -38,6 +41,7 @@ type layoutPrefs struct {
 
 func layoutPrefsEqual(a, b layoutPrefs) bool {
 	return a.Locale == b.Locale &&
+		a.AppIcon == b.AppIcon &&
 		a.SidebarWidth == b.SidebarWidth &&
 		a.PostsPanelWidth == b.PostsPanelWidth &&
 		a.SidebarCollapsed == b.SidebarCollapsed &&
@@ -77,6 +81,7 @@ func (a *App) EnablePrefsPersistence(path string) {
 		a.locale = NormalizeLocale(p.Locale)
 		a.syncEditorLocale()
 	}
+	a.appIcon = resources.NormalizeAppIcon(p.AppIcon)
 	if p.SidebarWidth >= 220 && p.SidebarWidth <= 420 {
 		a.sidebarWidth = p.SidebarWidth
 	}
@@ -160,6 +165,7 @@ func (a *App) currentLayoutPrefs() layoutPrefs {
 	}
 	return layoutPrefs{
 		Locale:           string(a.Locale()),
+		AppIcon:          a.AppIcon(),
 		SidebarWidth:     float32(math.Round(float64(a.sidebarWidth))),
 		PostsPanelWidth:  float32(math.Round(float64(a.postsPanelWidth))),
 		SidebarCollapsed: a.sidebarCollapsed,
@@ -178,23 +184,36 @@ func (a *App) currentLayoutPrefs() layoutPrefs {
 	}
 }
 
-func (a *App) maybeSaveLayoutPrefs() {
+func (a *App) maybeSaveLayoutPrefs() error {
 	if a.prefsPath == "" {
-		return
+		return nil
 	}
 	cur := a.currentLayoutPrefs()
 	if layoutPrefsEqual(cur, a.lastSavedPrefs) {
-		return
-	}
-	a.lastSavedPrefs = cur
-	if err := os.MkdirAll(filepath.Dir(a.prefsPath), 0o755); err != nil {
-		return
+		return nil
 	}
 	data, err := json.MarshalIndent(cur, "", "  ")
 	if err != nil {
-		return
+		return err
 	}
-	_ = os.WriteFile(a.prefsPath, data, 0o600)
+	dir := filepath.Dir(a.prefsPath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, ".nativeui-layout-*.tmp")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	_, writeErr := tmp.Write(data)
+	if err := errors.Join(writeErr, tmp.Close()); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp.Name(), a.prefsPath); err != nil {
+		return err
+	}
+	a.lastSavedPrefs = cur
+	return nil
 }
 
 func (a *App) orderedSites() []store.Site {
