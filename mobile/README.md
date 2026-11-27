@@ -25,6 +25,8 @@ npm run bundle
 
 运行命令会生成平台工程并安装调试构建。Android 7 及以上和 iOS 16.4 及以上均受 Expo SDK 58 支持。设备分发需要各平台的签名配置。[Expo SDK 58](https://docs.expo.dev/versions/v58.0.0/)，[Expo 原生运行与构建](https://docs.expo.dev/workflow/overview/)。
 
+在 Windows 的深目录中构建 Android 时，Ninja 可能遇到路径长度限制。可将同一版本源码检出到较短的实际磁盘路径，例如 `D:\kp`，再从其中的 `mobile` 目录运行构建。
+
 ## 连接桌面后发布
 
 1. 从支持移动发布的邻页桌面源码运行 Windows 版。在本地 API 设置中启动服务，开启 Basic 认证并设置口令。默认监听 `127.0.0.1:8086`。
