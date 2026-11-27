@@ -24,7 +24,7 @@ const (
 	intTabWeb3      = 6
 )
 
-var deployKinds = []string{"cloudflare", "rsync", "dstack"}
+var deployKinds = []string{"cloudflare", "ssh"}
 
 type integrationsModalState struct {
 	open     bool
@@ -38,15 +38,15 @@ type integrationsModalState struct {
 	templateName   string
 	templateValues map[string]string
 
-	// Deployment.
-	deployKindIdx    int
-	deployName       string
-	deployServer     string
-	deployToken      string
-	deployAuto       bool
-	deployDelete     bool
-	deployConfigured map[string]bool
-	deployModalOpen  bool
+	// Deployment (persisted summaries loaded per target + isolated modal draft).
+	deployKindIdx   int
+	deployInfos     map[string]DeploymentSummary
+	deployName      string
+	deployServer    string
+	deployToken     string
+	deployAuto      bool
+	deployDelete    bool
+	deployModalOpen bool
 
 	// External services (Plausible / Filebase / Pinnable / dWebServices).
 	plausibleDomain     string
@@ -111,19 +111,27 @@ func (a *App) loadIntegrationsState(site store.Site) {
 			vals = loaded
 		}
 	}
+	deployInfos := map[string]DeploymentSummary{}
+	if a.backend != nil {
+		for _, kind := range deployKinds {
+			if info, err := a.backend.DeploymentSummary(site.ID, kind); err == nil {
+				deployInfos[kind] = info
+			}
+		}
+	}
 	a.integrations = integrationsModalState{
-		siteID:           site.ID,
-		siteName:         a.fallbackTitle(site.Name),
-		templateName:     site.TemplateName,
-		templateValues:   vals,
-		deployConfigured: map[string]bool{},
-		aggSources:       strings.Join(site.Aggregation, "\n"),
-		web3Donate:       site.AcceptsDonation,
-		web3Message:      site.AcceptsDonationMessage,
-		web3ETH:          site.AcceptsDonationETHAddress,
-		web3Juicebox:     site.JuiceboxEnabled,
-		web3JuiceboxID:   strconv.Itoa(site.JuiceboxProjectID),
-		web3Farcaster:    site.FarcasterManifestJSON,
+		siteID:         site.ID,
+		siteName:       a.fallbackTitle(site.Name),
+		templateName:   site.TemplateName,
+		templateValues: vals,
+		deployInfos:    deployInfos,
+		aggSources:     strings.Join(site.Aggregation, "\n"),
+		web3Donate:     site.AcceptsDonation,
+		web3Message:    site.AcceptsDonationMessage,
+		web3ETH:        site.AcceptsDonationETHAddress,
+		web3Juicebox:   site.JuiceboxEnabled,
+		web3JuiceboxID: strconv.Itoa(site.JuiceboxProjectID),
+		web3Farcaster:  site.FarcasterManifestJSON,
 	}
 }
 
@@ -335,48 +343,94 @@ func (a *App) viewTemplatePreviewSheet(c *ui.Context) {
 	}
 }
 
-var deployLabels = []string{"Cloudflare", "Rsync", "dStack"}
+var deployLabels = []string{"Cloudflare Pages", "SSH (rsync)"}
+
+func (a *App) openDeployModal(kind string) {
+	m := &a.integrations
+	info := m.deployInfos[kind]
+	m.deployName = info.Name
+	m.deployServer = info.Server
+	m.deployToken = ""
+	m.deployAuto = info.AutoDeploy
+	m.deployDelete = info.DeleteRemote
+	m.err = ""
+	m.deployModalOpen = true
+}
+
+func (a *App) refreshDeploySummary(kind string) {
+	m := &a.integrations
+	if a.backend == nil {
+		return
+	}
+	if m.deployInfos == nil {
+		m.deployInfos = map[string]DeploymentSummary{}
+	}
+	if info, err := a.backend.DeploymentSummary(m.siteID, kind); err == nil {
+		m.deployInfos[kind] = info
+	}
+}
 
 func (a *App) viewIntDeploy(c *ui.Context) {
 	pal := a.pal
 	m := &a.integrations
+	if m.deployKindIdx < 0 || m.deployKindIdx >= len(deployKinds) {
+		m.deployKindIdx = 0
+	}
 	macSegmented(c, "dep-kind", &m.deployKindIdx, deployLabels, pal)
 	kind := deployKinds[m.deployKindIdx]
 	label := deployLabels[m.deployKindIdx]
-	configured := m.deployConfigured != nil && m.deployConfigured[kind]
+	info := m.deployInfos[kind]
 
-	if !configured {
-		if settingsEmptyState(c, "dep-empty-add-"+kind, lucide.Upload(), a.tf("int.deploy.emptyDesc", label), a.t("common.add"), pal) {
-			m.err = ""
-			m.deployModalOpen = true
+	if !info.Configured {
+		actionLabel := a.tf("int.deploy.configureBtn", label)
+		if settingsEmptyState(c, "dep-empty-add-"+kind, lucide.Upload(), a.tf("int.deploy.emptyDesc", label), actionLabel, pal) {
+			a.openDeployModal(kind)
 		}
 		return
 	}
 
-	macInsetCard(c, pal, func() {
+	macHighlightCard(c, pal, a.siteSettings.highlightID == "site-deploy", func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-			ui.Column(c).Gap(3).Grow(1).MinWidth(0).Children(func() {
-				ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
-					ui.Box(c).Size(7, 7).Radius(4).Background(pal.green).Shrink(0)
+			ui.Column(c).Gap(4).Grow(1).MinWidth(0).Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(6).Wrap().Children(func() {
+					dotColor := pal.green
+					if info.Pending {
+						dotColor = pal.amber
+					}
+					ui.Box(c).Size(7, 7).Radius(4).Background(dotColor).Shrink(0)
 					title := label
-					if strings.TrimSpace(m.deployName) != "" {
-						title += " · " + strings.TrimSpace(m.deployName)
+					if strings.TrimSpace(info.Name) != "" {
+						title += " · " + strings.TrimSpace(info.Name)
 					}
 					ui.Text(c, title).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
+					if info.AutoDeploy {
+						ui.Box(c).Padding(1, 6, 1, 6).Radius(4).Background(pal.hover).Children(func() {
+							ui.Text(c, a.t("int.deploy.autoTag")).Font(macPlanetFont).FontSize(10.5).TextColor(pal.prefsSecondary).NoWrap()
+						})
+					}
+					if info.Pending {
+						ui.Box(c).Padding(1, 6, 1, 6).Radius(4).Background(pal.hover).Children(func() {
+							ui.Text(c, a.t("int.deploy.pendingTag")).Font(macPlanetFont).FontSize(10.5).TextColor(pal.amber).NoWrap()
+						})
+					}
 				})
-				if strings.TrimSpace(m.deployServer) != "" {
-					ui.Text(c, m.deployServer).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted).MaxLines(1).Ellipsis("…")
+				if strings.TrimSpace(info.Server) != "" {
+					ui.Text(c, info.Server).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted).MaxLines(1).Ellipsis("…")
 				}
+				if strings.TrimSpace(info.LastURL) != "" {
+					ui.Text(c, a.tf("int.deploy.lastURL", info.LastURL)).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsSecondary).MaxLines(1).Ellipsis("…")
+				}
+				ui.Text(c, a.t("int.deploy.runScopeNote")).Font(macPlanetFont).FontSize(11).TextColor(pal.prefsMuted)
 			})
 			ui.Row(c).Gap(6).Shrink(0).Children(func() {
 				if macSecondaryButton(c, "dep-edit", a.t("common.edit"), pal) {
-					m.err = ""
-					m.deployModalOpen = true
+					a.openDeployModal(kind)
 				}
 				if macPrimaryButtonSmall(c, "dep-run", a.t("int.deploy.run"), pal) {
 					if msg, err := a.backend.DeploySite(m.siteID, kind); err != nil {
 						m.err = err.Error()
 					} else {
+						a.refreshDeploySummary(kind)
 						m.err = ""
 						m.msg = a.tf("int.deploy.runDone", msg)
 					}
@@ -385,11 +439,9 @@ func (a *App) viewIntDeploy(c *ui.Context) {
 					if err := a.backend.DisableDeployment(m.siteID, kind); err != nil {
 						m.err = err.Error()
 					} else {
-						if m.deployConfigured != nil {
-							delete(m.deployConfigured, kind)
-						}
+						delete(m.deployInfos, kind)
 						m.err = ""
-						m.msg = a.tf("int.deploy.disabled", kind)
+						m.msg = a.tf("int.deploy.disabled", label)
 					}
 				}
 			})

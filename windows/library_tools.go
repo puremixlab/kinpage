@@ -172,7 +172,8 @@ func (l *Library) ConfigureLocalAPI(enabled bool, port int, authEnabled bool, us
 	}
 	srv := l.ensureAPIServer()
 	if err := srv.Sync(root); err != nil {
-		return localapi.Status{}, err
+		st, _ := srv.Status(root)
+		return st, fmt.Errorf("配置已保存，但服务启动失败: %w", err)
 	}
 	return srv.Status(root)
 }

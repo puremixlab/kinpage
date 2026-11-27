@@ -19,23 +19,26 @@ import (
 )
 
 const (
-	toolsTabAI      = 0
-	toolsTabAPI     = 1
-	toolsTabKeys    = 2
-	toolsTabLogs    = 3
-	toolsTabGeneral = 4
-	toolsTabFolders = 5
-	toolsTabOffline = 6
-	toolsTabTrash   = 7
-	toolsTabTip     = 8
+	toolsTabAI       = 0
+	toolsTabAPI      = 1
+	toolsTabKeys     = 2
+	toolsTabLogs     = 3
+	toolsTabGeneral  = 4
+	toolsTabFolders  = 5
+	toolsTabOffline  = 6
+	toolsTabTrash    = 7
+	toolsTabTip      = 8
+	toolsTabDataRepo = 9
 )
 
 type toolsModalState struct {
-	open   bool
-	tab    int
-	search string
-	err    string
-	msg    string
+	open         bool
+	tab          int
+	search       string
+	returnSearch string
+	highlightID  string
+	err          string
+	msg          string
 
 	// Secondary modal open states (Empty-State-First -> secondary sheet).
 	aiModalOpen     bool
@@ -43,13 +46,17 @@ type toolsModalState struct {
 	keyModalOpen    bool
 	folderModalOpen bool
 
-	// Local AI chat.
-	aiBaseURL string
-	aiModel   string
-	aiToken   string
-	aiProbe   services.AIProbeResult
-	aiPrompt  string
-	aiHistory []services.AIChatMessage
+	// Local AI chat (saved summary separated from modal draft).
+	aiSavedBaseURL string
+	aiSavedModel   string
+	aiBaseURL      string
+	aiModel        string
+	aiToken        string
+	aiProbe        services.AIProbeResult
+	aiProbeMsg     string
+	aiProbeErr     string
+	aiPrompt       string
+	aiHistory      []services.AIChatMessage
 
 	// Local REST API.
 	apiStatus   localapi.Status
@@ -65,6 +72,7 @@ type toolsModalState struct {
 
 	// App logs.
 	logCatIdx int
+	logSearch string
 	logs      []applog.Entry
 }
 
@@ -74,6 +82,8 @@ func (a *App) openToolsModal(tab int) {
 	a.toolsModal.open = true
 	a.toolsModal.tab = tab
 	a.toolsModal.search = ""
+	a.toolsModal.returnSearch = ""
+	a.toolsModal.highlightID = ""
 	a.toolsModal.err = ""
 	a.toolsModal.msg = ""
 	a.toolsModal.aiModalOpen = false
@@ -91,6 +101,8 @@ func (a *App) refreshToolsTab(tab int) {
 	switch tab {
 	case toolsTabAI:
 		if cfg, err := a.backend.AIConfig(); err == nil {
+			m.aiSavedBaseURL = cfg.BaseURL
+			m.aiSavedModel = cfg.Model
 			m.aiBaseURL = cfg.BaseURL
 			m.aiModel = cfg.Model
 		}
@@ -137,14 +149,26 @@ func (a *App) viewToolsModal(c *ui.Context) {
 	m := &a.toolsModal
 	macPreferencesWindow(c, &m.open, 960, 680, pal, func() {
 		ui.Row(c).Fill().Background(pal.prefsCanvas).Children(func() {
-			// Left 232px grouped sidebar navigation with search bar (ChatGPT-style Settings).
+			// Left 232px grouped sidebar navigation with search bar.
 			ui.Column(c).Width(232).Shrink(0).AlignSelf(ui.Stretch).Background(pal.prefsSidebar).Padding(16, 10, 14, 10).Gap(10).Children(func() {
-				ui.Text(c, a.t("nav.settings")).Font(macPlanetFont).FontSize(15).FontWeight(600).TextColor(pal.prefsInk).Padding(0, 8, 2, 8)
+				ui.Text(c, a.t("settings.globalTitle")).Font(macPlanetFont).FontSize(15).FontWeight(600).TextColor(pal.prefsInk).Padding(0, 8, 2, 8)
+				prevSearch := m.search
 				field.SearchBar(c.Key("settings-nav-search"), &m.search, field.SearchBarProps{
 					Placeholder: a.t("settings.searchPlaceholder"),
 					Variant:     field.InputFilled,
 					Size:        theme.Small,
 				})
+				if m.search != prevSearch && strings.TrimSpace(m.search) != "" {
+					m.returnSearch = ""
+					m.highlightID = ""
+				}
+				if m.returnSearch != "" && strings.TrimSpace(m.search) == "" {
+					if macSettingsReturnButton(c, "tools-return-search", a.t("settings.search.return"), pal) {
+						m.search = m.returnSearch
+						m.returnSearch = ""
+						m.highlightID = ""
+					}
+				}
 
 				type navSpec struct {
 					idx   int
@@ -165,6 +189,7 @@ func (a *App) viewToolsModal(c *ui.Context) {
 					{
 						heading: a.t("settings.groupData"),
 						items: []navSpec{
+							{toolsTabDataRepo, a.t("settings.tabDataRepo"), lucide.Database()},
 							{toolsTabFolders, a.t("menu.publishedFolders"), lucide.FolderOpen()},
 							{toolsTabOffline, a.t("menu.offlineStorage"), lucide.HardDrive()},
 							{toolsTabTrash, a.t("menu.trash"), lucide.Trash2()},
@@ -187,26 +212,37 @@ func (a *App) viewToolsModal(c *ui.Context) {
 					},
 				}
 
-				q := strings.ToLower(strings.TrimSpace(m.search))
+				searching := strings.TrimSpace(m.search) != ""
+				var searchMatches []settingsSearchItem
+				matchedTabs := map[int]bool{}
+				if searching {
+					searchMatches = a.matchSettingsSearch(m.search, globalSettingsSearchItems())
+					for _, sm := range searchMatches {
+						matchedTabs[sm.tab] = true
+					}
+				}
+
 				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Column(c).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-						matchedAny := false
 						for _, grp := range groups {
 							var visible []navSpec
-							for _, item := range grp.items {
-								if q == "" || strings.Contains(strings.ToLower(item.label), q) || strings.Contains(strings.ToLower(grp.heading), q) {
-									visible = append(visible, item)
+							for _, tab := range grp.items {
+								if !searching || matchedTabs[tab.idx] {
+									visible = append(visible, tab)
 								}
 							}
 							if len(visible) == 0 {
 								continue
 							}
-							matchedAny = true
 							ui.Column(c).Gap(2).AlignSelf(ui.Stretch).Children(func() {
 								ui.Text(c, grp.heading).Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.prefsMuted).Padding(0, 10, 4, 10)
 								for _, tab := range visible {
 									tIdx, tLbl := tab.idx, tab.label
-									if prefsNavRow(c, fmt.Sprintf("tools-nav-%d", tIdx), tLbl, m.tab == tIdx, tab.icon, pal.prefsInk, pal) {
+									selected := !searching && m.tab == tIdx
+									if prefsNavRow(c, fmt.Sprintf("tools-nav-%d", tIdx), tLbl, selected, tab.icon, pal.prefsInk, pal) {
+										m.search = ""
+										m.returnSearch = ""
+										m.highlightID = ""
 										if m.tab != tIdx {
 											m.tab = tIdx
 											m.err = ""
@@ -217,9 +253,6 @@ func (a *App) viewToolsModal(c *ui.Context) {
 								}
 							})
 						}
-						if !matchedAny {
-							ui.Text(c, a.t("settings.noSearchMatch")).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted).Padding(8, 10, 8, 10)
-						}
 					})
 				})
 			})
@@ -228,27 +261,62 @@ func (a *App) viewToolsModal(c *ui.Context) {
 			// Right form pane + header + footer.
 			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
 				tabTitles := map[int]string{
-					toolsTabGeneral: a.t("settings.tabGeneral"),
-					toolsTabFolders: a.t("menu.publishedFolders"),
-					toolsTabOffline: a.t("menu.offlineStorage"),
-					toolsTabTrash:   a.t("menu.trash"),
-					toolsTabAI:      a.t("nav.aiAssistant"),
-					toolsTabAPI:     a.t("menu.localAPI"),
-					toolsTabKeys:    a.t("menu.keyManager"),
-					toolsTabLogs:    a.t("menu.appLogs"),
-					toolsTabTip:     a.t("settings.tabTip"),
+					toolsTabGeneral:  a.t("settings.tabGeneral"),
+					toolsTabDataRepo: a.t("settings.tabDataRepo"),
+					toolsTabFolders:  a.t("menu.publishedFolders"),
+					toolsTabOffline:  a.t("menu.offlineStorage"),
+					toolsTabTrash:    a.t("menu.trash"),
+					toolsTabAI:       a.t("nav.aiAssistant"),
+					toolsTabAPI:      a.t("menu.localAPI"),
+					toolsTabKeys:     a.t("menu.keyManager"),
+					toolsTabLogs:     a.t("menu.appLogs"),
+					toolsTabTip:      a.t("settings.tabTip"),
+				}
+				searching := strings.TrimSpace(m.search) != ""
+				headerTitle := tabTitles[m.tab]
+				if searching {
+					headerTitle = a.t("settings.search.heading")
 				}
 				ui.Row(c).Padding(20, 20, 12, 28).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-					ui.Text(c, tabTitles[m.tab]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
+					ui.Text(c, headerTitle).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
 					if toolbarIconBtn(c, "tools-close-x", lucide.X(), a.t("common.close")).Clicked() {
 						m.open = false
 					}
 				})
 				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Column(c).Padding(4, 28, 24, 28).Gap(14).AlignSelf(ui.Stretch).Children(func() {
+						if searching {
+							matches := a.matchSettingsSearch(m.search, globalSettingsSearchItems())
+							suggestions := []string{
+								a.t("settings.search.sugSleep"),
+								a.t("settings.search.sugPort"),
+								a.t("settings.search.sugDataRepo"),
+								a.t("nav.aiAssistant"),
+							}
+							a.viewSettingsSearchResults(c, "global", m.search, matches, suggestions, func(it settingsSearchItem) {
+								m.returnSearch = strings.TrimSpace(m.search)
+								m.search = ""
+								m.tab = it.tab
+								m.highlightID = it.targetID
+								m.err = ""
+								m.msg = ""
+								a.refreshToolsTab(m.tab)
+								switch it.opensModal {
+								case "api":
+									a.openAPIConfigSheet()
+								case "ai":
+									a.openAIConfigSheet()
+								}
+							}, func(sug string) {
+								m.search = sug
+							})
+							return
+						}
 						switch m.tab {
 						case toolsTabGeneral:
 							a.viewToolsGeneral(c)
+						case toolsTabDataRepo:
+							a.viewToolsDataRepo(c)
 						case toolsTabFolders:
 							a.viewToolsFolders(c)
 						case toolsTabOffline:
@@ -295,8 +363,8 @@ func (a *App) viewToolsGeneral(c *ui.Context) {
 	pal := a.pal
 	m := &a.toolsModal
 
-	// Language switcher card.
-	macInsetCard(c, pal, func() {
+	// Language switcher card (immediate effect).
+	macHighlightCard(c, pal, m.highlightID == "global-language", func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
 				ui.Text(c, a.t("settings.languageTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
@@ -321,25 +389,31 @@ func (a *App) viewToolsGeneral(c *ui.Context) {
 		})
 	})
 
-	// System behavior card.
-	macInsetCard(c, pal, func() {
-		ui.Text(c, a.t("settings.systemTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
-		preventSleep := a.backend != nil && a.backend.PreventSleep()
-		prev := preventSleep
-		ui.Checkbox(c.Key("settings-prevent-sleep"), &preventSleep, a.t("menu.preventSleep"))
-		if preventSleep != prev && a.backend != nil {
-			if err := a.backend.SetPreventSleep(preventSleep); err != nil {
-				m.err = a.tf("status.preventSleepErr", err.Error())
-			} else {
-				m.err = ""
-				if preventSleep {
-					m.msg = a.t("status.preventSleepOn")
+	// System behavior card (immediate effect).
+	macHighlightCard(c, pal, m.highlightID == "global-sleep", func() {
+		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).AlignSelf(ui.Stretch).Children(func() {
+			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
+				ui.Text(c, a.t("settings.systemTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
+				ui.Text(c, a.t("settings.search.sleepSummary")).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
+			})
+			preventSleep := a.backend != nil && a.backend.PreventSleep()
+			prev := preventSleep
+			ui.Checkbox(c.Key("settings-prevent-sleep"), &preventSleep, a.t("menu.preventSleep"))
+			if preventSleep != prev && a.backend != nil {
+				if err := a.backend.SetPreventSleep(preventSleep); err != nil {
+					m.err = a.tf("status.preventSleepErr", err.Error())
 				} else {
-					m.msg = a.t("status.preventSleepOff")
+					m.err = ""
+					if preventSleep {
+						a.setStatus(a.t("status.preventSleepOn"))
+					} else {
+						a.setStatus(a.t("status.preventSleepOff"))
+					}
 				}
 			}
-		}
+		})
 		if a.DesktopPetAvailable() {
+			prefsHairlineH(c, pal)
 			active := a.DesktopPetEnabled()
 			enabled := active
 			ui.Checkbox(c.Key("settings-desktop-pet"), &enabled, a.DesktopPetLabel())
@@ -348,12 +422,25 @@ func (a *App) viewToolsGeneral(c *ui.Context) {
 			}
 		}
 	})
+}
 
-	// Data directory & refresh card.
-	macInsetCard(c, pal, func() {
-		ui.Column(c).Gap(2).AlignSelf(ui.Stretch).Children(func() {
+func (a *App) viewToolsDataRepo(c *ui.Context) {
+	pal := a.pal
+	m := &a.toolsModal
+	dataDir := ""
+	if a.backend != nil {
+		dataDir = a.backend.DataDir()
+	}
+
+	macHighlightCard(c, pal, m.highlightID == "global-data-repo", func() {
+		ui.Column(c).Gap(4).AlignSelf(ui.Stretch).Children(func() {
 			ui.Text(c, a.t("settings.dataDirTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
 			ui.Text(c, a.t("settings.dataDirDesc")).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
+			if dataDir != "" {
+				ui.Box(c).Padding(6, 10, 6, 10).Radius(6).Background(pal.hover).AlignSelf(ui.Stretch).Children(func() {
+					ui.Text(c, dataDir).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsSecondary).MaxLines(2).Ellipsis("…")
+				})
+			}
 		})
 		ui.Row(c).Gap(8).Wrap().Children(func() {
 			if macSecondaryButton(c, "settings-move-data", a.t("menu.moveDataDir"), pal) {
@@ -375,10 +462,23 @@ func (a *App) viewToolsGeneral(c *ui.Context) {
 	})
 }
 
+func (a *App) isIPFSOnline() bool {
+	if a.backend == nil {
+		return false
+	}
+	st, err := a.backend.IPFSStatus()
+	return err == nil && st.Online
+}
+
 func (a *App) viewToolsFolders(c *ui.Context) {
 	pal := a.pal
 	m := &a.toolsModal
 	folders := a.foldersModal.folders
+	ipfsOnline := a.isIPFSOnline()
+
+	if !ipfsOnline {
+		settingsPrerequisiteNote(c, pal, a.t("settings.prereq.foldersPublishIPFS"))
+	}
 
 	if len(folders) == 0 {
 		if settingsEmptyState(c, "folders-empty-add", lucide.FolderOpen(), a.t("settings.folders.emptyDesc"), a.t("common.add"), pal) {
@@ -533,44 +633,84 @@ func (a *App) viewToolsTip(c *ui.Context) {
 	}
 }
 
+func (a *App) openAIConfigSheet() {
+	m := &a.toolsModal
+	m.aiBaseURL = m.aiSavedBaseURL
+	m.aiModel = m.aiSavedModel
+	m.aiToken = ""
+	m.err = ""
+	m.aiModalOpen = true
+}
+
+func (a *App) probeAIService(baseURL string) {
+	m := &a.toolsModal
+	if res, err := a.backend.ProbeAI(strings.TrimSpace(baseURL)); err != nil {
+		m.aiProbeErr = err.Error()
+		m.aiProbeMsg = ""
+		m.err = err.Error()
+	} else {
+		m.aiProbe = res
+		m.aiProbeErr = ""
+		m.err = ""
+		if len(res.Models) == 0 {
+			m.aiProbeMsg = a.t("tools.ai.probeZero")
+		} else {
+			m.aiProbeMsg = a.tf("tools.ai.probeDone", len(res.Models))
+		}
+		m.msg = m.aiProbeMsg
+		if m.aiModel == "" && len(res.Models) > 0 {
+			m.aiModel = res.Models[0]
+		}
+	}
+}
+
 func (a *App) viewToolsAI(c *ui.Context) {
 	pal := a.pal
 	m := &a.toolsModal
-	configured := strings.TrimSpace(m.aiBaseURL) != "" || strings.TrimSpace(m.aiModel) != ""
+	configured := strings.TrimSpace(m.aiSavedBaseURL) != "" || strings.TrimSpace(m.aiSavedModel) != ""
 
 	if !configured {
-		if settingsEmptyState(c, "ai-empty-add", lucide.Sparkles(), a.t("settings.ai.emptyDesc"), a.t("common.add"), pal) {
-			m.err = ""
-			m.aiModalOpen = true
+		if settingsEmptyState(c, "ai-empty-add", lucide.Sparkles(), a.t("settings.ai.emptyDesc"), a.t("tools.ai.configureBtn"), pal) {
+			a.openAIConfigSheet()
 		}
 		return
 	}
 
-	// Configured AI summary card.
-	macInsetCard(c, pal, func() {
+	// Configured AI summary card (saved config separated from live connection test).
+	macHighlightCard(c, pal, m.highlightID == "global-ai-service", func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).AlignSelf(ui.Stretch).Children(func() {
 			ui.Column(c).Gap(3).Grow(1).MinWidth(0).Children(func() {
-				ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Gap(6).Wrap().Children(func() {
 					ui.Box(c).Size(7, 7).Radius(4).Background(pal.green).Shrink(0)
-					title := m.aiModel
+					title := m.aiSavedModel
 					if title == "" {
 						title = a.t("nav.aiAssistant")
 					}
 					ui.Text(c, title).Font(macPlanetFont).FontSize(13.5).FontWeight(600).TextColor(pal.prefsInk)
+					ui.Box(c).Padding(1, 6, 1, 6).Radius(4).Background(pal.hover).Children(func() {
+						ui.Text(c, a.t("tools.ai.savedTag")).Font(macPlanetFont).FontSize(10.5).TextColor(pal.prefsSecondary).NoWrap()
+					})
 				})
-				if m.aiBaseURL != "" {
-					ui.Text(c, m.aiBaseURL).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted).MaxLines(1).Ellipsis("…")
+				if m.aiSavedBaseURL != "" {
+					ui.Text(c, m.aiSavedBaseURL).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted).MaxLines(1).Ellipsis("…")
+				}
+				if m.aiProbeErr != "" {
+					ui.Text(c, m.aiProbeErr).Font(macPlanetFont).FontSize(11.5).TextColor(pal.danger)
+				} else if m.aiProbeMsg != "" {
+					ui.Text(c, m.aiProbeMsg).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsSecondary)
 				}
 			})
 			ui.Row(c).Gap(6).Shrink(0).Children(func() {
+				if macSecondaryButton(c, "ai-test-conn", a.t("tools.ai.testBtn"), pal) {
+					a.probeAIService(m.aiSavedBaseURL)
+				}
 				if len(m.aiHistory) > 0 {
 					if macSecondaryButton(c, "ai-clear", a.t("tools.ai.clearChat"), pal) {
 						m.aiHistory = nil
 					}
 				}
 				if macSecondaryButton(c, "ai-edit-btn", a.t("common.edit"), pal) {
-					m.err = ""
-					m.aiModalOpen = true
+					a.openAIConfigSheet()
 				}
 			})
 		})
@@ -634,16 +774,7 @@ func (a *App) viewToolsAIConfigSheet(c *ui.Context) {
 			})
 			ui.Row(c).Gap(8).Wrap().Children(func() {
 				if macSecondaryButton(c, "ai-probe", a.t("tools.ai.probeBtn"), pal) {
-					if res, err := a.backend.ProbeAI(strings.TrimSpace(m.aiBaseURL)); err != nil {
-						m.err = err.Error()
-					} else {
-						m.aiProbe = res
-						m.err = ""
-						m.msg = a.tf("tools.ai.probeDone", len(res.Models))
-						if m.aiModel == "" && len(res.Models) > 0 {
-							m.aiModel = res.Models[0]
-						}
-					}
+					a.probeAIService(m.aiBaseURL)
 				}
 			})
 			if len(m.aiProbe.Models) > 0 {
@@ -662,12 +793,21 @@ func (a *App) viewToolsAIConfigSheet(c *ui.Context) {
 		})
 		if m.err != "" {
 			ui.Text(c, m.err).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+		} else if m.aiProbeMsg != "" {
+			ui.Text(c, m.aiProbeMsg).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsSecondary)
 		}
 	}) {
-		if _, err := a.backend.ConfigureAI(strings.TrimSpace(m.aiBaseURL), strings.TrimSpace(m.aiModel), strings.TrimSpace(m.aiToken)); err != nil {
+		cfg, err := a.backend.ConfigureAI(strings.TrimSpace(m.aiBaseURL), strings.TrimSpace(m.aiModel), strings.TrimSpace(m.aiToken))
+		if err != nil {
 			m.err = err.Error()
 			return
 		}
+		m.aiSavedBaseURL = cfg.BaseURL
+		m.aiSavedModel = cfg.Model
+		m.aiBaseURL = cfg.BaseURL
+		m.aiModel = cfg.Model
+		m.aiToken = ""
+		m.aiProbeErr = ""
 		m.err = ""
 		m.msg = a.t("tools.ai.savedMsg")
 		m.aiModalOpen = false
@@ -700,6 +840,24 @@ func (a *App) sendAIPrompt() {
 	)
 }
 
+func (a *App) openAPIConfigSheet() {
+	m := &a.toolsModal
+	m.apiEnabled = m.apiStatus.Enabled
+	if !m.apiStatus.Enabled && !m.apiStatus.Running {
+		m.apiEnabled = true
+	}
+	if m.apiStatus.Port > 0 {
+		m.apiPort = strconv.Itoa(m.apiStatus.Port)
+	} else {
+		m.apiPort = "8086"
+	}
+	m.apiAuthOn = m.apiStatus.AuthEnabled
+	m.apiUsername = m.apiStatus.Username
+	m.apiPasscode = ""
+	m.err = ""
+	m.apiModalOpen = true
+}
+
 func (a *App) viewToolsLocalAPI(c *ui.Context) {
 	pal := a.pal
 	m := &a.toolsModal
@@ -707,12 +865,7 @@ func (a *App) viewToolsLocalAPI(c *ui.Context) {
 
 	if !configured {
 		if settingsEmptyState(c, "api-empty-add", lucide.Terminal(), a.t("settings.api.emptyDesc"), a.t("common.configure"), pal) {
-			m.err = ""
-			m.apiEnabled = true
-			if m.apiPort == "" || m.apiPort == "0" {
-				m.apiPort = "8086"
-			}
-			m.apiModalOpen = true
+			a.openAPIConfigSheet()
 		}
 		return
 	}
@@ -723,7 +876,7 @@ func (a *App) viewToolsLocalAPI(c *ui.Context) {
 		state = a.tf("tools.api.stateRunning", m.apiStatus.Port)
 		dotCol = pal.green
 	}
-	macInsetCard(c, pal, func() {
+	macHighlightCard(c, pal, m.highlightID == "global-api-port", func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).AlignSelf(ui.Stretch).Children(func() {
 			ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
 				ui.Box(c).Size(8, 8).Radius(4).Background(dotCol)
@@ -731,8 +884,7 @@ func (a *App) viewToolsLocalAPI(c *ui.Context) {
 			})
 			ui.Row(c).Gap(6).Children(func() {
 				if macSecondaryButton(c, "api-edit-btn", a.t("common.edit"), pal) {
-					m.err = ""
-					m.apiModalOpen = true
+					a.openAPIConfigSheet()
 				}
 				if macSecondaryButton(c, "api-clear-logs", a.t("tools.api.clearLogs"), pal) {
 					a.backend.ClearLocalAPILogs()
@@ -753,10 +905,14 @@ func (a *App) viewToolsLocalAPI(c *ui.Context) {
 func (a *App) viewToolsAPIConfigSheet(c *ui.Context) {
 	pal := a.pal
 	m := &a.toolsModal
+	primaryText := a.t("tools.api.saveBtn")
+	if m.apiEnabled {
+		primaryText = a.t("tools.api.saveAndStartBtn")
+	}
 	if macSheet(c, &m.apiModalOpen, macSheetProps{
 		Title:        a.t("settings.api.modalTitle"),
 		Width:        480,
-		PrimaryText:  a.t("tools.api.saveBtn"),
+		PrimaryText:  primaryText,
 		CancelText:   a.t("common.cancel"),
 		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
@@ -764,7 +920,7 @@ func (a *App) viewToolsAPIConfigSheet(c *ui.Context) {
 			ui.Row(c).Gap(16).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
 				ui.Checkbox(c.Key("api-en"), &m.apiEnabled, a.t("tools.api.enableCheck"))
 				ui.Box(c).Width(140).Children(func() {
-					ui.TextInput(c.Key("api-port"), &m.apiPort).Placeholder(a.t("tools.api.portPlaceholder")).AlignSelf(ui.Stretch)
+					ui.TextInput(c.Key("api-port"), &m.apiPort).Placeholder(a.t("tools.api.portPlaceholder")).AutoFocus().AlignSelf(ui.Stretch)
 				})
 			})
 			ui.Checkbox(c.Key("api-auth"), &m.apiAuthOn, a.t("tools.api.authCheck"))
@@ -788,6 +944,9 @@ func (a *App) viewToolsAPIConfigSheet(c *ui.Context) {
 		}
 		st, err := a.backend.ConfigureLocalAPI(m.apiEnabled, port, m.apiAuthOn, strings.TrimSpace(m.apiUsername), m.apiPasscode)
 		if err != nil {
+			if st.Port > 0 || st.Enabled {
+				m.apiStatus = st
+			}
 			m.err = err.Error()
 			return
 		}
@@ -881,12 +1040,21 @@ func (a *App) viewToolsKeyImportSheet(c *ui.Context) {
 func (a *App) viewToolsLogs(c *ui.Context) {
 	pal := a.pal
 	m := &a.toolsModal
-	ui.Row(c).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-		prev := m.logCatIdx
-		macSegmented(c, "log-cat", &m.logCatIdx, []string{a.t("common.all"), "Kinpage", "IPFS", "API"}, pal)
-		if m.logCatIdx != prev {
-			a.refreshToolsTab(toolsTabLogs)
-		}
+	ui.Row(c).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).Wrap().AlignSelf(ui.Stretch).Children(func() {
+		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+			prev := m.logCatIdx
+			macSegmented(c, "log-cat", &m.logCatIdx, []string{a.t("common.all"), "Kinpage", "IPFS", "API"}, pal)
+			if m.logCatIdx != prev {
+				a.refreshToolsTab(toolsTabLogs)
+			}
+			ui.Box(c).Width(180).Children(func() {
+				field.SearchBar(c.Key("log-filter-search"), &m.logSearch, field.SearchBarProps{
+					Placeholder: a.t("tools.logs.searchPlaceholder"),
+					Variant:     field.InputFilled,
+					Size:        theme.Small,
+				})
+			})
+		})
 		ui.Row(c).Gap(6).Children(func() {
 			if macSecondaryButton(c, "log-refresh", a.t("common.refresh"), pal) {
 				a.refreshToolsTab(toolsTabLogs)
@@ -897,11 +1065,28 @@ func (a *App) viewToolsLogs(c *ui.Context) {
 			}
 		})
 	})
+
+	q := strings.ToLower(strings.TrimSpace(m.logSearch))
+	var filtered []applog.Entry
+	for _, entry := range m.logs {
+		if q == "" ||
+			strings.Contains(strings.ToLower(entry.Message), q) ||
+			strings.Contains(strings.ToLower(entry.Category), q) ||
+			strings.Contains(strings.ToLower(entry.Time), q) {
+			filtered = append(filtered, entry)
+		}
+	}
+
 	macInsetCard(c, pal, func() {
 		if len(m.logs) == 0 {
 			ui.Text(c, a.t("tools.logs.empty")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+			return
 		}
-		for i, entry := range m.logs {
+		if len(filtered) == 0 {
+			ui.Text(c, a.t("tools.logs.noMatch")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+			return
+		}
+		for i, entry := range filtered {
 			ui.Text(c.Key(fmt.Sprintf("app-log-%d", i)), fmt.Sprintf("[%s] [%s] %s", entry.Time, entry.Category, entry.Message)).Font(macPlanetFont).FontSize(11.5).TextColor(pal.secondary)
 		}
 	})
