@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
+	"windows/internal/desktoppet"
 	"windows/internal/store"
 )
 
@@ -211,6 +212,11 @@ type App struct {
 	lastSavedPrefs   layoutPrefs
 	siteOrder        []string
 	subOrder         []string
+
+	desktopPetPrefs    desktopPetPrefs
+	desktopPet         *desktoppet.Window
+	desktopPetAnchor   uintptr
+	onDesktopPetChange func()
 
 	// Feedback status (dispatched as non-blocking macOS bottom-right toasts).
 	statusText     string
