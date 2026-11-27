@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Kinpage",
+    "slug": "kinpage-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "com.puremixlab.kinpage",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Kinpage connects to your desktop on the local network to publish your articles."
+      }
+    },
+    "android": {
+      "package": "com.puremixlab.kinpage",
+      "allowBackup": false,
+      "softwareKeyboardLayoutMode": "resize"
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icon.png",
+          "imageWidth": 84,
+          "backgroundColor": "#FBFAF7",
+          "dark": { "image": "./assets/icon.png", "backgroundColor": "#1C211E" }
+        }
+      ],
+      "expo-localization"
+    ]
+  }
+}

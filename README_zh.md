@@ -130,6 +130,8 @@
 
 ## 从源码运行
 
+iOS 和 Android 手机端位于 `mobile/`。构建与桌面协同发布步骤见[移动版指南](mobile/README.md)。
+
 **环境准备**：Windows x64、Git、[Go 1.27.4](https://go.dev/dl/)（或兼容工具链）、[Bun](https://bun.sh/)、WebView2 Runtime；如需打包安装程序还需安装 [7-Zip](https://www.7-zip.org/)。
 
 ```powershell

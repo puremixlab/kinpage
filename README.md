@@ -130,6 +130,8 @@ Install via Microsoft Store (MSIX) or extract/install the Windows x64 setup into
 
 ## Build from Source
 
+The iOS and Android companion lives in `mobile/`. See the [mobile guide](mobile/README.md) for build and desktop publishing setup.
+
 **Prerequisites:** Windows x64, Git, [Go 1.27.4](https://go.dev/dl/) (or compatible toolchain), [Bun](https://bun.sh/), WebView2 Runtime, and [7-Zip](https://www.7-zip.org/) (only required for installer packaging).
 
 ```powershell

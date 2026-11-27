@@ -1,0 +1,136 @@
+import { getLocales } from 'expo-localization';
+import { MobileError } from './network.ts';
+
+const en = {
+  appName: 'Kinpage',
+  writing: 'Writing', desk: 'Writing desk', reading: 'Reading', settings: 'Settings',
+  newDraft: 'New draft', drafts: 'Drafts', published: 'Published', pending: 'Awaiting publication',
+  noDrafts: 'Your next draft starts here', noDraftsBody: 'Write in Markdown. Your draft saves on this device as you type.',
+  noPublished: 'No published articles yet', noPublishedBody: 'Articles you publish from this device will appear here.',
+  untitled: 'Untitled draft', emptyDraft: 'No text yet', title: 'Article title',
+  body: 'Write in Markdown…', draft: 'Draft', article: 'Article', preview: 'Preview', edit: 'Edit',
+  saved: 'Saved on this device', saveFailed: 'The draft could not be saved.', retry: 'Retry',
+  shareText: 'Share Markdown', openArticle: 'Open published article', removeDraft: 'Remove local copy',
+  removeDraftBody: 'This removes the copy from this device. An uploaded or published article stays on the desktop.',
+  duplicateDraft: 'Copy to a new draft', cancel: 'Cancel', remove: 'Remove', back: 'Back',
+  publish: 'Publish to IPFS', continuePublish: 'Retry publication', confirmPublish: 'Publish article?',
+  publishNotice: 'The desktop will save this article and publish the site to IPFS. Anyone can read the published site.',
+  chooseSite: 'Choose a site', selectedSite: 'Publishing to', noSites: 'No available sites',
+  noSitesBody: 'Create an active site with IPNS publishing enabled in Kinpage on your desktop.',
+  publishing: 'Publishing from the desktop…', publicationDone: 'Article published',
+  shareLink: 'Share link', configureDesktop: 'Set up desktop connection',
+  pendingConnection: 'Reconnect to the desktop originally chosen for this article to retry.',
+  noConnection: 'Connect your desktop to publish',
+  addFeed: 'Add subscription', subscriptions: 'Subscriptions', manageFeeds: 'Manage subscriptions',
+  refresh: 'Refresh subscriptions', all: 'All', unread: 'Unread', starred: 'Saved',
+  noFeeds: 'Find something worth reading', noFeedsBody: 'Add a site or a feed to keep its recent articles available offline.',
+  noEntries: 'No articles here', noEntriesBody: 'Refresh your subscriptions or choose another filter.',
+  feedURL: 'Site or feed address', feedHint: 'Enter an HTTPS site, an RSS, Atom or JSON Feed URL, an .eth name, or a Planet address.',
+  subscribe: 'Subscribe', following: 'Adding subscription…', removeFeed: 'Remove subscription?',
+  removeFeedBody: 'Cached articles and saved items from this subscription will be removed from this device.',
+  refreshFailed: (count: number) => `Could not refresh ${count} subscription${count === 1 ? '' : 's'}. Cached articles are still available.`,
+  original: 'Open original', noContent: 'This feed only provided a link to the article.',
+  untitledEntry: 'Untitled article', saveArticle: 'Save article', unsaveArticle: 'Remove from saved',
+  markUnread: 'Mark as unread', markRead: 'Mark as read', noArticle: 'This article is no longer on this device.',
+  desktop: 'Desktop connection', disconnected: 'Set up IPFS publishing', connected: 'Connected',
+  endpoint: 'Desktop HTTPS address', username: 'Username', password: 'Local API passcode',
+  desktopHint: 'Enable Basic authentication in Kinpage’s desktop Local API. Use a trusted HTTPS address that forwards /v0/mobile/ to the Local API.',
+  saveConnection: 'Verify and save', checkingConnection: 'Checking desktop connection…',
+  forgetConnection: 'Forget this connection', forgetBody: 'This removes the desktop credentials from this device.',
+  offlineStorage: 'On this device', storageHint: 'Drafts, cached articles and reading status are stored on this device.',
+  storageError: 'Could not open on-device storage', busy: 'Loading…', linkFailed: 'Could not open the link.',
+  markdownImage: 'Image', ok: 'OK',
+  errors: {
+    invalid_desktop_url: 'Enter a valid HTTPS address without a path, query or credentials.',
+    invalid_credentials: 'Enter the Local API username and passcode.',
+    invalid_feed_url: 'Enter a valid HTTPS feed or a supported Planet address.',
+    network: 'Could not connect. Check the address and your connection.',
+    timeout: 'The request timed out. You can retry.',
+    response_too_large: 'The response was too large to download.',
+    feed_http: 'This site could not be loaded over HTTPS.',
+    feed_format: 'No supported feed was found at this address.',
+    auth_required: 'The desktop rejected the username or passcode.',
+    auth_disabled: 'Enable Basic authentication in the desktop Local API.',
+    desktop_unsupported: 'This endpoint needs a desktop build that supports mobile publishing.',
+    site_unavailable: 'The selected site is no longer available for IPNS publishing.',
+    article_conflict: 'The desktop copy has different content. Review it on your desktop before trying again.',
+    publish_failed: 'The desktop could not finish publishing. Check its IPFS node, then retry.',
+    desktop_error: 'The desktop could not complete this request.',
+  },
+  unknownError: 'Something went wrong. Please try again.',
+};
+
+const zh: typeof en = {
+  appName: '邻页',
+  writing: '写作', desk: '写作台', reading: '阅读', settings: '设置',
+  newDraft: '新建草稿', drafts: '草稿', published: '已发布', pending: '待确认发布',
+  noDrafts: '在这里开始写作', noDraftsBody: '使用 Markdown 写作，草稿会随输入保存在这台设备上。',
+  noPublished: '还没有发布记录', noPublishedBody: '从这台设备发布的文章会显示在这里。',
+  untitled: '无标题草稿', emptyDraft: '暂无正文', title: '文章标题',
+  body: '用 Markdown 写下正文…', draft: '草稿', article: '文章', preview: '预览', edit: '编辑',
+  saved: '已保存到本机', saveFailed: '草稿保存失败。', retry: '重试',
+  shareText: '分享 Markdown', openArticle: '打开已发布文章', removeDraft: '移除本地副本',
+  removeDraftBody: '这会移除手机上的副本，已上传或已发布的文章仍保留在桌面端。',
+  duplicateDraft: '复制为新草稿', cancel: '取消', remove: '移除', back: '返回',
+  publish: '发布到 IPFS', continuePublish: '重试发布', confirmPublish: '确认发布文章？',
+  publishNotice: '桌面端会保存这篇文章并将站点发布到 IPFS。发布后任何人都可以阅读该站点。',
+  chooseSite: '选择发布站点', selectedSite: '发布至', noSites: '没有可发布的站点',
+  noSitesBody: '请在桌面版邻页创建站点，并为该站点开启 IPNS 发布。',
+  publishing: '桌面端正在发布…', publicationDone: '文章已发布',
+  shareLink: '分享链接', configureDesktop: '设置桌面连接',
+  pendingConnection: '请重新连接这篇文章最初选择的桌面端，然后重试。',
+  noConnection: '连接桌面端后即可发布',
+  addFeed: '添加订阅', subscriptions: '订阅', manageFeeds: '管理订阅',
+  refresh: '刷新订阅', all: '全部', unread: '未读', starred: '收藏',
+  noFeeds: '把喜欢的文章留在邻页', noFeedsBody: '添加站点或订阅源，将最近的文章保存在本机，随时阅读。',
+  noEntries: '这里还没有文章', noEntriesBody: '可以刷新订阅，或切换到其他筛选条件。',
+  feedURL: '站点或订阅地址', feedHint: '支持 HTTPS 站点、RSS、Atom、JSON Feed、.eth 域名和 Planet 地址。',
+  subscribe: '订阅', following: '正在添加订阅…', removeFeed: '移除此订阅？',
+  removeFeedBody: '这个订阅的缓存文章和收藏会从本机移除。',
+  refreshFailed: (count: number) => `${count} 个订阅未能刷新，已下载的文章仍可阅读。`,
+  original: '打开原文', noContent: '这个订阅源仅提供文章链接。',
+  untitledEntry: '无标题文章', saveArticle: '收藏文章', unsaveArticle: '取消收藏',
+  markUnread: '标为未读', markRead: '标为已读', noArticle: '这篇文章已从本机移除。',
+  desktop: '桌面连接', disconnected: '设置 IPFS 发布', connected: '已连接',
+  endpoint: '桌面端 HTTPS 地址', username: '用户名', password: '本地 API 口令',
+  desktopHint: '请在桌面版邻页的本地 API 中开启 Basic 认证，并使用将 /v0/mobile/ 转发到本地 API 的可信 HTTPS 地址。',
+  saveConnection: '验证并保存', checkingConnection: '正在验证桌面连接…',
+  forgetConnection: '移除连接', forgetBody: '这会清除本机保存的桌面端凭据。',
+  offlineStorage: '本机存储', storageHint: '草稿、已下载的文章和阅读状态保存在本机。',
+  storageError: '无法打开本机存储', busy: '正在加载…', linkFailed: '无法打开链接。',
+  markdownImage: '图片', ok: '确定',
+  errors: {
+    invalid_desktop_url: '请输入有效的 HTTPS 地址，地址应只包含主机和端口。',
+    invalid_credentials: '请输入桌面端本地 API 的用户名和口令。',
+    invalid_feed_url: '请输入有效的 HTTPS 订阅地址或受支持的 Planet 地址。',
+    network: '连接失败，请检查地址和网络。',
+    timeout: '请求超时，可以重试。',
+    response_too_large: '返回内容过大，无法下载。',
+    feed_http: '无法通过 HTTPS 读取这个站点。',
+    feed_format: '这个地址没有可读取的订阅源。',
+    auth_required: '桌面端拒绝了用户名或口令。',
+    auth_disabled: '请在桌面端本地 API 中开启 Basic 认证。',
+    desktop_unsupported: '请使用支持手机发布的桌面版邻页。',
+    site_unavailable: '所选站点暂时无法通过 IPNS 发布。',
+    article_conflict: '桌面端已有不同内容，请先在桌面端核对这篇文章。',
+    publish_failed: '桌面端未完成发布，请检查 IPFS 节点后重试。',
+    desktop_error: '桌面端未能完成请求。',
+  },
+  unknownError: '操作失败，请重试。',
+};
+
+export const locale = getLocales()[0]?.languageTag ?? 'en';
+export const copy = locale.toLowerCase().startsWith('zh') ? zh : en;
+
+export function errorMessage(error: unknown): string {
+  if (error instanceof MobileError && Object.hasOwn(copy.errors, error.code)) {
+    return copy.errors[error.code as keyof typeof copy.errors];
+  }
+  return copy.unknownError;
+}
+
+export function formatDate(time: number, long = false): string {
+  return new Intl.DateTimeFormat(locale, long
+    ? { month: 'long', day: 'numeric', weekday: 'long' }
+    : { year: 'numeric', month: 'short', day: 'numeric' }).format(time);
+}
