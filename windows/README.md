@@ -6,7 +6,7 @@
 >
 > 邻页（Kinpage，原名 Planet Windows）基于上述上游项目，是独立开发的 Windows 原生应用，兼容 `.planet` 备份与 Local API。
 
-[发行页面（v0.1.0）](https://github.com/puremixlab/planet-windows/releases) · [MSIX 商店打包说明](docs/msix-packaging.md) · [简体中文主页](../README_zh.md) · [English README](../README.md) · [贡献指南](../CONTRIBUTING.md)
+[发行页面（v0.1.0）](https://github.com/puremixlab/kinpage/releases) · [MSIX 商店打包说明](docs/msix-packaging.md) · [简体中文主页](../README_zh.md) · [English README](../README.md) · [贡献指南](../CONTRIBUTING.md)
 
 [![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/planet-windows)
 
@@ -32,7 +32,7 @@
 ### 下载与安装
 
 1. 准备 Windows x64 和 WebView2 Runtime。
-2. [下载 Windows x64 安装包](https://github.com/puremixlab/planet-windows/releases/download/v0.0.1-rc.1/planet-windows-safe-setup-0.0.1-rc.1-amd64.exe)，安装到空目录后，从开始菜单打开 **Kinpage**。[发行页面](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-rc.1)同时提供对应源码、SHA-256 校验文件和本次最终安装包的验收证据。
+2. [下载 Windows x64 安装包](https://github.com/puremixlab/kinpage/releases/download/v0.1.0/kinpage-safe-setup-0.1.0-amd64.exe)，安装到空目录后，从开始菜单打开 **Kinpage**。[发行页面](https://github.com/puremixlab/kinpage/releases/tag/v0.1.0)同时提供对应源码、SHA-256 校验文件和本次最终安装包的验收证据。
 3. 在写作台点击右上角 **写文章** 或侧栏右下角 **+** 创建站点、关注订阅。
 
 ### 写作台
