@@ -205,4 +205,25 @@ func TestDashboardBadgesWallHideAndPersistence(t *testing.T) {
 	if app2.badgesHidden {
 		t.Fatal("expected clicking compact badge pill to restore floating badges")
 	}
+
+	// Switch heatmap between Day / Week / Month below the Trophy and verify persistence.
+	if err := tt2.Click("周"); err != nil {
+		t.Fatalf("expected weekly heatmap switcher to be clickable: %v", err)
+	}
+	if app2.activityMode != activityModeWeekly {
+		t.Fatalf("expected activityModeWeekly, got %d", app2.activityMode)
+	}
+	if err := tt2.Click("月"); err != nil {
+		t.Fatalf("expected monthly heatmap switcher to be clickable: %v", err)
+	}
+	if app2.activityMode != activityModeMonthly {
+		t.Fatalf("expected activityModeMonthly, got %d", app2.activityMode)
+	}
+	tt2.Frame()
+
+	app3 := New(backend)
+	app3.EnablePrefsPersistence(prefsFile)
+	if app3.activityMode != activityModeMonthly {
+		t.Fatalf("expected persisted activityModeMonthly, got %d", app3.activityMode)
+	}
 }

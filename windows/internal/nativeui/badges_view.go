@@ -263,10 +263,9 @@ func (a *App) resetBadgePositions() {
 }
 
 // viewDashboardBadgeTray renders the restrained, freely draggable micro-badge
-// board to the right of the editorial date masthead, leaving room for the
-// 14-week mini-heatmap on the far right.
-func (a *App) viewDashboardBadgeTray(c *ui.Context, availW float32) {
-	pal := a.pal
+// board to the right of the editorial date masthead, returning true when the
+// floating badge board is expanded.
+func (a *App) viewDashboardBadgeTray(c *ui.Context, availW float32) bool {
 	badges := a.writingBadges()
 	var unlocked []store.WritingBadge
 	for _, b := range badges {
@@ -276,117 +275,76 @@ func (a *App) viewDashboardBadgeTray(c *ui.Context, availW float32) {
 	}
 
 	// Narrow layout, hidden state, or zero unlocked badges: show a quiet compact trophy pill.
-	if a.badgesHidden || availW < 210 || len(unlocked) == 0 {
+	if a.badgesHidden || availW < 185 || len(unlocked) == 0 {
 		a.badgeDraggingID = ""
 		a.viewCompactBadgePill(c, len(unlocked), len(badges))
-		return
+		return false
 	}
 
-	trayW := availW
-	if trayW > 540 {
-		trayW = 540
+	boardW := availW
+	if boardW > 520 {
+		boardW = 520
 	}
-	boardW := trayW - 26 // Reserve 26px at the right edge for subtle hide/wall actions.
 	maxX := boardW - badgeTileSize
 	maxY := badgeTrayHeight - badgeTileSize
 	reduceMotion := c.Preferences().ReduceMotion
 
-	tray := ui.Row(c.Key("dash-badge-tray")).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(4).Height(badgeTrayHeight).Grow(1).MinWidth(0)
-	trayHovered := tray.Hovered()
-	tray.Children(func() {
-		ui.Box(c.Key("dash-badge-board")).Size(boardW, badgeTrayHeight).Children(func() {
-			for _, b := range unlocked {
-				badge := b
-				spec := badgeVisualFor(badge.Kind)
-				offset := a.ensureBadgeDragOffset(badge, maxX, maxY)
-				bounds := ui.Rect{X: 0, Y: 0, W: maxX, H: maxY}
+	ui.Box(c.Key("dash-badge-board")).Size(boardW, badgeTrayHeight).Children(func() {
+		for _, b := range unlocked {
+			badge := b
+			spec := badgeVisualFor(badge.Kind)
+			offset := a.ensureBadgeDragOffset(badge, maxX, maxY)
+			bounds := ui.Rect{X: 0, Y: 0, W: maxX, H: maxY}
 
-				btn := ui.ButtonBase(c.Key("dash-badge-"+badge.ID)).
-					Label(a.badgeTitle(badge.Kind)).
-					Size(badgeTileSize, badgeTileSize).
-					Absolute().Left(0).Top(0).
-					Cursor(ui.CursorGrab).
-					Tooltip(a.badgeTooltip(badge)).
-					Draggable(offset, ui.DraggableOptions{
-						Bounds: &bounds,
-					})
-
-				dragging := btn.Dragging()
-				hovered := btn.Hovered()
-				tilt := spec.defaultTilt
-				scale := float32(1.0)
-				if dragging {
-					if a.badgeDraggingID != badge.ID {
-						a.badgeDraggingID = badge.ID
-						a.bringBadgeToFront(badge.ID)
-					}
-					btn.Cursor(ui.CursorGrabbing).ZIndex(a.badgeZIndex(badge.ID, true))
-					tilt = 0
-					if !reduceMotion {
-						scale = 1.10
-					}
-				} else {
-					if a.badgeDraggingID == badge.ID {
-						a.badgeDraggingID = ""
-					}
-					// Persist only settled positions so pointer moves do no disk I/O.
-					a.commitBadgePosition(badge, *offset, maxX, maxY)
-					if hovered && !reduceMotion {
-						scale = 1.07
-					}
-					btn.ZIndex(a.badgeZIndex(badge.ID, false))
-				}
-
-				btn.Children(func() {
-					face := ui.Box(c).Size(badgeTileSize, badgeTileSize).Rotate(tilt).Scale(scale, scale)
-					face.Children(func() {
-						a.viewBadgeGraphic(c, badge, spec, badgeTileSize, false)
-					})
+			btn := ui.ButtonBase(c.Key("dash-badge-"+badge.ID)).
+				Label(a.badgeTitle(badge.Kind)).
+				Size(badgeTileSize, badgeTileSize).
+				Absolute().Left(0).Top(0).
+				Cursor(ui.CursorGrab).
+				Tooltip(a.badgeTooltip(badge)).
+				Draggable(offset, ui.DraggableOptions{
+					Bounds: &bounds,
 				})
 
-				if btn.Clicked() {
-					a.badgeWallOpen = true
+			dragging := btn.Dragging()
+			hovered := btn.Hovered()
+			tilt := spec.defaultTilt
+			scale := float32(1.0)
+			if dragging {
+				if a.badgeDraggingID != badge.ID {
+					a.badgeDraggingID = badge.ID
+					a.bringBadgeToFront(badge.ID)
 				}
+				btn.Cursor(ui.CursorGrabbing).ZIndex(a.badgeZIndex(badge.ID, true))
+				tilt = 0
+				if !reduceMotion {
+					scale = 1.10
+				}
+			} else {
+				if a.badgeDraggingID == badge.ID {
+					a.badgeDraggingID = ""
+				}
+				// Persist only settled positions so pointer moves do no disk I/O.
+				a.commitBadgePosition(badge, *offset, maxX, maxY)
+				if hovered && !reduceMotion {
+					scale = 1.07
+				}
+				btn.ZIndex(a.badgeZIndex(badge.ID, false))
 			}
-		})
 
-		// Subtle vertical utility rail (Achievement Wall + Collapse ×, inspired by Qoder).
-		ui.Column(c).AlignItems(ui.Center).Justify(ui.Center).Gap(4).Width(22).Children(func() {
-			wallBtn := ui.ButtonBase(c.Key("dash-badges-wall")).
-				Label(a.t("dashboard.badge.wallTitle")).
-				Size(22, 22).Radius(6).Center().Cursor(ui.CursorPointer).
-				Tooltip(a.t("dashboard.badge.wallTooltip")).
-				Transition(rowHoverTransition)
-			if wallBtn.Hovered() {
-				wallBtn.Background(pal.hover)
-			}
-			wallBtn.Children(func() {
-				ui.Icon(c, lucide.Trophy()).Size(12.5, 12.5).TextColor(pal.prefsMuted)
+			btn.Children(func() {
+				face := ui.Box(c).Size(badgeTileSize, badgeTileSize).Rotate(tilt).Scale(scale, scale)
+				face.Children(func() {
+					a.viewBadgeGraphic(c, badge, spec, badgeTileSize, false)
+				})
 			})
-			if wallBtn.Clicked() {
+
+			if btn.Clicked() {
 				a.badgeWallOpen = true
 			}
-
-			hideBtn := ui.ButtonBase(c.Key("dash-badges-hide")).
-				Label(a.t("dashboard.badge.hide")).
-				Size(20, 20).Radius(10).Center().Cursor(ui.CursorPointer).
-				Tooltip(a.t("dashboard.badge.hideTooltip")).
-				Transition(rowHoverTransition)
-			if hideBtn.Hovered() {
-				hideBtn.Background(pal.hover)
-			}
-			iconColor := pal.prefsMuted.Alpha(0.45)
-			if trayHovered || hideBtn.Hovered() {
-				iconColor = pal.prefsMuted
-			}
-			hideBtn.Children(func() {
-				ui.Icon(c, lucide.X()).Size(11, 11).TextColor(iconColor)
-			})
-			if hideBtn.Clicked() {
-				a.badgesHidden = true
-			}
-		})
+		}
 	})
+	return true
 }
 
 func (a *App) viewCompactBadgePill(c *ui.Context, unlockedCount, totalCount int) {
