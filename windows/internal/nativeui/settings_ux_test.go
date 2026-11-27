@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"windows/internal/applog"
+	"windows/internal/services"
 	"windows/internal/store"
 )
 
@@ -130,5 +132,46 @@ func TestSiteSettingsIdentitySearchPublishIsolationAndDeployPersistence(t *testi
 	tt.Frame()
 	if !tt.HasText("配置 Cloudflare Pages") {
 		t.Fatalf("expected unconfigured deploy action for s2, got texts %v", tt.Texts())
+	}
+}
+
+func TestGlobalSettingsAIDraftIsolationAndLogsInPageSearch(t *testing.T) {
+	backend := &fakeBackend{
+		aiConfig: services.AIConfig{
+			BaseURL: "http://127.0.0.1:11434/v1",
+			Model:   "llama3",
+		},
+		appLogs: []applog.Entry{
+			{Time: "10:00:01", Category: "IPFS", Message: "peer connected"},
+			{Time: "10:00:02", Category: "API", Message: "port 8086 bound"},
+		},
+	}
+	app := New(backend)
+	tt := ui.NewTester(app.View, 1360, 860)
+
+	// Open AI Assistant: canceling modal draft must preserve saved summary.
+	app.openToolsModal(toolsTabAI)
+	tt.Frame()
+	if !tt.HasText("llama3") {
+		t.Fatal("expected saved AI model visible in summary")
+	}
+	app.openAIConfigSheet()
+	app.toolsModal.aiModel = "unsaved-model-draft"
+	app.toolsModal.aiModalOpen = false
+	tt.Frame()
+	if !tt.HasText("llama3") {
+		t.Fatal("canceling AI config modal must preserve saved summary")
+	}
+
+	// App Logs in-page keyword search filters log entries.
+	app.toolsModal.tab = toolsTabLogs
+	app.refreshToolsTab(toolsTabLogs)
+	app.toolsModal.logSearch = "8086"
+	tt.Frame()
+	if !tt.HasText("[10:00:02] [API] port 8086 bound") {
+		t.Fatalf("expected matching log entry visible, got %v", tt.Texts())
+	}
+	if tt.HasText("[10:00:01] [IPFS] peer connected") {
+		t.Fatal("expected non-matching log entry filtered out")
 	}
 }

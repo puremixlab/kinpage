@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -170,15 +171,15 @@ func ProbeAIEndpoints(root, baseURL string) (AIProbeResult, error) {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return out, nil
+		return out, fmt.Errorf("连接 AI 服务失败: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return out, nil
+		return out, fmt.Errorf("AI 服务返回 HTTP %d", resp.StatusCode)
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 512<<10))
 	if err != nil {
-		return out, nil
+		return out, fmt.Errorf("读取 AI 模型列表失败: %w", err)
 	}
 	var parsed struct {
 		Data []struct {

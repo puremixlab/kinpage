@@ -735,4 +735,11 @@ var i18nZhCN = map[string]string{
 	"int.deploy.sshTargetField":             "目标地址 (user@host:/path)",
 	"int.deploy.sshKeyField":                "SSH 私钥路径（可选）",
 	"int.deploy.tokenKeepHint":              "编辑同一账号与项目时留空即可沿用已保存令牌。",
+	"tools.ai.configureBtn":                 "配置 AI 服务",
+	"tools.ai.savedTag":                     "已保存",
+	"tools.ai.testBtn":                      "测试连接",
+	"tools.ai.probeZero":                    "连接成功，但服务返回 0 个模型",
+	"tools.api.saveAndStartBtn":             "保存并启动",
+	"tools.logs.searchPlaceholder":          "筛选当前日志…",
+	"tools.logs.noMatch":                    "没有匹配的日志记录",
 }

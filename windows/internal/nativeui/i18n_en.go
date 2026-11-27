@@ -735,4 +735,11 @@ var i18nEn = map[string]string{
 	"int.deploy.sshTargetField":             "Target (user@host:/path)",
 	"int.deploy.sshKeyField":                "SSH Key Path (optional)",
 	"int.deploy.tokenKeepHint":              "Leave empty to keep the saved token for this account and project.",
+	"tools.ai.configureBtn":                 "Configure AI Service",
+	"tools.ai.savedTag":                     "Saved",
+	"tools.ai.testBtn":                      "Test Connection",
+	"tools.ai.probeZero":                    "Connected, but the service returned 0 models",
+	"tools.api.saveAndStartBtn":             "Save & Start",
+	"tools.logs.searchPlaceholder":          "Filter logs…",
+	"tools.logs.noMatch":                    "No matching log entries",
 }

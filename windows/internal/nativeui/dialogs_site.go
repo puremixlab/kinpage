@@ -271,6 +271,7 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 									}
 									ui.Column(c).Gap(6).Grow(1).MinWidth(0).Children(func() {
 										ui.Text(c, a.t("siteSettings.avatarTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
+										ui.Text(c, a.t("siteSettings.avatarPublishNote")).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
 										ui.Row(c).Gap(8).AlignItems(ui.Center).Wrap().Children(func() {
 											if macSecondaryButton(c, "ss-avatar-pick", a.t("siteSettings.avatarPick"), pal) {
 												if _, err := a.backend.SelectSiteAvatar(context.Background(), st.siteID); err != nil {

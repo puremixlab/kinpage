@@ -15,7 +15,7 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ### Changed
 
-- Unified Global Settings and Site Settings window structure: added persistent current-site identity in Site Settings, moved Data Repository into Data & Storage and Publish Behavior (IPNS + Prewarm) into Publish & Pinning with per-page save isolation, upgraded both windows with field-level search, target highlighting, and "Back to Search Results", aligned Deployment targets to Cloudflare Pages and SSH (rsync) with persisted backend summaries and isolated modal drafts, separated Custom Code enable checkboxes from expand-to-edit controls, and added per-action IPFS prerequisite notes.
+- Unified Global Settings and Site Settings window structure: added persistent current-site identity in Site Settings, moved Data Repository into Data & Storage and Publish Behavior (IPNS + Prewarm) into Publish & Pinning with per-page save isolation, upgraded both windows with field-level search, target highlighting, and "Back to Search Results", aligned Deployment targets to Cloudflare Pages and SSH (rsync) with persisted backend summaries and isolated modal drafts, separated Custom Code enable checkboxes from expand-to-edit controls, added per-action IPFS prerequisite notes, isolated AI Assistant and Local API modal drafts with distinct connection-test and save-vs-start feedback, and added in-page keyword filtering to App Logs.
 
 ## [0.1.0] - 2026-11-26
 

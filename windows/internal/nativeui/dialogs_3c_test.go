@@ -26,7 +26,7 @@ func TestNativeUIToolsModalBatch3C(t *testing.T) {
 	if !tt.HasText("尚未配置本地或兼容 OpenAI 的 AI 服务") {
 		t.Fatalf("expected empty state for unconfigured AI")
 	}
-	if err := tt.Click("添加"); err != nil {
+	if err := tt.Click("配置 AI 服务"); err != nil {
 		t.Fatalf("failed to open AI secondary config modal: %v", err)
 	}
 	if err := tt.Click("探测本地服务与模型"); err != nil {
@@ -63,7 +63,7 @@ func TestNativeUIToolsModalBatch3C(t *testing.T) {
 	app.toolsModal.apiEnabled = true
 	app.toolsModal.apiPort = "9090"
 	tt.Frame()
-	if err := tt.Click("保存 API 配置"); err != nil {
+	if err := tt.Click("保存并启动"); err != nil {
 		t.Fatalf("failed to save Local API config: %v", err)
 	}
 	if !backend.apiStatus.Running || backend.apiStatus.Port != 9090 {

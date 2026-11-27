@@ -735,4 +735,11 @@ var i18nZhTW = map[string]string{
 	"int.deploy.sshTargetField":             "目標位址 (user@host:/path)",
 	"int.deploy.sshKeyField":                "SSH 私鑰路徑（選填）",
 	"int.deploy.tokenKeepHint":              "編輯同一帳號與專案時留空即可沿用已儲存權杖。",
+	"tools.ai.configureBtn":                 "設定 AI 服務",
+	"tools.ai.savedTag":                     "已儲存",
+	"tools.ai.testBtn":                      "測試連線",
+	"tools.ai.probeZero":                    "連線成功，但服務回傳 0 個模型",
+	"tools.api.saveAndStartBtn":             "儲存並啟動",
+	"tools.logs.searchPlaceholder":          "篩選目前日誌…",
+	"tools.logs.noMatch":                    "沒有相符的日誌紀錄",
 }
