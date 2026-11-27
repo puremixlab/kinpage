@@ -60,10 +60,15 @@ func (a *App) viewEditor(c *ui.Context) {
 					ui.Row(c).AlignItems(ui.Center).Gap(6).Shrink(0).Children(func() {
 						previousMode := a.editorPaneMode
 						macSegmented(c, "editor-mode", &a.editorPaneMode, []string{a.t("editor.modeWrite"), a.t("editor.modeSplit"), a.t("editor.modePreview")}, pal)
-						if a.editorPaneMode != previousMode || a.editorPaneMode == editorPaneView {
+						bodyWidth := colW
+						if a.editorPaneMode == editorPaneSplit {
+							bodyWidth *= a.editorSplitRatio / 100
+						}
+						showInspiration := a.editorPaneMode != editorPaneView && bodyWidth >= inspirationMinWidth
+						if a.editorPaneMode != previousMode || !showInspiration {
 							a.editorInspiration.phase = inspirationClosed
 						}
-						if a.editorPaneMode != editorPaneView {
+						if showInspiration {
 							a.viewInspirationToggle(c, colW < 500)
 						}
 					})
