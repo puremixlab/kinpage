@@ -286,6 +286,18 @@ var i18nEn = map[string]string{
 	"editor.compressVideo":      "Compress Video",
 	"editor.compressBtn":        "Compress",
 
+	// Writing inspiration
+	"editor.inspiration":          "Need an idea?",
+	"editor.inspirationPick":      "Pick an apple",
+	"editor.inspirationAgain":     "Pick another",
+	"editor.inspirationResume":    "Keep writing",
+	"editor.inspirationOpen1":     "What’s one thing you want the reader to remember? Start there.",
+	"editor.inspirationOpen2":     "Recall a scene from today. What’s the first thing you noticed?",
+	"editor.inspirationOpen3":     "Imagine a friend asking why this matters. Write your first answer.",
+	"editor.inspirationContinue1": "Pick a detail you passed over. Give it one sentence of its own.",
+	"editor.inspirationContinue2": "What happened next? Start with the first thing that changed.",
+	"editor.inspirationContinue3": "What would a curious reader ask here? Try answering in one sentence.",
+
 	// Status & Error Messages
 	"status.stoppedSpeak":        "Stopped speaking",
 	"status.speakErr":            "Text-to-speech failed: %s",

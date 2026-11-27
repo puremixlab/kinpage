@@ -286,6 +286,18 @@ var i18nZhCN = map[string]string{
 	"editor.compressVideo":      "压缩视频",
 	"editor.compressBtn":        "压缩",
 
+	// Writing inspiration
+	"editor.inspiration":          "没思路",
+	"editor.inspirationPick":      "摘一颗苹果",
+	"editor.inspirationAgain":     "再摘一颗",
+	"editor.inspirationResume":    "继续写",
+	"editor.inspirationOpen1":     "你最想让读者记住什么？从那件事写起。",
+	"editor.inspirationOpen2":     "回想今天的一个画面。你第一眼看见了什么？",
+	"editor.inspirationOpen3":     "如果朋友问你这件事为什么重要，你会怎么回答？",
+	"editor.inspirationContinue1": "挑一个刚才一笔带过的细节，单独写一句。",
+	"editor.inspirationContinue2": "接下来发生了什么？从最先改变的那件事写起。",
+	"editor.inspirationContinue3": "读者看到这里会追问什么？试着用一句话回答。",
+
 	// Status & Error Messages
 	"status.stoppedSpeak":        "已停止朗读",
 	"status.speakErr":            "语音朗读失败：%s",

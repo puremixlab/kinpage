@@ -5,7 +5,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/editor"
 	"github.com/lobehub/lobe-mygo/pkg/display"
 	"github.com/lobehub/lobe-mygo/pkg/lucide"
 	lobemd "github.com/lobehub/lobe-mygo/pkg/markdown"
@@ -34,22 +33,22 @@ func (a *App) viewEditor(c *ui.Context) {
 				})
 
 				// Metadata floating popover trigger + crisp Segmented switch aligned flush with editor body.
-				ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).PaddingX(8).Shrink(0).Children(func() {
+				ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).PaddingX(8).Gap(8).Shrink(0).Children(func() {
 					metaSummary := a.tf("editor.metaSummary", len(a.editorTags), len(a.editorAttachments))
 					metaBg := pal.subtle
 					if a.editorMetaOpen {
 						metaBg = pal.selection
 					}
 					metaAnchor := ui.ButtonBase(c.Key("editor-meta-toggle")).Label(a.t("editor.metaLabel")).
-						Background(metaBg).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(5).
+						Background(metaBg).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(5).MinWidth(0).
 						Cursor(ui.CursorPointer).Transition(rowHoverTransition)
 					if !a.editorMetaOpen && metaAnchor.Hovered() {
 						metaAnchor.Background(pal.hover)
 					}
 					metaAnchor.Children(func() {
 						ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
-							ui.Text(c, metaSummary).Font(macPlanetFont).FontSize(12).TextColor(pal.secondary).NoWrap()
-							ui.Icon(c, iconChevronDown).Size(12, 12).TextColor(pal.muted)
+							ui.Text(c, metaSummary).Font(macPlanetFont).FontSize(12).TextColor(pal.secondary).MinWidth(0).MaxLines(1).Ellipsis("…")
+							ui.Icon(c, iconChevronDown).Size(12, 12).TextColor(pal.muted).Shrink(0)
 						})
 					})
 					overlay.Popover(c, metaAnchor, &a.editorMetaOpen, overlay.PopoverProps{Placement: overlay.Bottom}, func() {
@@ -58,18 +57,27 @@ func (a *App) viewEditor(c *ui.Context) {
 						})
 					})
 
-					macSegmented(c, "editor-mode", &a.editorPaneMode, []string{a.t("editor.modeWrite"), a.t("editor.modeSplit"), a.t("editor.modePreview")}, pal)
+					ui.Row(c).AlignItems(ui.Center).Gap(6).Shrink(0).Children(func() {
+						previousMode := a.editorPaneMode
+						macSegmented(c, "editor-mode", &a.editorPaneMode, []string{a.t("editor.modeWrite"), a.t("editor.modeSplit"), a.t("editor.modePreview")}, pal)
+						if a.editorPaneMode != previousMode || a.editorPaneMode == editorPaneView {
+							a.editorInspiration.phase = inspirationClosed
+						}
+						if a.editorPaneMode != editorPaneView {
+							a.viewInspirationToggle(c, colW < 500)
+						}
+					})
 				})
 
 				ui.Box(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
 					switch a.editorPaneMode {
 					case editorPaneWrite:
-						editor.View(c, a.editorState).Fill()
+						a.viewEditorBody(c)
 					case editorPaneView:
 						a.viewMarkdownPreview(c, "", a.editorBuffer.String(), &a.previewScroll)
 					default:
 						ui.SplitPercent(c.Key("editor-split"), &a.editorSplitRatio,
-							func() { editor.View(c, a.editorState).Fill() },
+							func() { a.viewEditorBody(c) },
 							func() { a.viewMarkdownPreview(c, "", a.editorBuffer.String(), &a.previewScroll) },
 						).SplitReset(50).Fill()
 					}
