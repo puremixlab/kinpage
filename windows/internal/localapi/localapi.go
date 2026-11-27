@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"windows/internal/publisher"
 	"windows/internal/store"
 )
 
@@ -54,8 +55,9 @@ type Status struct {
 }
 
 type Backend struct {
-	OpenStore   func() (*store.Store, error)
-	PublishSite func(siteID string) error
+	OpenStore     func() (*store.Store, error)
+	PublishSite   func(siteID string) error
+	PublishMobile func(store.Article) (publisher.Result, error)
 }
 
 type Server struct {
@@ -276,6 +278,14 @@ func (srv *Server) buildHandler(root string) http.Handler {
 		}()
 
 		sc, err := loadStoredConfig(root)
+		mobile := strings.HasPrefix(r.URL.Path, mobilePrefix)
+		if mobile {
+			rec.Header().Set("Cache-Control", "no-store")
+			if err != nil || !sc.AuthEnabled || sc.Passcode == "" {
+				writeMobileError(rec, http.StatusForbidden, "auth_disabled")
+				return
+			}
+		}
 		if err == nil && sc.AuthEnabled && sc.Passcode != "" {
 			user, pass, ok := r.BasicAuth()
 			userOK := subtle.ConstantTimeCompare([]byte(user), []byte(sc.Username)) == 1
@@ -287,6 +297,10 @@ func (srv *Server) buildHandler(root string) http.Handler {
 			}
 		}
 
+		if mobile {
+			srv.dispatchMobile(rec, r)
+			return
+		}
 		srv.dispatch(rec, r)
 	})
 }

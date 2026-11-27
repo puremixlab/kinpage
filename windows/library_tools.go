@@ -12,6 +12,7 @@ import (
 	"windows/internal/applog"
 	"windows/internal/localapi"
 	"windows/internal/offline"
+	"windows/internal/publisher"
 	"windows/internal/services"
 	"windows/internal/store"
 )
@@ -25,6 +26,9 @@ func (l *Library) ensureAPIServer() *localapi.Server {
 			PublishSite: func(siteID string) error {
 				_, err := l.PublishSite(siteID)
 				return err
+			},
+			PublishMobile: func(article store.Article) (publisher.Result, error) {
+				return l.publishSite(article.SiteID, &article)
 			},
 		})
 	}

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -26,6 +27,10 @@ func (l *Library) ActivePublishCount() int {
 
 // PublishSite publishes the saved snapshot; Kubo is started only on request.
 func (l *Library) PublishSite(siteID string) (publisher.Result, error) {
+	return l.publishSite(siteID, nil)
+}
+
+func (l *Library) publishSite(siteID string, mobileArticle *store.Article) (publisher.Result, error) {
 	l.activePublishes.Add(1)
 	defer l.activePublishes.Add(-1)
 	l.publicMu.Lock()
@@ -39,6 +44,17 @@ func (l *Library) PublishSite(siteID string) (publisher.Result, error) {
 		return publisher.Result{}, err
 	}
 	site := &snapshot
+	if mobileArticle != nil {
+		matches := slices.ContainsFunc(articles, func(article store.Article) bool {
+			return article.ID == mobileArticle.ID && article.Title == mobileArticle.Title && article.Content == mobileArticle.Content
+		})
+		if !matches || site.Archived || !site.ShouldPublishIPNS() {
+			return publisher.Result{}, errors.New("手机文章或发布站点已更改")
+		}
+		if site.LastPublishedCID != "" && !site.PublishPending && site.PublishedRevision == site.ContentRevision {
+			return publisher.Result{CID: site.LastPublishedCID, IPNS: site.IPNS, Revision: site.PublishedRevision}, nil
+		}
+	}
 	var importedPublic string
 	if len(raw) > 0 {
 		root, e := mygo.App.Path(mygo.PathUserData)

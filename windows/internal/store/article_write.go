@@ -158,14 +158,14 @@ func isReservedTagKey(key string) bool {
 func (s *Store) SaveArticle(siteID, articleID, title, content string) (Article, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.saveArticleLocked(siteID, articleID, title, content, "", nil, nil)
+	return s.saveArticleLocked(siteID, articleID, title, content, "", "", nil, nil)
 }
 
 // DraftPreparation stages files before the atomic store write and returns a
 // rollback function to remove any files created if that write fails.
 type DraftPreparation func(Article, []string) (Article, func(), error)
 
-func (s *Store) saveArticleLocked(siteID, articleID, title, content, draftID string, prepare DraftPreparation, tags map[string]string) (Article, error) {
+func (s *Store) saveArticleLocked(siteID, articleID, title, content, draftID, newArticleID string, prepare DraftPreparation, tags map[string]string) (Article, error) {
 	if strings.TrimSpace(title) == "" {
 		return Article{}, errors.New("请输入文章标题")
 	}
@@ -260,9 +260,13 @@ func (s *Store) saveArticleLocked(siteID, articleID, title, content, draftID str
 		}
 		return Article{}, errors.New("文章不存在")
 	}
-	id, err := newID()
-	if err != nil {
-		return Article{}, err
+	id := newArticleID
+	if id == "" {
+		var err error
+		id, err = newID()
+		if err != nil {
+			return Article{}, err
+		}
 	}
 	var original struct {
 		Next     int    `json:"nextArticleNumber"`
@@ -500,7 +504,7 @@ func (s *Store) publishDraftPrepared(siteID, draftID, title, content string, pre
 			if site.ID == siteID && site.TagsUnsupported && tags == nil {
 				// Preserve the published article's existing tags; unsupported raw
 				// metadata and any private draft tags must not be promoted.
-				return s.saveArticleLocked(siteID, draft.ArticleID, title, content, draft.ID, prepare, nil)
+				return s.saveArticleLocked(siteID, draft.ArticleID, title, content, draft.ID, "", prepare, nil)
 			}
 		}
 		if tags == nil {
@@ -509,7 +513,7 @@ func (s *Store) publishDraftPrepared(siteID, draftID, title, content string, pre
 		if err := s.validateTagsLocked(siteID, draft.ArticleID, tags); err != nil {
 			return Article{}, err
 		}
-		return s.saveArticleLocked(siteID, draft.ArticleID, title, content, draft.ID, prepare, tags)
+		return s.saveArticleLocked(siteID, draft.ArticleID, title, content, draft.ID, "", prepare, tags)
 	}
 	return Article{}, errors.New("草稿不存在")
 }

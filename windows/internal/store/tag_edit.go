@@ -85,5 +85,5 @@ func (s *Store) SaveArticleWithTags(siteID, articleID, title, content, tagsJSON 
 	if err = s.validateTagsLocked(siteID, articleID, tags); err != nil {
 		return Article{}, err
 	}
-	return s.saveArticleLocked(siteID, articleID, title, content, "", nil, tags)
+	return s.saveArticleLocked(siteID, articleID, title, content, "", "", nil, tags)
 }
