@@ -11,6 +11,7 @@ import (
 )
 
 type layoutPrefs struct {
+	Locale           string   `json:"locale,omitempty"`
 	SidebarWidth     float32  `json:"sidebarWidth"`
 	PostsPanelWidth  float32  `json:"postsPanelWidth"`
 	SidebarCollapsed bool     `json:"sidebarCollapsed"`
@@ -25,7 +26,8 @@ type layoutPrefs struct {
 }
 
 func layoutPrefsEqual(a, b layoutPrefs) bool {
-	return a.SidebarWidth == b.SidebarWidth &&
+	return a.Locale == b.Locale &&
+		a.SidebarWidth == b.SidebarWidth &&
 		a.PostsPanelWidth == b.PostsPanelWidth &&
 		a.SidebarCollapsed == b.SidebarCollapsed &&
 		a.PostsCollapsed == b.PostsCollapsed &&
@@ -55,6 +57,10 @@ func (a *App) EnablePrefsPersistence(path string) {
 	if err := json.Unmarshal(data, &p); err != nil {
 		a.lastSavedPrefs = a.currentLayoutPrefs()
 		return
+	}
+	if p.Locale != "" {
+		a.locale = NormalizeLocale(p.Locale)
+		a.syncEditorLocale()
 	}
 	if p.SidebarWidth >= 220 && p.SidebarWidth <= 420 {
 		a.sidebarWidth = p.SidebarWidth
@@ -113,6 +119,7 @@ func (a *App) restoreLastSelection(p layoutPrefs) {
 
 func (a *App) currentLayoutPrefs() layoutPrefs {
 	return layoutPrefs{
+		Locale:           string(a.Locale()),
 		SidebarWidth:     float32(math.Round(float64(a.sidebarWidth))),
 		PostsPanelWidth:  float32(math.Round(float64(a.postsPanelWidth))),
 		SidebarCollapsed: a.sidebarCollapsed,

@@ -18,7 +18,7 @@ if (Test-Path -LiteralPath $outputPath) { throw "Refusing to overwrite existing 
 if ($payloadPath -match '[`$"\r\n]' -or $outputPath -match '[`$"\r\n]' -or $projectRoot -match '[`$"\r\n]') { throw 'NSIS paths containing $, quotes, or line breaks are not supported.' }
 if (-not (Test-Path -LiteralPath ([System.IO.Path]::GetDirectoryName($outputPath)) -PathType Container)) { throw 'Installer output parent directory does not exist.' }
 if (-not (Test-Path -LiteralPath $Makensis -PathType Leaf)) { throw 'NSIS 3.13 compiler not found.' }
-$names = @('Planet Windows.exe', 'ipfs.exe', 'icon.png', 'kubo-LICENSE.txt', 'kubo-LICENSE-MIT.txt', 'kubo-LICENSE-APACHE.txt', 'LICENSE-PLANET.txt', 'THIRD-PARTY-NOTICES.txt', 'KUBO-BUILDINFO.txt', 'KUBO-DEPENDENCY-LICENSES.txt')
+$names = @('Kinpage.exe', 'ipfs.exe', 'icon.png', 'kubo-LICENSE.txt', 'kubo-LICENSE-MIT.txt', 'kubo-LICENSE-APACHE.txt', 'LICENSE-PLANET.txt', 'THIRD-PARTY-NOTICES.txt', 'KUBO-BUILDINFO.txt', 'KUBO-DEPENDENCY-LICENSES.txt')
 $manifest = [ordered]@{}
 foreach ($name in $names) {
     $file = Join-Path $payloadPath $name

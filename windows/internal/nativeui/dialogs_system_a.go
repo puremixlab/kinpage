@@ -54,19 +54,20 @@ func (a *App) openTipModal(recipient string) {
 func (a *App) viewTipCreatorSheet(c *ui.Context) {
 	pal := a.pal
 	if macSheet(c, &a.tipModalOpen, macSheetProps{
-		Title:       "打赏创作者 (ETH)",
-		Width:       460,
-		PrimaryText: "在钱包中打开支付链接",
-		CancelText:  "取消",
+		Title:        a.t("dialog.tip.title"),
+		Width:        460,
+		PrimaryText:  a.t("dialog.tip.primary"),
+		CancelText:   a.t("common.cancel"),
+		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
 		macInsetCard(c, pal, func() {
-			macField(c, "收款地址 (0x… 或 ENS)", "", pal, func() {
-				ui.TextInput(c.Key("tip-recipient"), &a.tipRecipient).Placeholder("例如 planetable.eth 或 0x…").Label("收款地址").AlignSelf(ui.Stretch)
+			macField(c, a.t("dialog.tip.recipientField"), "", pal, func() {
+				ui.TextInput(c.Key("tip-recipient"), &a.tipRecipient).Placeholder(a.t("dialog.tip.recipientPlaceholder")).Label(a.t("dialog.tip.recipientLabel")).AlignSelf(ui.Stretch)
 			})
-			macField(c, "打赏金额 (ETH)", "", pal, func() {
+			macField(c, a.t("dialog.tip.amountField"), "", pal, func() {
 				ui.Row(c).Gap(6).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
 					ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-						ui.TextInput(c.Key("tip-amount"), &a.tipAmount).Placeholder("0.005").Label("打赏金额").AlignSelf(ui.Stretch)
+						ui.TextInput(c.Key("tip-amount"), &a.tipAmount).Placeholder("0.005").Label(a.t("dialog.tip.amountLabel")).AlignSelf(ui.Stretch)
 					})
 					for _, preset := range []string{"0.001", "0.005", "0.01"} {
 						p := preset
@@ -91,12 +92,12 @@ func (a *App) viewTipCreatorSheet(c *ui.Context) {
 		}
 		if a.openExternal != nil {
 			if err := a.openExternal(uri); err != nil {
-				a.tipErr = "无法唤起钱包应用：" + err.Error()
+				a.tipErr = a.tf("status.tipOpenErr", err.Error())
 				return
 			}
 		}
 		a.tipModalOpen = false
-		a.setStatus("已唤起钱包打赏链接：" + a.tipRecipient)
+		a.setStatus(a.tf("status.tipOpened", a.tipRecipient))
 	}
 }
 
@@ -109,16 +110,17 @@ func (a *App) openIPFSResourceModal() {
 func (a *App) viewOpenIPFSResourceSheet(c *ui.Context) {
 	pal := a.pal
 	if macSheet(c, &a.openIPFSResOpen, macSheetProps{
-		Title:       "打开 IPFS 资源",
-		Width:       480,
-		PrimaryText: "在本地网关打开",
-		CancelText:  "取消",
+		Title:        a.t("ipfs.openResourceTitle"),
+		Width:        480,
+		PrimaryText:  a.t("ipfs.openResourcePrimary"),
+		CancelText:   a.t("common.cancel"),
+		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
 		macInsetCard(c, pal, func() {
-			macField(c, "CID / IPNS / 去中心化域名", "", pal, func() {
+			macField(c, a.t("ipfs.openResourceField"), "", pal, func() {
 				ui.TextInput(c.Key("open-ipfs-res-input"), &a.openIPFSResInput).
-					Placeholder("例如 Qm… / bafy… / k51… / planetable.eth").
-					Label("IPFS 资源地址").AutoFocus().AlignSelf(ui.Stretch)
+					Placeholder(a.t("ipfs.openResourceHint")).
+					Label(a.t("ipfs.openResourceLabel")).AutoFocus().AlignSelf(ui.Stretch)
 			})
 		})
 		if a.openIPFSResErr != "" {
@@ -135,12 +137,12 @@ func (a *App) viewOpenIPFSResourceSheet(c *ui.Context) {
 		}
 		if a.openExternal != nil {
 			if err := a.openExternal(targetURL); err != nil {
-				a.openIPFSResErr = "打开本地网关失败：" + err.Error()
+				a.openIPFSResErr = a.tf("ipfs.openGatewayErr", err.Error())
 				return
 			}
 		}
 		a.openIPFSResOpen = false
-		a.setStatus("已在本地网关打开：" + targetURL)
+		a.setStatus(a.tf("ipfs.openedGatewayStatus", targetURL))
 	}
 }
 
@@ -167,30 +169,30 @@ func (a *App) viewIPFSPopoverContent(c *ui.Context) {
 	m := &a.ipfsModal
 	ui.Column(c).Width(320).Padding(4).Gap(10).Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, "IPFS 节点状态").Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink)
-			if toolbarIconBtn(c, "ipfs-close", lucide.X(), "关闭").Clicked() {
+			ui.Text(c, a.t("ipfs.statusTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink)
+			if toolbarIconBtn(c, "ipfs-close", lucide.X(), a.t("common.close")).Clicked() {
 				m.open = false
 			}
 		})
 
-		stateText := "未运行"
+		stateText := a.t("ipfs.stateNotRunning")
 		if m.status.Disabled {
-			stateText = "已停用"
+			stateText = a.t("ipfs.stateDisabled")
 		} else if m.status.Running && m.status.Online {
-			stateText = "在线运行中"
+			stateText = a.t("ipfs.stateOnline")
 		} else if m.status.Running {
-			stateText = "本地运行中"
+			stateText = a.t("ipfs.stateLocal")
 		}
 
 		ui.Column(c).Padding(10).Gap(5).Background(pal.subtle).Border(0.5, pal.line).Radius(6).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, fmt.Sprintf("状态：%s  ·  已连接节点：%d", stateText, m.status.Peers)).Font(macPlanetFont).FontSize(12).TextColor(pal.ink)
+			ui.Text(c, a.tf("ipfs.statusLine", stateText, m.status.Peers)).Font(macPlanetFont).FontSize(12).TextColor(pal.ink)
 			if m.status.Version != "" {
-				ui.Text(c, "Kubo 版本："+m.status.Version).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
+				ui.Text(c, a.tf("ipfs.kuboVersion", m.status.Version)).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
 			}
 			if m.status.Gateway != "" {
-				ui.Text(c, "本地网关："+m.status.Gateway).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
+				ui.Text(c, a.tf("ipfs.localGateway", m.status.Gateway)).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
 			}
-			ui.Text(c, fmt.Sprintf("仓库大小：%s  ·  ↓ %.1f / ↑ %.1f B/s", formatBytes(m.repoSize), m.status.RateIn, m.status.RateOut)).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
+			ui.Text(c, a.tf("ipfs.repoSizeLine", formatBytes(m.repoSize), m.status.RateIn, m.status.RateOut)).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
 		})
 
 		if m.err != "" {
@@ -200,27 +202,27 @@ func (a *App) viewIPFSPopoverContent(c *ui.Context) {
 		}
 
 		ui.Row(c).Gap(6).Justify(ui.End).AlignSelf(ui.Stretch).Children(func() {
-			if macSecondaryButton(c, "ipfs-gc", "清理未固定数据", pal) {
+			if macSecondaryButton(c, "ipfs-gc", a.t("ipfs.gcBtn"), pal) {
 				if err := a.backend.IPFSGarbageCollect(); err != nil {
 					m.err = err.Error()
 				} else {
-					m.msg = "已完成垃圾回收"
+					m.msg = a.t("ipfs.gcDone")
 					a.refreshIPFSModal()
 				}
 			}
-			if macSecondaryButton(c, "ipfs-refresh", "刷新", pal) {
+			if macSecondaryButton(c, "ipfs-refresh", a.t("common.refresh"), pal) {
 				a.refreshIPFSModal()
 			}
 			isRunning := !m.status.Disabled && m.status.Running
-			toggleLabel := "启动节点"
+			toggleLabel := a.t("ipfs.startNode")
 			if isRunning {
-				toggleLabel = "停用节点"
+				toggleLabel = a.t("ipfs.stopNode")
 			}
 			if macPrimaryButtonSmall(c, "ipfs-toggle", toggleLabel, pal) {
 				if err := a.backend.SetIPFSEnabled(!isRunning); err != nil {
 					m.err = err.Error()
 				} else {
-					m.msg = "节点状态已更新"
+					m.msg = a.t("ipfs.stateUpdated")
 					a.refreshIPFSModal()
 				}
 			}
@@ -242,13 +244,14 @@ func (a *App) viewOfflineModal(c *ui.Context) {
 	pal := a.pal
 	m := &a.offlineModal
 	macSheet(c, &m.open, macSheetProps{
-		Title:      "离线存储管理",
-		Width:      440,
-		HideFooter: true,
+		Title:        a.t("dialog.offline.title"),
+		Width:        440,
+		HideFooter:   true,
+		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
 		ui.Column(c).Padding(12).Gap(6).Background(pal.subtle).Border(0.5, pal.line).Radius(6).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, fmt.Sprintf("已管理文件：%d 个（%s）", m.usage.ManagedFiles, formatBytes(m.usage.TotalBytes))).Font(macPlanetFont).FontSize(12).TextColor(pal.ink)
-			ui.Text(c, fmt.Sprintf("可回收空间：%d 个（%s）", m.usage.ReclaimableFiles, formatBytes(m.usage.ReclaimableBytes))).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+			ui.Text(c, a.tf("dialog.offline.managedFiles", m.usage.ManagedFiles, formatBytes(m.usage.TotalBytes))).Font(macPlanetFont).FontSize(12).TextColor(pal.ink)
+			ui.Text(c, a.tf("dialog.offline.reclaimableSpace", m.usage.ReclaimableFiles, formatBytes(m.usage.ReclaimableBytes))).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 		})
 		if m.err != "" {
 			ui.Text(c, m.err).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
@@ -256,16 +259,16 @@ func (a *App) viewOfflineModal(c *ui.Context) {
 			ui.Text(c, m.msg).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 		}
 		ui.Row(c).Gap(8).Justify(ui.End).AlignSelf(ui.Stretch).Children(func() {
-			if macSecondaryButton(c, "offline-clean", "清理可回收空间", pal) {
+			if macSecondaryButton(c, "offline-clean", a.t("dialog.offline.cleanBtn"), pal) {
 				usage, err := a.backend.CleanupOfflineMedia()
 				if err != nil {
 					m.err = err.Error()
 				} else {
 					m.usage = usage
-					m.msg = fmt.Sprintf("已释放 %s", formatBytes(usage.ReclaimedBytes))
+					m.msg = a.tf("dialog.offline.reclaimedMsg", formatBytes(usage.ReclaimedBytes))
 				}
 			}
-			if macPrimaryButtonSmall(c, "offline-close", "关闭", pal) {
+			if macPrimaryButtonSmall(c, "offline-close", a.t("common.close"), pal) {
 				m.open = false
 			}
 		})
@@ -286,14 +289,15 @@ func (a *App) viewFoldersModal(c *ui.Context) {
 	pal := a.pal
 	m := &a.foldersModal
 	macSheet(c, &m.open, macSheetProps{
-		Title:      "已发布文件夹",
-		Width:      520,
-		CancelText: "关闭",
+		Title:        a.t("dialog.folders.title"),
+		Width:        520,
+		CancelText:   a.t("common.close"),
+		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
 		ui.Row(c).Gap(8).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-			ui.TextInput(c.Key("folder-new-name"), &m.newName).Placeholder("文件夹名称（可选）").Label("文件夹名称").Grow(1)
-			ui.Checkbox(c.Key("folder-auto"), &m.autoPublish, "自动发布")
-			if macPrimaryButtonSmall(c, "folder-add", "+ 添加", pal) {
+			ui.TextInput(c.Key("folder-new-name"), &m.newName).Placeholder(a.t("dialog.folders.namePlaceholder")).Label(a.t("dialog.folders.nameLabel")).Grow(1)
+			ui.Checkbox(c.Key("folder-auto"), &m.autoPublish, a.t("dialog.folders.autoPublish"))
+			if macPrimaryButtonSmall(c, "folder-add", a.t("dialog.folders.addBtn"), pal) {
 				if _, err := a.backend.AddPublishedFolder(context.Background(), strings.TrimSpace(m.newName), m.autoPublish); err != nil {
 					m.err = err.Error()
 				} else {
@@ -308,23 +312,23 @@ func (a *App) viewFoldersModal(c *ui.Context) {
 		ui.Scroll(c).Height(220).AlignSelf(ui.Stretch).Children(func() {
 			ui.Column(c).Gap(6).Children(func() {
 				if len(m.folders) == 0 {
-					ui.Text(c, "暂无已发布文件夹").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+					ui.Text(c, a.t("dialog.folders.empty")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 				}
 				for _, f := range m.folders {
 					fid := f.ID
 					ui.Row(c.Key("folder-row-"+fid)).Padding(8).Gap(8).AlignItems(ui.Center).Background(pal.subtle).Border(0.5, pal.line).Radius(6).AlignSelf(ui.Stretch).Children(func() {
 						ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-							ui.Text(c, fallbackTitle(f.Name)).Font(macPlanetFont).FontWeight(600).FontSize(12).TextColor(pal.ink)
+							ui.Text(c, a.fallbackTitle(f.Name)).Font(macPlanetFont).FontWeight(600).FontSize(12).TextColor(pal.ink)
 							ui.Text(c, f.Path).Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
 						})
-						if macSecondaryButton(c, "folder-pub-"+fid, "发布", pal) {
+						if macSecondaryButton(c, "folder-pub-"+fid, a.t("common.publish"), pal) {
 							if _, err := a.backend.PublishFolder(fid); err != nil {
 								m.err = err.Error()
 							} else {
 								a.openFoldersModal()
 							}
 						}
-						if macSecondaryButton(c, "folder-rm-"+fid, "移除", pal) {
+						if macSecondaryButton(c, "folder-rm-"+fid, a.t("common.remove"), pal) {
 							if err := a.backend.RemovePublishedFolder(fid); err != nil {
 								m.err = err.Error()
 							} else {
@@ -352,9 +356,10 @@ func (a *App) viewRemovedSitesModal(c *ui.Context) {
 	pal := a.pal
 	m := &a.removedSites
 	macSheet(c, &m.open, macSheetProps{
-		Title:      "已移除的站点（回收站）",
-		Width:      480,
-		CancelText: "关闭",
+		Title:        a.t("dialog.removedSites.title"),
+		Width:        480,
+		CancelText:   a.t("common.close"),
+		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
 		if m.err != "" {
 			ui.Text(c, m.err).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
@@ -362,22 +367,22 @@ func (a *App) viewRemovedSitesModal(c *ui.Context) {
 		ui.Scroll(c).Height(220).AlignSelf(ui.Stretch).Children(func() {
 			ui.Column(c).Gap(6).Children(func() {
 				if len(m.sites) == 0 {
-					ui.Text(c, "回收站为空").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+					ui.Text(c, a.t("dialog.removedSites.empty")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 				}
 				for _, s := range m.sites {
 					sid := s.ID
 					ui.Row(c.Key("rm-site-"+sid)).Padding(8).Gap(8).AlignItems(ui.Center).Background(pal.subtle).Border(0.5, pal.line).Radius(6).AlignSelf(ui.Stretch).Children(func() {
-						ui.Text(c, fallbackTitle(s.Name)).Font(macPlanetFont).FontSize(13).TextColor(pal.ink).Grow(1)
-						if macPrimaryButtonSmall(c, "restore-site-"+sid, "恢复", pal) {
+						ui.Text(c, a.fallbackTitle(s.Name)).Font(macPlanetFont).FontSize(13).TextColor(pal.ink).Grow(1)
+						if macPrimaryButtonSmall(c, "restore-site-"+sid, a.t("common.restore"), pal) {
 							if _, err := a.backend.RestoreSite(sid); err != nil {
 								m.err = err.Error()
 							} else {
 								a.Reload()
 								a.openRemovedSitesModal()
-								a.setStatus("已恢复站点")
+								a.setStatus(a.t("status.siteRestored"))
 							}
 						}
-						if macSecondaryButton(c, "purge-site-"+sid, "永久删除", pal) {
+						if macSecondaryButton(c, "purge-site-"+sid, a.t("dialog.removedSites.purgeBtn"), pal) {
 							if err := a.backend.PermanentlyDeleteSite(sid); err != nil {
 								m.err = err.Error()
 							} else {

@@ -11,7 +11,6 @@ import (
 	"github.com/lobehub/lobe-mygo/pkg/lucide"
 	lobemd "github.com/lobehub/lobe-mygo/pkg/markdown"
 	"github.com/lobehub/lobe-mygo/pkg/theme"
-	"golang.org/x/net/html"
 	"windows/internal/feeds"
 	"windows/internal/store"
 )
@@ -200,14 +199,14 @@ func (a *App) viewSubscriptionWorkspace(c *ui.Context) {
 
 func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 	pal := a.pal
-	heading := "订阅阅读"
+	heading := a.t("list.subDefaultHeading")
 	switch a.mode {
 	case viewToday:
-		heading = "今天"
+		heading = a.t("nav.today")
 	case viewUnread:
-		heading = "未读"
+		heading = a.t("nav.unread")
 	case viewStarred:
-		heading = "收藏"
+		heading = a.t("nav.starred")
 	case viewSubscription:
 		if sub := a.currentSubscription(); sub != nil {
 			heading = subscriptionTitle(*sub)
@@ -221,12 +220,12 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 			unreadCount++
 		}
 	}
-	subtitle := fmt.Sprintf("%d 篇文章", len(items))
+	subtitle := a.tf("list.articleCount", len(items))
 	if unreadCount > 0 {
-		subtitle = fmt.Sprintf("%d 未读 · 共 %d 篇", unreadCount, len(items))
+		subtitle = a.tf("list.unreadTotalCount", unreadCount, len(items))
 	}
 	if a.listFilter != listFilterAll {
-		subtitle += " · 已筛选"
+		subtitle += a.t("filter.suffix")
 	}
 
 	ui.Column(c).Fill().MinWidth(240).Background(pal.canvas).Children(func() {
@@ -237,12 +236,12 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 			ui.Row(c).Padding(8, 10, 4, 10).Gap(4).AlignItems(ui.Center).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 				ui.Box(c).Grow(1).MinWidth(0).Children(func() {
 					field.SearchBar(c.Key("sub-filter"), &a.subSearchQuery, field.SearchBarProps{
-						Placeholder: "筛选订阅条目…",
+						Placeholder: a.t("list.searchSubPlaceholder"),
 						Variant:     field.InputFilled,
 						Size:        theme.Small,
 					})
 				})
-				if toolbarIconBtn(c, "sub-filter-close", lucide.X(), "关闭筛选").Clicked() {
+				if toolbarIconBtn(c, "sub-filter-close", lucide.X(), a.t("list.closeFilter")).Clicked() {
 					a.listSearchOpen = false
 					a.subSearchQuery = ""
 				}
@@ -255,14 +254,14 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 					ui.Box(c).PaddingY(32).AlignSelf(ui.Stretch).Children(func() {
 						display.Empty(c, display.EmptyProps{
 							Icon:        lucide.Inbox(),
-							Title:       "暂无订阅内容",
-							Description: "尝试切换分类或刷新订阅源",
+							Title:       a.t("list.emptySubTitle"),
+							Description: a.t("list.emptySubDesc"),
 						})
 					})
 				}
 				for _, entry := range items {
 					subURL, key := entry.subURL, entry.effective
-					title := fallbackTitle(entry.item.Title)
+					title := a.fallbackTitle(entry.item.Title)
 					selected := a.selectedSubItemSubURL == subURL && a.selectedSubItemKey == key
 					rawBody := entry.item.Content
 					if strings.TrimSpace(rawBody) == "" {
@@ -277,12 +276,13 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 						ariaLabel:   title,
 						title:       title,
 						summary:     excerptText(htmlToReadableMarkdown(rawBody), 80),
-						dateText:    formatFeedDate(entry.item.Published),
+						dateText:    a.formatFeedDate(entry.item.Published),
 						sourceLabel: sourceLabel,
 						selected:    selected,
 						starred:     entry.item.Starred,
 						starType:    entry.item.StarType,
 						unread:      !entry.item.Read,
+						locale:      a.Locale(),
 					}, pal).ContextMenu(a.subItemContextMenu(entry))
 					if row.Clicked() {
 						a.selectSubItem(subURL, key)
@@ -305,8 +305,8 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 			ui.Column(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Center().Children(func() {
 				display.Empty(c, display.EmptyProps{
 					Icon:        lucide.BookOpen(),
-					Title:       "选择一篇订阅文章",
-					Description: "从左侧列表点击任意条目即可开始阅读",
+					Title:       a.t("reader.subEmptyTitle"),
+					Description: a.t("reader.subEmptyDesc"),
 				})
 			})
 			return
@@ -334,7 +334,7 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 						ui.WebView(c, a.subWebView.Native()).Fill()
 					} else {
 						ui.Column(c).Fill().Center().Children(func() {
-							ui.Text(c, "原网页预览："+targetURL).Font(macPlanetFont).FontSize(13).TextColor(pal.muted)
+							ui.Text(c, a.tf("reader.webPreviewPrefix", targetURL)).Font(macPlanetFont).FontSize(13).TextColor(pal.muted)
 						})
 					}
 				})
@@ -352,7 +352,7 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 		ui.Scroll(c).TrackScroll(&a.subReaderScroll).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Background(pal.canvas).Children(func() {
 			ui.Column(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).PaddingX(36).PaddingY(28).Children(func() {
 				ui.Column(c).Width(colW).Gap(12).Children(func() {
-					ui.Text(c, fallbackTitle(cur.item.Title)).Font(macPlanetFont).FontSize(28).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.ink)
+					ui.Text(c, a.fallbackTitle(cur.item.Title)).Font(macPlanetFont).FontSize(28).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.ink)
 					meta := cur.subTitle
 					if cur.item.Published != "" {
 						meta += "   ·   " + cur.item.Published
@@ -365,7 +365,7 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 					if strings.TrimSpace(mdBody) == "" {
 						display.Empty(c, display.EmptyProps{
 							Icon:  lucide.FileText(),
-							Title: "该订阅条目没有正文内容",
+							Title: a.t("reader.subNoContent"),
 						})
 					} else {
 						lobemd.Markdown(c.Key("sub-md-"+cur.effective), mdBody, lobemd.MarkdownProps{
@@ -386,13 +386,14 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 func (a *App) viewFollowModal(c *ui.Context) {
 	pal := a.pal
 	if macSheet(c, &a.followModalOpen, macSheetProps{
-		Title:       "关注订阅",
-		Width:       440,
-		PrimaryText: "关注",
-		CancelText:  "取消",
+		Title:        a.t("dialog.follow.title"),
+		Width:        440,
+		PrimaryText:  a.t("dialog.follow.primary"),
+		CancelText:   a.t("common.cancel"),
+		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
-		ui.Text(c, "支持 RSS / Atom 链接、Planet IPNS 或 ENS 域名").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
-		if ui.TextInput(c.Key("follow-addr"), &a.followAddress).Placeholder("https://example.com/feed.xml 或 vitalik.eth").Label("订阅地址").AutoFocus().AlignSelf(ui.Stretch).Submitted() {
+		ui.Text(c, a.t("dialog.follow.hint")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+		if ui.TextInput(c.Key("follow-addr"), &a.followAddress).Placeholder(a.t("dialog.follow.placeholder")).Label(a.t("dialog.follow.label")).AutoFocus().AlignSelf(ui.Stretch).Submitted() {
 			a.submitFollow()
 		}
 		if a.followErr != "" {
@@ -406,7 +407,7 @@ func (a *App) viewFollowModal(c *ui.Context) {
 func (a *App) submitFollow() {
 	addr := strings.TrimSpace(a.followAddress)
 	if addr == "" {
-		a.followErr = "请输入订阅地址"
+		a.followErr = a.t("dialog.follow.addrRequired")
 		return
 	}
 	sub, err := a.backend.Follow(addr)
@@ -418,23 +419,24 @@ func (a *App) submitFollow() {
 	a.followErr = ""
 	a.Reload()
 	a.openSubscriptionView(viewSubscription, sub.URL)
-	a.setStatus("已关注：" + subscriptionTitle(sub))
+	a.setStatus(a.tf("status.followed", subscriptionTitle(sub)))
 }
 
 func (a *App) viewEditSubscriptionModal(c *ui.Context) {
 	pal := a.pal
 	if macSheet(c, &a.editSubOpen, macSheetProps{
-		Title:       "编辑订阅",
-		Width:       460,
-		PrimaryText: "保存订阅",
-		CancelText:  "取消",
+		Title:        a.t("dialog.editSub.title"),
+		Width:        460,
+		PrimaryText:  a.t("dialog.editSub.primary"),
+		CancelText:   a.t("common.cancel"),
+		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
 		macInsetCard(c, pal, func() {
-			macField(c, "订阅地址", "", pal, func() {
-				ui.TextInput(c.Key("edit-sub-url"), &a.editSubNewURL).Label("订阅地址").AlignSelf(ui.Stretch)
+			macField(c, a.t("dialog.editSub.addrField"), "", pal, func() {
+				ui.TextInput(c.Key("edit-sub-url"), &a.editSubNewURL).Label(a.t("dialog.editSub.addrField")).AlignSelf(ui.Stretch)
 			})
-			macField(c, "自定义名称", "", pal, func() {
-				ui.TextInput(c.Key("edit-sub-title"), &a.editSubTitle).Placeholder("留空使用源标题").Label("自定义名称").AlignSelf(ui.Stretch)
+			macField(c, a.t("dialog.editSub.customTitleField"), "", pal, func() {
+				ui.TextInput(c.Key("edit-sub-title"), &a.editSubTitle).Placeholder(a.t("dialog.editSub.customTitlePlaceholder")).Label(a.t("dialog.editSub.customTitleField")).AlignSelf(ui.Stretch)
 			})
 		})
 		if a.editSubErr != "" {
@@ -449,25 +451,25 @@ func (a *App) viewEditSubscriptionModal(c *ui.Context) {
 		a.editSubOpen = false
 		a.selectedSubURL = sub.URL
 		a.Reload()
-		a.setStatus("已更新订阅：" + subscriptionTitle(sub))
+		a.setStatus(a.tf("status.subUpdated", subscriptionTitle(sub)))
 	}
 }
 
 func (a *App) viewUnfollowDialog(c *ui.Context) {
 	if macConfirmSheet(c, &a.unfollowOpen,
-		"取消关注订阅？",
-		fmt.Sprintf("确定要取消关注“%s”吗？", fallbackTitle(a.unfollowTitle)),
-		"取消", "取消关注", true, a.pal) {
+		a.t("dialog.unfollow.title"),
+		a.tf("dialog.unfollow.message", a.fallbackTitle(a.unfollowTitle)),
+		a.t("common.cancel"), a.t("dialog.unfollow.confirm"), true, a.pal) {
 		if a.backend != nil && a.unfollowURL != "" {
 			if err := a.backend.Unfollow(a.unfollowURL); err != nil {
-				a.setError("取消关注失败：" + err.Error())
+				a.setError(a.tf("status.unfollowErr", err.Error()))
 			} else {
 				if a.selectedSubURL == a.unfollowURL {
 					a.selectedSubURL = ""
 					a.mode = viewOverview
 				}
 				a.Reload()
-				a.setStatus("已取消关注")
+				a.setStatus(a.t("status.unfollowed"))
 			}
 		}
 		a.unfollowURL = ""
@@ -503,15 +505,16 @@ func (a *App) runGlobalSearch() {
 func (a *App) viewGlobalSearchModal(c *ui.Context) {
 	pal := a.pal
 	macSheet(c, &a.searchModalOpen, macSheetProps{
-		Title:      "搜索文章",
-		Width:      560,
-		CancelText: "关闭",
+		Title:        a.t("dialog.search.title"),
+		Width:        560,
+		CancelText:   a.t("common.close"),
+		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
 		ui.Row(c).Gap(8).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-			if ui.TextInput(c.Key("global-search-input"), &a.searchQuery).Placeholder("搜索本站文章与订阅内容…").Label("搜索关键词").AutoFocus().Grow(1).Submitted() {
+			if ui.TextInput(c.Key("global-search-input"), &a.searchQuery).Placeholder(a.t("dialog.search.placeholder")).Label(a.t("dialog.search.label")).AutoFocus().Grow(1).Submitted() {
 				a.runGlobalSearch()
 			}
-			if macPrimaryButtonSmall(c, "global-search-go", "搜索", pal) {
+			if macPrimaryButtonSmall(c, "global-search-go", a.t("common.search"), pal) {
 				a.runGlobalSearch()
 			}
 		})
@@ -521,11 +524,11 @@ func (a *App) viewGlobalSearchModal(c *ui.Context) {
 		ui.Scroll(c).Height(300).AlignSelf(ui.Stretch).Children(func() {
 			ui.Column(c).Gap(4).Children(func() {
 				if len(a.searchResults) == 0 {
-					ui.Text(c, "输入关键词并点击搜索，可同时检索本地站点与已订阅内容。").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+					ui.Text(c, a.t("dialog.search.hint")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 				}
 				for i, r := range a.searchResults {
 					res := r
-					label := fmt.Sprintf("%s  ·  %s", fallbackTitle(res.Title), fallbackTitle(res.SourceName))
+					label := fmt.Sprintf("%s  ·  %s", a.fallbackTitle(res.Title), a.fallbackTitle(res.SourceName))
 					if interactiveRow(c, fmt.Sprintf("search-res-%d", i), label, pal.subtle, pal.hover, pal.active).
 						Radius(6).Padding(8, 10, 8, 10).
 						Children(func() {
@@ -564,12 +567,13 @@ func (a *App) openRelatedArticles(siteID, articleID, subURL, itemKey, title stri
 func (a *App) viewRelatedArticlesModal(c *ui.Context) {
 	pal := a.pal
 	macSheet(c, &a.relatedModalOpen, macSheetProps{
-		Title:      "相关文章",
-		Width:      500,
-		CancelText: "关闭",
+		Title:        a.t("dialog.related.title"),
+		Width:        500,
+		CancelText:   a.t("common.close"),
+		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
 		if a.relatedTitle != "" {
-			ui.Text(c, "与“"+a.relatedTitle+"”相关的内容：").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+			ui.Text(c, a.tf("dialog.related.prompt", a.relatedTitle)).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 		}
 		if a.relatedErr != "" {
 			ui.Text(c, a.relatedErr).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
@@ -577,11 +581,11 @@ func (a *App) viewRelatedArticlesModal(c *ui.Context) {
 		ui.Scroll(c).Height(260).AlignSelf(ui.Stretch).Children(func() {
 			ui.Column(c).Gap(4).Children(func() {
 				if len(a.relatedResults) == 0 && a.relatedErr == "" {
-					ui.Text(c, "暂无相关文章推荐").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+					ui.Text(c, a.t("dialog.related.empty")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 				}
 				for i, r := range a.relatedResults {
 					res := r
-					label := fmt.Sprintf("%s  ·  %s", fallbackTitle(res.Title), fallbackTitle(res.SourceName))
+					label := fmt.Sprintf("%s  ·  %s", a.fallbackTitle(res.Title), a.fallbackTitle(res.SourceName))
 					if interactiveRow(c, fmt.Sprintf("related-res-%d", i), label, pal.subtle, pal.hover, pal.active).
 						Radius(6).Padding(8, 10, 8, 10).
 						Children(func() {
@@ -610,270 +614,6 @@ func (a *App) jumpToSearchResult(res store.SearchResult) {
 	}
 }
 
-// htmlToReadableMarkdown converts simple RSS/Atom HTML fragments into clean
-// Markdown suitable for native ui/markdown.View rendering without a WebView.
-func htmlToReadableMarkdown(raw string) string {
-	return htmlToReadableMarkdownWithBase(raw, "")
-}
-
-func formatMarkdownImage(alt, rawURL string) string {
-	u := strings.TrimSpace(rawURL)
-	if u == "" {
-		return ""
-	}
-	cleanAlt := strings.Join(strings.Fields(alt), " ")
-	cleanAlt = strings.ReplaceAll(cleanAlt, "]", "\\]")
-	if strings.ContainsAny(u, " \t\r\n()") {
-		return "![" + cleanAlt + "](<" + u + ">)"
-	}
-	return "![" + cleanAlt + "](" + u + ")"
-}
-
-func firstSrcsetURL(srcset string) string {
-	for _, entry := range strings.Split(srcset, ",") {
-		fields := strings.Fields(strings.TrimSpace(entry))
-		if len(fields) > 0 && fields[0] != "" {
-			return fields[0]
-		}
-	}
-	return ""
-}
-
-func nodeContainsImage(n *html.Node) bool {
-	if n == nil {
-		return false
-	}
-	if n.Type == html.ElementNode {
-		tag := strings.ToLower(n.Data)
-		if tag == "img" || tag == "picture" {
-			return true
-		}
-	}
-	for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
-		if nodeContainsImage(ch) {
-			return true
-		}
-	}
-	return false
-}
-
-func htmlToReadableMarkdownWithBase(raw, baseURL string) string {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" || !strings.Contains(trimmed, "<") {
-		return trimmed
-	}
-	doc, err := html.Parse(strings.NewReader(trimmed))
-	if err != nil {
-		return trimmed
-	}
-	var out strings.Builder
-	extractImgURL := func(n *html.Node, pictureFallback string) (string, string) {
-		src := ""
-		lazySrc := ""
-		srcset := ""
-		alt := ""
-		for _, attr := range n.Attr {
-			key := strings.ToLower(attr.Key)
-			val := strings.TrimSpace(attr.Val)
-			if val == "" {
-				continue
-			}
-			switch key {
-			case "src":
-				if !strings.HasPrefix(strings.ToLower(val), "data:image/svg+xml") {
-					src = val
-				}
-			case "data-src", "data-original", "data-lazy-src", "data-actualsrc", "data-url":
-				if lazySrc == "" {
-					lazySrc = val
-				}
-			case "srcset", "data-srcset":
-				if srcset == "" {
-					srcset = val
-				}
-			case "alt":
-				alt = val
-			}
-		}
-		// Prefer lazy-load attributes when src is missing or a tiny data: placeholder.
-		chosen := src
-		if lazySrc != "" && (chosen == "" || strings.HasPrefix(strings.ToLower(chosen), "data:")) {
-			chosen = lazySrc
-		}
-		if chosen == "" && srcset != "" {
-			chosen = firstSrcsetURL(srcset)
-		}
-		if chosen == "" && pictureFallback != "" {
-			chosen = pictureFallback
-		}
-		return chosen, alt
-	}
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		switch n.Type {
-		case html.TextNode:
-			out.WriteString(n.Data)
-		case html.ElementNode:
-			tag := strings.ToLower(n.Data)
-			switch tag {
-			case "script", "style", "noscript":
-				return
-			case "br":
-				out.WriteString("\n")
-				return
-			case "picture":
-				sourceFallback := ""
-				var imgNode *html.Node
-				for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
-					if ch.Type != html.ElementNode {
-						continue
-					}
-					chTag := strings.ToLower(ch.Data)
-					if chTag == "source" && sourceFallback == "" {
-						for _, attr := range ch.Attr {
-							k := strings.ToLower(attr.Key)
-							if k == "srcset" || k == "data-srcset" || k == "src" {
-								if u := firstSrcsetURL(attr.Val); u != "" {
-									sourceFallback = u
-									break
-								}
-							}
-						}
-					} else if chTag == "img" && imgNode == nil {
-						imgNode = ch
-					}
-				}
-				if imgNode != nil {
-					chosen, alt := extractImgURL(imgNode, sourceFallback)
-					if chosen != "" {
-						resolved := resolveRelativeURL(chosen, baseURL)
-						out.WriteString("\n\n" + formatMarkdownImage(alt, resolved) + "\n\n")
-					}
-				} else if sourceFallback != "" {
-					resolved := resolveRelativeURL(sourceFallback, baseURL)
-					out.WriteString("\n\n" + formatMarkdownImage("", resolved) + "\n\n")
-				}
-				return
-			case "img":
-				chosen, alt := extractImgURL(n, "")
-				if chosen != "" {
-					resolved := resolveRelativeURL(chosen, baseURL)
-					out.WriteString("\n\n" + formatMarkdownImage(alt, resolved) + "\n\n")
-				}
-				return
-			case "figure":
-				out.WriteString("\n")
-				for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
-					walk(ch)
-				}
-				out.WriteString("\n")
-				return
-			case "figcaption":
-				var capText strings.Builder
-				var collectCap func(*html.Node)
-				collectCap = func(c *html.Node) {
-					if c.Type == html.TextNode {
-						capText.WriteString(c.Data)
-					}
-					for ch := c.FirstChild; ch != nil; ch = ch.NextSibling {
-						collectCap(ch)
-					}
-				}
-				collectCap(n)
-				if s := strings.TrimSpace(capText.String()); s != "" {
-					out.WriteString("\n*" + s + "*\n\n")
-				}
-				return
-			case "h1", "h2", "h3", "h4":
-				level := int(tag[1] - '0')
-				out.WriteString("\n" + strings.Repeat("#", level) + " ")
-				for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
-					walk(ch)
-				}
-				out.WriteString("\n\n")
-				return
-			case "p", "div", "section", "article", "blockquote":
-				if tag == "blockquote" {
-					out.WriteString("\n> ")
-				} else {
-					out.WriteString("\n")
-				}
-				for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
-					walk(ch)
-				}
-				out.WriteString("\n\n")
-				return
-			case "li":
-				out.WriteString("\n- ")
-				for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
-					walk(ch)
-				}
-				return
-			case "strong", "b":
-				out.WriteString("**")
-				for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
-					walk(ch)
-				}
-				out.WriteString("**")
-				return
-			case "em", "i":
-				out.WriteString("*")
-				for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
-					walk(ch)
-				}
-				out.WriteString("*")
-				return
-			case "code":
-				out.WriteString("`")
-				for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
-					walk(ch)
-				}
-				out.WriteString("`")
-				return
-			case "a":
-				// RSS/Atom feeds frequently wrap images inside <a href="..."><img src="..."></a>.
-				// Preserve nested images by walking children normally instead of dropping non-text nodes.
-				if nodeContainsImage(n) {
-					for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
-						walk(ch)
-					}
-					return
-				}
-				href := ""
-				for _, attr := range n.Attr {
-					if strings.EqualFold(attr.Key, "href") {
-						href = strings.TrimSpace(attr.Val)
-						break
-					}
-				}
-				var label strings.Builder
-				var collect func(*html.Node)
-				collect = func(c *html.Node) {
-					if c.Type == html.TextNode {
-						label.WriteString(c.Data)
-					}
-					for ch := c.FirstChild; ch != nil; ch = ch.NextSibling {
-						collect(ch)
-					}
-				}
-				collect(n)
-				text := strings.TrimSpace(label.String())
-				if href != "" && text != "" {
-					out.WriteString("[" + text + "](" + href + ")")
-				} else if text != "" {
-					out.WriteString(text)
-				}
-				return
-			}
-		}
-		for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
-			walk(ch)
-		}
-	}
-	walk(doc)
-	return strings.TrimSpace(out.String())
-}
-
 // subscriptionBaseURL computes the best HTTP(S) base URL for resolving relative
 // image/link references in a subscription item, supporting both normal web feeds
 // and Planet/IPFS/ENS subscriptions (via local Kubo gateway or public gateway).
@@ -899,189 +639,4 @@ func (a *App) subscriptionBaseURL(cur subItemEntry) string {
 		return sub
 	}
 	return strings.TrimSpace(cur.item.Link)
-}
-
-func isSubImageFilename(name string) bool {
-	lower := strings.ToLower(strings.TrimSpace(name))
-	for _, ext := range []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"} {
-		if strings.HasSuffix(lower, ext) {
-			return true
-		}
-	}
-	return false
-}
-
-// promoteMarkdownImages moves linked images ([![alt](img)](href)) and inline
-// images mixed with text onto standalone paragraphs because mygo's Markdown
-// renderer only loads and paints images in image-only paragraphs.
-func promoteMarkdownImages(md string) string {
-	if !strings.Contains(md, "![") {
-		return md
-	}
-	lines := strings.Split(md, "\n")
-	var out []string
-	inFence := false
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
-			inFence = !inFence
-			out = append(out, line)
-			continue
-		}
-		if inFence || !strings.Contains(line, "![") {
-			out = append(out, line)
-			continue
-		}
-		out = append(out, promoteLineMarkdownImages(line))
-	}
-	return strings.Join(out, "\n")
-}
-
-func promoteLineMarkdownImages(line string) string {
-	var b strings.Builder
-	i := 0
-	inCode := false
-	for i < len(line) {
-		if line[i] == '`' {
-			inCode = !inCode
-			b.WriteByte(line[i])
-			i++
-			continue
-		}
-		if inCode {
-			b.WriteByte(line[i])
-			i++
-			continue
-		}
-		// Match linked image: [![alt](dest)](href)
-		if line[i] == '[' && i+2 < len(line) && line[i+1] == '!' && line[i+2] == '[' {
-			if imgEnd, ok := matchMarkdownImageEnd(line, i+1); ok && imgEnd < len(line) && line[imgEnd] == ']' {
-				if imgEnd+1 < len(line) && line[imgEnd+1] == '(' {
-					if linkEnd, ok2 := matchParenEnd(line, imgEnd+1); ok2 {
-						imgExpr := line[i+1 : imgEnd]
-						b.WriteString("\n\n" + imgExpr + "\n\n")
-						i = linkEnd
-						continue
-					}
-				}
-			}
-		}
-		// Match inline image: ![alt](dest)
-		if line[i] == '!' && i+1 < len(line) && line[i+1] == '[' {
-			if imgEnd, ok := matchMarkdownImageEnd(line, i); ok {
-				imgExpr := line[i:imgEnd]
-				// Only add paragraph breaks if there is non-whitespace text on the same line.
-				if strings.TrimSpace(line) != imgExpr {
-					b.WriteString("\n\n" + imgExpr + "\n\n")
-				} else {
-					b.WriteString(imgExpr)
-				}
-				i = imgEnd
-				continue
-			}
-		}
-		b.WriteByte(line[i])
-		i++
-	}
-	return b.String()
-}
-
-func matchMarkdownImageEnd(s string, start int) (int, bool) {
-	if start+1 >= len(s) || s[start] != '!' || s[start+1] != '[' {
-		return 0, false
-	}
-	j := start + 2
-	for j < len(s) {
-		if s[j] == '\\' && j+1 < len(s) {
-			j += 2
-			continue
-		}
-		if s[j] == ']' {
-			break
-		}
-		j++
-	}
-	if j >= len(s) || s[j] != ']' || j+1 >= len(s) || s[j+1] != '(' {
-		return 0, false
-	}
-	return matchParenEnd(s, j+1)
-}
-
-func matchParenEnd(s string, openPos int) (int, bool) {
-	if openPos >= len(s) || s[openPos] != '(' {
-		return 0, false
-	}
-	j := openPos + 1
-	if j < len(s) && s[j] == '<' {
-		for j < len(s) && s[j] != '>' {
-			j++
-		}
-		if j >= len(s) {
-			return 0, false
-		}
-		j++ // past '>'
-		for j < len(s) && s[j] != ')' {
-			j++
-		}
-		if j < len(s) && s[j] == ')' {
-			return j + 1, true
-		}
-		return 0, false
-	}
-	depth := 1
-	for j < len(s) {
-		if s[j] == '\\' && j+1 < len(s) {
-			j += 2
-			continue
-		}
-		if s[j] == '(' {
-			depth++
-		} else if s[j] == ')' {
-			depth--
-			if depth == 0 {
-				return j + 1, true
-			}
-		}
-		j++
-	}
-	return 0, false
-}
-
-// buildSubscriptionMarkdown converts HTML (if present) to readable Markdown and
-// appends unreferenced Planet image attachments or RSS media image enclosures.
-func buildSubscriptionMarkdown(body string, item feeds.Item, baseURL string) string {
-	md := promoteMarkdownImages(htmlToReadableMarkdownWithBase(body, baseURL))
-	var extras []string
-	for _, name := range item.Attachments {
-		name = strings.TrimSpace(name)
-		if name == "" || !isSubImageFilename(name) {
-			continue
-		}
-		resolved := resolveRelativeURL(name, baseURL)
-		if strings.Contains(md, name) || strings.Contains(md, resolved) {
-			continue
-		}
-		extras = append(extras, formatMarkdownImage(name, resolved))
-	}
-	for _, m := range item.Media {
-		u := strings.TrimSpace(m.URL)
-		if u == "" {
-			continue
-		}
-		if !strings.HasPrefix(strings.ToLower(strings.TrimSpace(m.Type)), "image/") && !isSubImageFilename(u) {
-			continue
-		}
-		resolved := resolveRelativeURL(u, baseURL)
-		if strings.Contains(md, u) || strings.Contains(md, resolved) {
-			continue
-		}
-		extras = append(extras, formatMarkdownImage("", resolved))
-	}
-	if len(extras) > 0 {
-		if strings.TrimSpace(md) != "" {
-			md += "\n\n"
-		}
-		md += strings.Join(extras, "\n\n")
-	}
-	return md
 }

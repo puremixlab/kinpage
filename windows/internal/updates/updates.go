@@ -24,7 +24,7 @@ import (
 	releaseversion "windows/internal/version"
 )
 
-const AppID = "org.planetable.planetwindows"
+const AppID = "dev.puremixlab.kinpage"
 const MaxInstallerSize int64 = 512 << 20
 const maxEnvelope = 64 << 10
 
@@ -312,7 +312,7 @@ func (c *Client) Download(ctx context.Context, cfg Config, current string, expec
 	if !r.ExpiresAt.After(time.Now()) {
 		return "", errors.New("下载期间更新清单已过期，请重新检查")
 	}
-	destination := filepath.Join(directory, fmt.Sprintf("planet-windows-%s-%s.exe", r.Version, r.SHA256[:12]))
+	destination := filepath.Join(directory, fmt.Sprintf("kinpage-%s-%s.exe", r.Version, r.SHA256[:12]))
 	if e = publishDownload(f, destination); e != nil {
 		return "", errors.New("无法保存更新包，请选择新的空目录")
 	}

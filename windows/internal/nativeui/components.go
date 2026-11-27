@@ -44,17 +44,17 @@ func toolbarIconBtnColored(c *ui.Context, key string, icon *ui.SVG, color ui.Col
 }
 
 type starTypeOption struct {
-	id    int
-	label string
+	id  int
+	key string
 }
 
 var allStarTypes = []starTypeOption{
-	{store.StarTypeDefault, "星标"},
-	{store.StarTypeTodo, "待办"},
-	{store.StarTypeDone, "已完成"},
-	{store.StarTypeSparkles, "灵感"},
-	{store.StarTypeHeart, "喜爱"},
-	{store.StarTypePlan, "计划"},
+	{store.StarTypeDefault, "star.default"},
+	{store.StarTypeTodo, "star.todo"},
+	{store.StarTypeDone, "star.done"},
+	{store.StarTypeSparkles, "star.sparkles"},
+	{store.StarTypeHeart, "star.heart"},
+	{store.StarTypePlan, "star.plan"},
 }
 
 func starTypeVisual(t int, pal macPalette) (*ui.SVG, ui.Color) {
@@ -90,6 +90,7 @@ type articleRowProps struct {
 	isPage      bool
 	navWeight   int // >0 when included in navigation
 	attachments int
+	locale      Locale
 }
 
 // articleRow renders a unified macOS Planet-style article list row (90px rhythm):
@@ -168,11 +169,15 @@ func articleRow(c *ui.Context, p articleRowProps, pal macPalette) ui.Element {
 									ui.Text(c, text).Font(macPlanetFont).FontSize(10.5).TextColor(metaColor).NoWrap()
 								})
 							}
+							loc := p.locale
+							if loc == "" {
+								loc = LocaleZhCN
+							}
 							if p.isPage {
-								outlinedPill("页面")
+								outlinedPill(translate(loc, "list.badgePage"))
 							}
 							if p.navWeight > 0 {
-								outlinedPill(fmt.Sprintf("导航 %d", p.navWeight))
+								outlinedPill(fmt.Sprintf(translate(loc, "list.badgeNav"), p.navWeight))
 							}
 							if p.attachments > 0 {
 								ui.Row(c).AlignItems(ui.Center).Gap(2).Shrink(0).Children(func() {
@@ -246,12 +251,13 @@ func formatFeedDate(raw string) string {
 }
 
 type macSheetProps struct {
-	Title       string
-	Width       float32
-	PrimaryText string
-	CancelText  string
-	HideFooter  bool
-	Danger      bool
+	Title        string
+	Width        float32
+	PrimaryText  string
+	CancelText   string
+	CloseTooltip string
+	HideFooter   bool
+	Danger       bool
 }
 
 // macPreferencesWindow renders a spacious, viewport-responsive macOS Sequoia
@@ -288,6 +294,36 @@ func macInsetCard(c *ui.Context, pal macPalette, content func()) {
 	ui.Column(c).Padding(16, 18, 16, 18).Gap(12).AlignSelf(ui.Stretch).
 		Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).Radius(10).
 		Shadow(0, 1, 3, 0, pal.prefsCardShadow).Children(content)
+}
+
+// settingsEmptyState renders a clean ChatGPT-style empty state card inside a
+// settings pane (icon + concise description + primary pill action button),
+// avoiding raw empty forms until the user explicitly chooses to add/configure.
+func settingsEmptyState(c *ui.Context, key string, icon *ui.SVG, desc, actionLabel string, pal macPalette) bool {
+	clicked := false
+	macInsetCard(c, pal, func() {
+		ui.Column(c).PaddingY(24).Gap(10).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
+			if icon != nil {
+				ui.Icon(c, icon).Size(24, 24).TextColor(pal.prefsSecondary)
+			}
+			ui.Text(c, desc).Font(macPlanetFont).FontSize(12.5).TextColor(pal.prefsMuted)
+			if actionLabel != "" {
+				btn := ui.ButtonBase(c.Key(key)).Label(actionLabel).
+					Height(30).PaddingX(16).Radius(15).Background(pal.prefsInk).
+					Center().Cursor(ui.CursorPointer)
+				if btn.Hovered() {
+					btn.Background(pal.prefsInk.Alpha(0.86))
+				}
+				btn.Children(func() {
+					ui.Text(c, actionLabel).Font(macPlanetFont).FontSize(12.5).FontWeight(500).TextColor(pal.prefsCanvas).NoWrap()
+				})
+				if btn.Clicked() {
+					clicked = true
+				}
+			}
+		})
+	})
+	return clicked
 }
 
 // macField renders a top-aligned settings field with clear label and optional hint.
@@ -435,7 +471,11 @@ func macSheet(c *ui.Context, open *bool, p macSheetProps, pal macPalette, body f
 			if p.Title != "" {
 				ui.Row(c).MinHeight(44).Padding(10, 16, 10, 16).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
 					ui.Text(c, p.Title).Font(macPlanetFont).FontSize(14).FontWeight(600).TextColor(pal.ink)
-					if toolbarIconBtn(c, "sheet-close-"+p.Title, lucide.X(), "关闭").Clicked() {
+					closeTip := p.CloseTooltip
+					if closeTip == "" {
+						closeTip = translate(LocaleZhCN, "common.close")
+					}
+					if toolbarIconBtn(c, "sheet-close-"+p.Title, lucide.X(), closeTip).Clicked() {
 						*open = false
 					}
 				})

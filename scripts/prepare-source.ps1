@@ -151,7 +151,7 @@ $taskProvenance = [ordered]@{
     note = 'Source packaging is engineering evidence, not a legal clearance or proof that a distributed binary was built from this archive.'
 }
 [IO.File]::WriteAllText((Join-Path $taskStage 'SOURCE-PROVENANCE.json'), ($taskProvenance | ConvertTo-Json -Depth 6) + "`n", $taskUtf8)
-$taskArchiveName = 'planet-windows-source-' + $taskVersion + '-' + $taskCommit.Substring(0, 12) + '.zip'
+$taskArchiveName = 'kinpage-source-' + $taskVersion + '-' + $taskCommit.Substring(0, 12) + '.zip'
 $taskArchivePath = Join-Path $taskOutput $taskArchiveName
 $taskZip = [IO.Compression.ZipFile]::Open($taskArchivePath, [IO.Compression.ZipArchiveMode]::Create)
 try {

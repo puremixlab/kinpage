@@ -8,7 +8,7 @@ import (
 
 func TestPendingUpgradeBlocksApplicationBeforeLibraryOpen(t *testing.T) {
 	root := t.TempDir()
-	exe := filepath.Join(root, "Planet Windows.exe")
+	exe := filepath.Join(root, "Kinpage.exe")
 	if e := checkUpdateReady(exe); e != nil {
 		t.Fatal(e)
 	}

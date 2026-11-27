@@ -4,6 +4,23 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-26
+
+### Added
+
+- Added Microsoft Store MSIX packaging configuration (`windows/msix/msix.config.json`, `windows/msix/AppxManifest.template.xml`), automated visual asset generation and `makeappx.exe` build script (`bun run build:msix` / `windows/scripts/build-msix.ps1` with `-Store` validation gates), Bun packaging tests, and setup documentation (`windows/docs/msix-packaging.md`).
+- Added Windows taskbar window icon (`win.SetIcon`) and system tray icon (`mygo.NewTray`) with background running: closing the main window hides Planet to the taskbar tray so IPFS, Local API, and site maintenance keep running, left-clicking restores the window, and the localized tray menu provides Show and Quit actions.
+- Restored full Native UI internationalization (`zh-CN`, `zh-TW`, `en`) across the sidebar, menus, toolbars, Writing Desk, reader, editor, subscriptions, site settings, integrations, and system tools, with an in-app live language switcher (`界面语言` / `Language`), persistent locale preference in `nativeui-layout.json`, and automatic fallback to `en` for missing languages or keys.
+
+### Changed
+
+- Renamed the application from **Planet Windows** to **Kinpage (邻页)** across the desktop app, tray and notifications, MyGo/NSIS/MSIX packaging metadata (`Kinpage.exe`, `dev.puremixlab.kinpage`, `kinpage-safe-setup-*.exe`), brand SVG wordmarks, and user documentation, while preserving `.planet` backup format and macOS Planet Local API compatibility.
+- Redesigned Native UI settings with a ChatGPT-style progressive disclosure flow: a compact bottom-left `设置` (`Settings`) menu (`新建站点…`, `关注站点…`, `快捷发文`, `打开 IPFS 资源…`, and `更多设置…` / `Ctrl+,`), a unified grouped Global Settings window with sidebar search (`通用`, `数据与存储`, `网络与工具`, `智能与扩展`), and empty-state-first pages with secondary configuration modals across both Global Settings (AI, Local API, Published Folders, IPNS Keys) and Site Settings integrations (Deploy, Services, X, Telegram, Aggregation, Web3); moved the IPFS node status button to the sidebar bottom-right.
+
+### Fixed
+
+- Set `TitleBarHeight: 44` on the main Windows window so native minimize/maximize/close caption buttons vertically align with the 44px Native UI toolbar.
+
 ## [0.0.1-rc.1] - 2026-11-26
 
 ### Changed

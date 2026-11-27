@@ -66,7 +66,7 @@ func TestLocalAPIV0IDWebClientAndSitePublic(t *testing.T) {
 	}
 	body, _ := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), "Planet Web Client") {
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), "Kinpage Web Client") {
 		t.Fatalf("unexpected /app/ response: status=%d", resp.StatusCode)
 	}
 

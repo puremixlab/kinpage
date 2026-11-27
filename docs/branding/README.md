@@ -1,10 +1,10 @@
-# Planet Windows 标志
+# 邻页 · Kinpage 标志
 
-Planet Windows 使用 **Neighbor Pages（邻页）** 标志。两枚相对的页片围出开放留白，表达“各自独立，彼此相连”的写作、阅读与发布关系。这是选定的 C 方案，用于 Windows 移植版的产品标识。
+**邻页（Kinpage）** 使用 **邻页（Kinpage）** 双页标志。两枚相对的页片围出开放留白，表达“各自独立，彼此相连”的去中心化写作、阅读与发布关系。这是选定的 C 方案，用于邻页（Kinpage）的产品标识。
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="planet-horizontal-reversed.svg">
-  <img src="planet-horizontal-color.svg" alt="Planet Windows 邻页标志" width="300">
+  <source media="(prefers-color-scheme: dark)" srcset="kinpage-horizontal-reversed.svg">
+  <img src="kinpage-horizontal-color.svg" alt="邻页 · Kinpage 标志" width="300">
 </picture>
 
 ## 配色与使用
@@ -31,16 +31,16 @@ Planet Windows 使用 **Neighbor Pages（邻页）** 标志。两枚相对的页
 | `windows/resources/favicon.svg` | 网页预览的 SVG favicon，按浅色或深色偏好切换符号颜色 |
 | `windows/resources/favicon.ico` | 网页预览的 ICO 后备图标，采用炭黑底反白符号 |
 
-这些文件仅标识 Planet Windows 应用和开发预览，不替换用户自有站点的头像、订阅图标或导出站点内容。桌面图标变更需重新构建应用；不能仅复制 ICO 来更新已有 EXE 中的图标。
+这些文件仅标识邻页（Kinpage）应用和开发预览，不替换用户自有站点的头像、订阅图标或导出站点内容。桌面图标变更需重新构建应用；不能仅复制 ICO 来更新已有 EXE 中的图标。
 
 ## 保留的维护母版
 
-- [双色水平组合](planet-horizontal-color.svg)：README 和浅底宣传材料。
-- [单色水平组合](planet-horizontal-mono.svg)：单色排版。
-- [反白水平组合](planet-horizontal-reversed.svg)：深色背景及 README 深色主题。
-- [双色堆叠组合](planet-stacked-color.svg)：窄版或方形布局。
-- [独立单色字标](planet-wordmark-mono.svg)：已有符号的排版场景。
+- [双色水平组合](kinpage-horizontal-color.svg)：README 和浅底宣传材料。
+- [单色水平组合](kinpage-horizontal-mono.svg)：单色排版。
+- [反白水平组合](kinpage-horizontal-reversed.svg)：深色背景及 README 深色主题。
+- [双色堆叠组合](kinpage-stacked-color.svg)：窄版或方形布局。
+- [独立单色字标](kinpage-wordmark-mono.svg)：已有符号的排版场景。
 
-全部标志与字标由原创矢量路径构成，无需安装字体，也不包含嵌入位图。不要重新键入“Planet”来替代字标。界面正文仍遵循项目自身的字体与配色规范。
+全部标志与字标由原创矢量路径构成，无需安装字体，也不包含嵌入位图。不要重新键入“Kinpage”来替代字标。界面正文仍遵循项目自身的字体与配色规范。
 
 本目录保留日常维护所需的少量 SVG，不重复收录完整交付包。印刷色需按纸张与工艺另行打样；文件的渲染与结构检查不代表商标检索或实际 Windows 桌面验收。

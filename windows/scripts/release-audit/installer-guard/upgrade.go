@@ -25,7 +25,7 @@ import (
 
 var releaseVersion string // set by the build from release.json
 
-var updateKey = `Software\PlanetWindows\UpdateTransaction`
+var updateKey = `Software\Kinpage\UpdateTransaction`
 
 // The journal names files, never arbitrary paths. Backups remain private local
 // recovery evidence; they are not an application/data rollback mechanism.
@@ -336,10 +336,10 @@ func applyPayload(root, source string, j upgradeJournal, commit func() error, ch
 		if a == b {
 			return false
 		}
-		if names[a] == "Planet Windows.exe" {
+		if names[a] == "Kinpage.exe" {
 			return true
 		}
-		if names[b] == "Planet Windows.exe" {
+		if names[b] == "Kinpage.exe" {
 			return false
 		}
 		return names[a] < names[b]

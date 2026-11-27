@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"windows/internal/feeds"
 )
 
 // Multi-type star constants aligned with macOS Planet StarType.
@@ -110,39 +108,6 @@ func (s *Store) SetArticleStar(siteID, articleID string, starred bool, starType 
 		return cloneArticle(article), nil
 	}
 	return Article{}, errors.New("文章不存在")
-}
-
-// SetSubscriptionStar sets or clears a subscription item's star and star type.
-func (s *Store) SetSubscriptionStar(address, key string, starred bool, starType int) error {
-	if !ValidStarType(starType) {
-		return errors.New("星标类型无效")
-	}
-	if !starred {
-		starType = StarTypeDefault
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if key == "" {
-		return errors.New("文章标识无效")
-	}
-	next := s.data
-	next.Subscriptions = append([]Subscription(nil), s.data.Subscriptions...)
-	for i, sub := range next.Subscriptions {
-		if sub.URL == address {
-			sub.Feed.Items = append([]feeds.Item(nil), sub.Feed.Items...)
-			for j := range sub.Feed.Items {
-				if feeds.ItemKey(sub.Feed.Items[j]) == key {
-					sub.Feed.Items[j].Starred = starred
-					sub.Feed.Items[j].StarType = starType
-					sub.Feed.Items[j].Key = key
-					next.Subscriptions[i] = sub
-					return s.write(next)
-				}
-			}
-			return errors.New("订阅文章不存在")
-		}
-	}
-	return errors.New("订阅不存在")
 }
 
 func uniqueSlugForSite(articles []Article, siteID, excludeID, desired string) string {

@@ -13,7 +13,7 @@ const builtinWebClientHTML = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Planet Web Client</title>
+<title>Kinpage Web Client</title>
 <style>
   body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;background:#f7f8fa;color:#111827;display:flex;height:100vh}
   aside{width:250px;background:#f1f2f5;border-right:1px solid rgba(15,23,42,.08);padding:14px;overflow:auto}
@@ -30,7 +30,7 @@ const builtinWebClientHTML = `<!doctype html>
 </head>
 <body>
 <aside>
-  <h1>Planet Web</h1>
+  <h1>邻页 · Kinpage Web</h1>
   <div id="sites"></div>
 </aside>
 <main>
@@ -94,7 +94,7 @@ loadSites();
 func (srv *Server) handleID(w http.ResponseWriter) {
 	host, _ := os.Hostname()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"name":       "Planet Windows",
+		"name":       "Kinpage",
 		"platform":   "windows",
 		"apiVersion": "v0",
 		"webClient":  "/app/",

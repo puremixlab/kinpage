@@ -15,5 +15,5 @@ ls -la "$WINEPREFIX/drive_c/audit/dedicated"
 cp /input/guard.exe /tmp/guard.exe
 wine /tmp/guard.exe record 'C:\audit\dedicated'
 echo "direct record exit=$?"
-wine reg query 'HKCU\Software\PlanetWindows\InstallerState' 2>&1
+wine reg query 'HKCU\Software\Kinpage\InstallerState' 2>&1
 WINE_DEBUG
