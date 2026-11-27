@@ -31,7 +31,8 @@
           "dark": { "image": "./assets/icon.png", "backgroundColor": "#1C211E" }
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "./plugins/with-android-object-paths.cjs"
     ]
   }
 }
