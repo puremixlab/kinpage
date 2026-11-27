@@ -15,6 +15,18 @@ import (
 	"windows/internal/templateinstall"
 )
 
+// DeploymentSummary mirrors the backend's persisted deployment configuration
+// and status for a single site and target kind ("cloudflare" or "ssh").
+type DeploymentSummary struct {
+	Configured   bool
+	Name         string
+	Server       string
+	AutoDeploy   bool
+	DeleteRemote bool
+	Pending      bool
+	LastURL      string
+}
+
 // Backend abstracts the Planet Library operations needed by the native UI.
 // Having this interface lets the native UI run directly against *Library in
 // production and against an in-memory stub in headless ui.Tester tests.
@@ -60,6 +72,7 @@ type Backend interface {
 	SelectTemplate(ctx context.Context, siteID string) (store.Site, error)
 	TemplateSettings(siteID string) (map[string]string, error)
 	SaveTemplateSettings(siteID, values string) (store.Site, error)
+	DeploymentSummary(siteID, kind string) (DeploymentSummary, error)
 	ConfigureDeployment(siteID, kind, name, server, token string, auto, deleteRemote bool) error
 	DisableDeployment(siteID, kind string) error
 	DeploySite(siteID, kind string) (string, error)

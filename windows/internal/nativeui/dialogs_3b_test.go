@@ -40,7 +40,7 @@ func TestNativeUIIntegrationsModalBatch3B(t *testing.T) {
 	if err := tt.Click("部署"); err != nil {
 		t.Fatalf("failed to switch to deploy tab: %v", err)
 	}
-	if err := tt.Click("添加"); err != nil {
+	if err := tt.Click("配置 Cloudflare Pages"); err != nil {
 		t.Fatalf("failed to open deploy secondary modal: %v", err)
 	}
 	app.integrations.deployName = "my-blog"

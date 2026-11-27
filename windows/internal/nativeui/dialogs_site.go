@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/lobehub/lobe-mygo/pkg/field"
 	"github.com/lobehub/lobe-mygo/pkg/lucide"
+	"github.com/lobehub/lobe-mygo/pkg/theme"
 	"windows/internal/publisher"
 	"windows/internal/store"
 )
@@ -24,12 +26,16 @@ const (
 	siteSettingsTabTelegram   = 8
 	siteSettingsTabAggregate  = 9
 	siteSettingsTabWeb3       = 10
+	siteSettingsTabPublish    = 11
 )
 
 type siteSettingsState struct {
 	open           bool
 	tab            int
 	siteID         string
+	search         string
+	returnSearch   string
+	highlightID    string
 	scroll         ui.ScrollState
 	name           string
 	about          string
@@ -44,10 +50,13 @@ type siteSettingsState struct {
 	discord        string
 	roundAvatar    bool
 	headEnabled    bool
+	headExpanded   bool
 	head           string
 	bodyStartOn    bool
+	bodyStartExp   bool
 	bodyStart      string
 	bodyEndOn      bool
+	bodyEndExp     bool
 	bodyEnd        string
 	publishIPNS    bool
 	prewarmPost    bool
@@ -103,10 +112,47 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 	st := &a.siteSettings
 	m := &a.integrations
 	macPreferencesWindow(c, &st.open, 960, 680, pal, func() {
-		// Unified two-column macOS Sequoia Site Settings (11 tabs in 3 groups).
+		activeSite := a.findSiteByID(st.siteID)
+		activeSiteName := a.fallbackTitle(st.name)
+		if activeSite != nil {
+			activeSiteName = a.fallbackTitle(activeSite.Name)
+		}
+
+		// Unified two-column macOS Sequoia Site Settings (12 tabs in 3 groups).
 		ui.Row(c).Fill().Background(pal.prefsCanvas).Children(func() {
-			// Left 224px cool-tinted sidebar navigation + bottom site identity card.
-			ui.Column(c).Width(224).Shrink(0).AlignSelf(ui.Stretch).Background(pal.prefsSidebar).Padding(16, 10, 12, 10).Gap(10).Children(func() {
+			// Left 232px cool-tinted sidebar navigation with site identity + search bar.
+			ui.Column(c).Width(232).Shrink(0).AlignSelf(ui.Stretch).Background(pal.prefsSidebar).Padding(16, 10, 12, 10).Gap(10).Children(func() {
+				// Window title + persistent current site identity pill.
+				ui.Column(c).Gap(6).Padding(0, 8, 2, 8).AlignSelf(ui.Stretch).Children(func() {
+					ui.Text(c, a.t("siteSettings.windowTitle")).Font(macPlanetFont).FontSize(15).FontWeight(600).TextColor(pal.prefsInk)
+					ui.Row(c).AlignItems(ui.Center).Gap(6).Padding(4, 8, 4, 6).Radius(6).
+						Background(pal.hover).Border(0.5, pal.prefsCardBorder).AlignSelf(ui.Stretch).Children(func() {
+						if activeSite != nil {
+							a.siteAvatar(c, *activeSite, 0, 18)
+						}
+						ui.Text(c, activeSiteName).Font(macPlanetFont).FontSize(12).FontWeight(500).
+							TextColor(pal.prefsInk).NoWrap().Ellipsis("…").Grow(1).MinWidth(0)
+					})
+				})
+
+				prevSearch := st.search
+				field.SearchBar(c.Key("site-settings-nav-search"), &st.search, field.SearchBarProps{
+					Placeholder: a.t("settings.searchPlaceholder"),
+					Variant:     field.InputFilled,
+					Size:        theme.Small,
+				})
+				if st.search != prevSearch && strings.TrimSpace(st.search) != "" {
+					st.returnSearch = ""
+					st.highlightID = ""
+				}
+				if st.returnSearch != "" && strings.TrimSpace(st.search) == "" {
+					if macSettingsReturnButton(c, "ss-return-search", a.t("settings.search.return"), pal) {
+						st.search = st.returnSearch
+						st.returnSearch = ""
+						st.highlightID = ""
+					}
+				}
+
 				type navSpec struct {
 					idx   int
 					label string
@@ -118,7 +164,11 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 						ui.Text(c, heading).Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.prefsMuted).Padding(0, 10, 5, 10)
 						for _, tab := range items {
 							tIdx, tLbl := tab.idx, tab.label
-							if prefsNavRow(c, fmt.Sprintf("ss-nav-%d", tIdx), tLbl, st.tab == tIdx, tab.icon, tab.tint, pal) {
+							selected := strings.TrimSpace(st.search) == "" && st.tab == tIdx
+							if prefsNavRow(c, fmt.Sprintf("ss-nav-%d", tIdx), tLbl, selected, tab.icon, tab.tint, pal) {
+								st.search = ""
+								st.returnSearch = ""
+								st.highlightID = ""
 								st.tab = tIdx
 								st.scroll.Y = 0
 								st.err = ""
@@ -139,6 +189,7 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 							{siteSettingsTabPodcast, a.t("siteSettings.navPodcast"), lucide.Podcast(), ui.Hex("#7c3aed")},
 						})
 						navGroup(a.t("siteSettings.groupPublish"), []navSpec{
+							{siteSettingsTabPublish, a.t("siteSettings.navPublishBehavior"), lucide.Radio(), ui.Hex("#0284c7")},
 							{siteSettingsTabDeploy, a.t("siteSettings.navDeploy"), lucide.Upload(), ui.Hex("#0284c7")},
 							{siteSettingsTabServices, a.t("siteSettings.navServices"), lucide.Activity(), ui.Hex("#d97706")},
 						})
@@ -150,8 +201,6 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 						})
 					})
 				})
-
-				// Bottom site identity card (navigation rail stays free of destructive actions).
 			})
 			ui.Box(c).Width(0.5).AlignSelf(ui.Stretch).Background(pal.prefsCardBorder)
 
@@ -163,6 +212,7 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 					siteSettingsTabTemplates:  a.t("siteSettings.navTemplates"),
 					siteSettingsTabCustomCode: a.t("siteSettings.navCustomCode"),
 					siteSettingsTabPodcast:    a.t("siteSettings.navPodcast"),
+					siteSettingsTabPublish:    a.t("siteSettings.navPublishBehavior"),
 					siteSettingsTabDeploy:     a.t("siteSettings.navDeploy"),
 					siteSettingsTabServices:   a.t("siteSettings.titleServices"),
 					siteSettingsTabX:          a.t("siteSettings.navX"),
@@ -170,9 +220,19 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 					siteSettingsTabAggregate:  a.t("siteSettings.titleAggregate"),
 					siteSettingsTabWeb3:       a.t("siteSettings.titleWeb3"),
 				}
+				searching := strings.TrimSpace(st.search) != ""
+				headerTitle := tabTitles[st.tab]
+				if searching {
+					headerTitle = a.t("settings.search.heading")
+				}
 
 				ui.Row(c).Padding(20, 20, 12, 28).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-					ui.Text(c, tabTitles[st.tab]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
+					ui.Row(c).AlignItems(ui.Center).Gap(10).MinWidth(0).Children(func() {
+						ui.Text(c, headerTitle).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk).NoWrap()
+						ui.Box(c).Padding(2, 8, 2, 8).Radius(5).Background(pal.hover).Border(0.5, pal.prefsCardBorder).Children(func() {
+							ui.Text(c, activeSiteName).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsSecondary).NoWrap().Ellipsis("…")
+						})
+					})
 					if toolbarIconBtn(c, "ss-close-x", lucide.X(), a.t("common.close")).Clicked() {
 						st.open = false
 					}
@@ -180,6 +240,28 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 
 				ui.Scroll(c).TrackScroll(&st.scroll).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Column(c).Padding(4, 28, 36, 28).Gap(16).AlignSelf(ui.Stretch).Children(func() {
+						if searching {
+							matches := a.matchSettingsSearch(st.search, siteSettingsSearchItems())
+							suggestions := []string{
+								a.t("siteSettings.search.sugPrewarm"),
+								a.t("siteSettings.navDeploy"),
+								a.t("siteSettings.navTemplates"),
+								a.t("siteSettings.navSocial"),
+							}
+							a.viewSettingsSearchResults(c, "site", st.search, matches, suggestions, func(it settingsSearchItem) {
+								st.returnSearch = strings.TrimSpace(st.search)
+								st.search = ""
+								st.tab = it.tab
+								st.highlightID = it.targetID
+								st.scroll.Y = 0
+								st.err = ""
+								m.err = ""
+								m.msg = ""
+							}, func(sug string) {
+								st.search = sug
+							})
+							return
+						}
 						switch st.tab {
 						case siteSettingsTabBasic:
 							macInsetCard(c, pal, func() {
@@ -345,23 +427,39 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 							})
 
 						case siteSettingsTabCustomCode:
-							macInsetCard(c, pal, func() {
-								ui.Checkbox(c.Key("ss-head-on"), &st.headEnabled, a.t("siteSettings.headCheck"))
-								if st.headEnabled {
-									ui.TextArea(c.Key("ss-head"), &st.head).Lines(3, 5).Label(a.t("siteSettings.headLabel")).AlignSelf(ui.Stretch)
+							macHighlightCard(c, pal, st.highlightID == "site-custom-code", func() {
+								codeSection := func(key, checkLabel, areaLabel string, enabled, expanded *bool, content *string) {
+									ui.Column(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
+										ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(10).Children(func() {
+											ui.Checkbox(c.Key(key+"-on"), enabled, checkLabel)
+											expLabel := a.t("siteSettings.expandCode")
+											if *expanded {
+												expLabel = a.t("siteSettings.collapseCode")
+											}
+											if macSecondaryButton(c, key+"-exp", expLabel, pal) {
+												*expanded = !*expanded
+											}
+										})
+										if *expanded {
+											ui.TextArea(c.Key(key), content).Lines(3, 5).Label(areaLabel).AlignSelf(ui.Stretch)
+										}
+									})
 								}
-								ui.Checkbox(c.Key("ss-bs-on"), &st.bodyStartOn, a.t("siteSettings.bodyStartCheck"))
-								if st.bodyStartOn {
-									ui.TextArea(c.Key("ss-bs"), &st.bodyStart).Lines(3, 5).Label(a.t("siteSettings.bodyStartLabel")).AlignSelf(ui.Stretch)
-								}
-								ui.Checkbox(c.Key("ss-be-on"), &st.bodyEndOn, a.t("siteSettings.bodyEndCheck"))
-								if st.bodyEndOn {
-									ui.TextArea(c.Key("ss-be"), &st.bodyEnd).Lines(3, 5).Label(a.t("siteSettings.bodyEndLabel")).AlignSelf(ui.Stretch)
-								}
+								codeSection("ss-head", a.t("siteSettings.headCheck"), a.t("siteSettings.headLabel"), &st.headEnabled, &st.headExpanded, &st.head)
+								prefsHairlineH(c, pal)
+								codeSection("ss-bs", a.t("siteSettings.bodyStartCheck"), a.t("siteSettings.bodyStartLabel"), &st.bodyStartOn, &st.bodyStartExp, &st.bodyStart)
+								prefsHairlineH(c, pal)
+								codeSection("ss-be", a.t("siteSettings.bodyEndCheck"), a.t("siteSettings.bodyEndLabel"), &st.bodyEndOn, &st.bodyEndExp, &st.bodyEnd)
 							})
-							macInsetCard(c, pal, func() {
-								ui.Row(c).Gap(20).Wrap().Children(func() {
+
+						case siteSettingsTabPublish:
+							macHighlightCard(c, pal, st.highlightID == "site-publish-behavior", func() {
+								ui.Text(c, a.t("siteSettings.publishBehaviorDesc")).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted)
+								ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).Children(func() {
 									ui.Checkbox(c.Key("ss-ipns"), &st.publishIPNS, a.t("siteSettings.publishIPNS"))
+								})
+								prefsHairlineH(c, pal)
+								ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).Children(func() {
 									ui.Checkbox(c.Key("ss-prewarm"), &st.prewarmPost, a.t("siteSettings.prewarmPost"))
 								})
 							})
@@ -409,22 +507,29 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 				})
 
 				// Mac Sheet bottom action bar with 0.5px top border.
-				isCoreTab := st.tab == siteSettingsTabBasic || st.tab == siteSettingsTabProfile ||
-					st.tab == siteSettingsTabCustomCode || st.tab == siteSettingsTabPodcast
+				isCoreTab := !searching && (st.tab == siteSettingsTabBasic || st.tab == siteSettingsTabProfile ||
+					st.tab == siteSettingsTabCustomCode || st.tab == siteSettingsTabPodcast || st.tab == siteSettingsTabPublish)
 				prefsHairlineH(c, pal)
-				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).Justify(ui.End).Background(pal.prefsFooter).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
+				ui.Row(c).Padding(12, 28, 12, 28).Gap(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.prefsFooter).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 					if isCoreTab {
-						if macSecondaryButton(c, "ss-cancel", a.t("common.cancel"), pal) {
-							st.open = false
-						}
-						if macPrimaryButton(c, "ss-save", a.t("siteSettings.saveBtn"), pal) {
-							a.saveSiteSettings()
-						}
+						ui.Text(c, a.t("siteSettings.republishScopeNote")).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted).NoWrap()
 					} else {
-						if macSecondaryButton(c, "ss-close", a.t("common.close"), pal) {
-							st.open = false
-						}
+						ui.Box(c)
 					}
+					ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+						if isCoreTab {
+							if macSecondaryButton(c, "ss-cancel", a.t("common.close"), pal) {
+								st.open = false
+							}
+							if macPrimaryButton(c, "ss-save", a.t("siteSettings.saveBtn"), pal) {
+								a.saveSiteSettings()
+							}
+						} else {
+							if macSecondaryButton(c, "ss-close", a.t("common.close"), pal) {
+								st.open = false
+							}
+						}
+					})
 				})
 			})
 		})
@@ -471,7 +576,12 @@ func (a *App) saveSiteSettings() {
 		})
 		_, err = a.backend.UpdateSiteProfile(st.siteID, string(raw))
 	case siteSettingsTabCustomCode:
+		// Preserve persisted publish behavior flags when saving Custom Code.
 		pub, pre := st.publishIPNS, st.prewarmPost
+		if cur := a.findSiteByID(st.siteID); cur != nil {
+			pub = cur.ShouldPublishIPNS()
+			pre = cur.ShouldPrewarmNewPost()
+		}
 		raw, _ := json.Marshal(store.SiteCustomCode{
 			HeadEnabled:      st.headEnabled,
 			Head:             st.head,
@@ -482,6 +592,29 @@ func (a *App) saveSiteSettings() {
 			PublishAsIPNS:    &pub,
 			PrewarmNewPost:   &pre,
 		})
+		_, err = a.backend.UpdateSiteCustomCode(st.siteID, string(raw))
+	case siteSettingsTabPublish:
+		// Preserve persisted custom code fields when saving Publish Behavior.
+		pub, pre := st.publishIPNS, st.prewarmPost
+		code := store.SiteCustomCode{
+			HeadEnabled:      st.headEnabled,
+			Head:             st.head,
+			BodyStartEnabled: st.bodyStartOn,
+			BodyStart:        st.bodyStart,
+			BodyEndEnabled:   st.bodyEndOn,
+			BodyEnd:          st.bodyEnd,
+			PublishAsIPNS:    &pub,
+			PrewarmNewPost:   &pre,
+		}
+		if cur := a.findSiteByID(st.siteID); cur != nil {
+			code.HeadEnabled = cur.CustomCodeHeadEnabled
+			code.Head = cur.CustomCodeHead
+			code.BodyStartEnabled = cur.CustomCodeBodyStartEnabled
+			code.BodyStart = cur.CustomCodeBodyStart
+			code.BodyEndEnabled = cur.CustomCodeBodyEndEnabled
+			code.BodyEnd = cur.CustomCodeBodyEnd
+		}
+		raw, _ := json.Marshal(code)
 		_, err = a.backend.UpdateSiteCustomCode(st.siteID, string(raw))
 	case siteSettingsTabPodcast:
 		var cats []string
@@ -498,7 +631,6 @@ func (a *App) saveSiteSettings() {
 		return
 	}
 	st.err = ""
-	st.open = false
 	a.Reload()
 	a.setStatus(a.t("status.siteSettingsSaved"))
 }

@@ -43,6 +43,7 @@ type fakeBackend struct {
 	aiConfig      services.AIConfig
 	apiStatus     localapi.Status
 	ipnsKeys      []ipfs.KeyInfo
+	deployInfos   map[string]DeploymentSummary
 	appLogs       []applog.Entry
 	nextID        int
 	nextFile      string
@@ -366,12 +367,33 @@ func (f *fakeBackend) SaveTemplateSettings(siteID, values string) (store.Site, e
 	return store.Site{}, fmt.Errorf("site not found")
 }
 
-func (f *fakeBackend) ConfigureDeployment(_, kind, _, _, _ string, _, _ bool) error {
+func (f *fakeBackend) DeploymentSummary(siteID, kind string) (DeploymentSummary, error) {
+	if f.deployInfos != nil {
+		if info, ok := f.deployInfos[siteID+":"+kind]; ok {
+			return info, nil
+		}
+	}
+	return DeploymentSummary{}, nil
+}
+func (f *fakeBackend) ConfigureDeployment(siteID, kind, name, server, token string, auto, deleteRemote bool) error {
 	f.deployCalls = append(f.deployCalls, "cfg:"+kind)
+	if f.deployInfos == nil {
+		f.deployInfos = map[string]DeploymentSummary{}
+	}
+	f.deployInfos[siteID+":"+kind] = DeploymentSummary{
+		Configured:   true,
+		Name:         name,
+		Server:       server,
+		AutoDeploy:   auto,
+		DeleteRemote: deleteRemote,
+	}
 	return nil
 }
-func (f *fakeBackend) DisableDeployment(_, kind string) error {
+func (f *fakeBackend) DisableDeployment(siteID, kind string) error {
 	f.deployCalls = append(f.deployCalls, "off:"+kind)
+	if f.deployInfos != nil {
+		delete(f.deployInfos, siteID+":"+kind)
+	}
 	return nil
 }
 func (f *fakeBackend) DeploySite(_, kind string) (string, error) {

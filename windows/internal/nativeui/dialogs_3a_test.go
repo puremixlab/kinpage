@@ -72,8 +72,9 @@ func TestNativeUISiteSettingsAndPublishModal(t *testing.T) {
 	}
 
 	// Remove site -> restore from trash (Danger Zone sits at bottom of 基本资料).
-	if err := tt.Click("站点设置"); err != nil {
-		t.Fatalf("failed to open site settings for remove: %v", err)
+	// Per-page save keeps Site Settings open, so switch directly to 基本资料.
+	if err := tt.Click("基本资料"); err != nil {
+		t.Fatalf("failed to switch to basic tab for remove: %v", err)
 	}
 	app.siteSettings.scroll.Y = 400
 	tt.Frame()

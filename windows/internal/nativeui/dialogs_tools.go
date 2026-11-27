@@ -19,23 +19,26 @@ import (
 )
 
 const (
-	toolsTabAI      = 0
-	toolsTabAPI     = 1
-	toolsTabKeys    = 2
-	toolsTabLogs    = 3
-	toolsTabGeneral = 4
-	toolsTabFolders = 5
-	toolsTabOffline = 6
-	toolsTabTrash   = 7
-	toolsTabTip     = 8
+	toolsTabAI       = 0
+	toolsTabAPI      = 1
+	toolsTabKeys     = 2
+	toolsTabLogs     = 3
+	toolsTabGeneral  = 4
+	toolsTabFolders  = 5
+	toolsTabOffline  = 6
+	toolsTabTrash    = 7
+	toolsTabTip      = 8
+	toolsTabDataRepo = 9
 )
 
 type toolsModalState struct {
-	open   bool
-	tab    int
-	search string
-	err    string
-	msg    string
+	open         bool
+	tab          int
+	search       string
+	returnSearch string
+	highlightID  string
+	err          string
+	msg          string
 
 	// Secondary modal open states (Empty-State-First -> secondary sheet).
 	aiModalOpen     bool
@@ -74,6 +77,8 @@ func (a *App) openToolsModal(tab int) {
 	a.toolsModal.open = true
 	a.toolsModal.tab = tab
 	a.toolsModal.search = ""
+	a.toolsModal.returnSearch = ""
+	a.toolsModal.highlightID = ""
 	a.toolsModal.err = ""
 	a.toolsModal.msg = ""
 	a.toolsModal.aiModalOpen = false
@@ -137,14 +142,26 @@ func (a *App) viewToolsModal(c *ui.Context) {
 	m := &a.toolsModal
 	macPreferencesWindow(c, &m.open, 960, 680, pal, func() {
 		ui.Row(c).Fill().Background(pal.prefsCanvas).Children(func() {
-			// Left 232px grouped sidebar navigation with search bar (ChatGPT-style Settings).
+			// Left 232px grouped sidebar navigation with search bar.
 			ui.Column(c).Width(232).Shrink(0).AlignSelf(ui.Stretch).Background(pal.prefsSidebar).Padding(16, 10, 14, 10).Gap(10).Children(func() {
-				ui.Text(c, a.t("nav.settings")).Font(macPlanetFont).FontSize(15).FontWeight(600).TextColor(pal.prefsInk).Padding(0, 8, 2, 8)
+				ui.Text(c, a.t("settings.globalTitle")).Font(macPlanetFont).FontSize(15).FontWeight(600).TextColor(pal.prefsInk).Padding(0, 8, 2, 8)
+				prevSearch := m.search
 				field.SearchBar(c.Key("settings-nav-search"), &m.search, field.SearchBarProps{
 					Placeholder: a.t("settings.searchPlaceholder"),
 					Variant:     field.InputFilled,
 					Size:        theme.Small,
 				})
+				if m.search != prevSearch && strings.TrimSpace(m.search) != "" {
+					m.returnSearch = ""
+					m.highlightID = ""
+				}
+				if m.returnSearch != "" && strings.TrimSpace(m.search) == "" {
+					if macSettingsReturnButton(c, "tools-return-search", a.t("settings.search.return"), pal) {
+						m.search = m.returnSearch
+						m.returnSearch = ""
+						m.highlightID = ""
+					}
+				}
 
 				type navSpec struct {
 					idx   int
@@ -165,6 +182,7 @@ func (a *App) viewToolsModal(c *ui.Context) {
 					{
 						heading: a.t("settings.groupData"),
 						items: []navSpec{
+							{toolsTabDataRepo, a.t("settings.tabDataRepo"), lucide.Database()},
 							{toolsTabFolders, a.t("menu.publishedFolders"), lucide.FolderOpen()},
 							{toolsTabOffline, a.t("menu.offlineStorage"), lucide.HardDrive()},
 							{toolsTabTrash, a.t("menu.trash"), lucide.Trash2()},
@@ -187,26 +205,37 @@ func (a *App) viewToolsModal(c *ui.Context) {
 					},
 				}
 
-				q := strings.ToLower(strings.TrimSpace(m.search))
+				searching := strings.TrimSpace(m.search) != ""
+				var searchMatches []settingsSearchItem
+				matchedTabs := map[int]bool{}
+				if searching {
+					searchMatches = a.matchSettingsSearch(m.search, globalSettingsSearchItems())
+					for _, sm := range searchMatches {
+						matchedTabs[sm.tab] = true
+					}
+				}
+
 				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Column(c).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-						matchedAny := false
 						for _, grp := range groups {
 							var visible []navSpec
-							for _, item := range grp.items {
-								if q == "" || strings.Contains(strings.ToLower(item.label), q) || strings.Contains(strings.ToLower(grp.heading), q) {
-									visible = append(visible, item)
+							for _, tab := range grp.items {
+								if !searching || matchedTabs[tab.idx] {
+									visible = append(visible, tab)
 								}
 							}
 							if len(visible) == 0 {
 								continue
 							}
-							matchedAny = true
 							ui.Column(c).Gap(2).AlignSelf(ui.Stretch).Children(func() {
 								ui.Text(c, grp.heading).Font(macPlanetFont).FontSize(11).FontWeight(600).TextColor(pal.prefsMuted).Padding(0, 10, 4, 10)
 								for _, tab := range visible {
 									tIdx, tLbl := tab.idx, tab.label
-									if prefsNavRow(c, fmt.Sprintf("tools-nav-%d", tIdx), tLbl, m.tab == tIdx, tab.icon, pal.prefsInk, pal) {
+									selected := !searching && m.tab == tIdx
+									if prefsNavRow(c, fmt.Sprintf("tools-nav-%d", tIdx), tLbl, selected, tab.icon, pal.prefsInk, pal) {
+										m.search = ""
+										m.returnSearch = ""
+										m.highlightID = ""
 										if m.tab != tIdx {
 											m.tab = tIdx
 											m.err = ""
@@ -217,9 +246,6 @@ func (a *App) viewToolsModal(c *ui.Context) {
 								}
 							})
 						}
-						if !matchedAny {
-							ui.Text(c, a.t("settings.noSearchMatch")).Font(macPlanetFont).FontSize(12).TextColor(pal.prefsMuted).Padding(8, 10, 8, 10)
-						}
 					})
 				})
 			})
@@ -228,27 +254,62 @@ func (a *App) viewToolsModal(c *ui.Context) {
 			// Right form pane + header + footer.
 			ui.Column(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Background(pal.prefsCanvas).Children(func() {
 				tabTitles := map[int]string{
-					toolsTabGeneral: a.t("settings.tabGeneral"),
-					toolsTabFolders: a.t("menu.publishedFolders"),
-					toolsTabOffline: a.t("menu.offlineStorage"),
-					toolsTabTrash:   a.t("menu.trash"),
-					toolsTabAI:      a.t("nav.aiAssistant"),
-					toolsTabAPI:     a.t("menu.localAPI"),
-					toolsTabKeys:    a.t("menu.keyManager"),
-					toolsTabLogs:    a.t("menu.appLogs"),
-					toolsTabTip:     a.t("settings.tabTip"),
+					toolsTabGeneral:  a.t("settings.tabGeneral"),
+					toolsTabDataRepo: a.t("settings.tabDataRepo"),
+					toolsTabFolders:  a.t("menu.publishedFolders"),
+					toolsTabOffline:  a.t("menu.offlineStorage"),
+					toolsTabTrash:    a.t("menu.trash"),
+					toolsTabAI:       a.t("nav.aiAssistant"),
+					toolsTabAPI:      a.t("menu.localAPI"),
+					toolsTabKeys:     a.t("menu.keyManager"),
+					toolsTabLogs:     a.t("menu.appLogs"),
+					toolsTabTip:      a.t("settings.tabTip"),
+				}
+				searching := strings.TrimSpace(m.search) != ""
+				headerTitle := tabTitles[m.tab]
+				if searching {
+					headerTitle = a.t("settings.search.heading")
 				}
 				ui.Row(c).Padding(20, 20, 12, 28).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-					ui.Text(c, tabTitles[m.tab]).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
+					ui.Text(c, headerTitle).Font(macPlanetFont).FontSize(18).FontWeight(600).LetterSpacing(-0.015).TextColor(pal.prefsInk)
 					if toolbarIconBtn(c, "tools-close-x", lucide.X(), a.t("common.close")).Clicked() {
 						m.open = false
 					}
 				})
 				ui.Scroll(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
 					ui.Column(c).Padding(4, 28, 24, 28).Gap(14).AlignSelf(ui.Stretch).Children(func() {
+						if searching {
+							matches := a.matchSettingsSearch(m.search, globalSettingsSearchItems())
+							suggestions := []string{
+								a.t("settings.search.sugSleep"),
+								a.t("settings.search.sugPort"),
+								a.t("settings.search.sugDataRepo"),
+								a.t("nav.aiAssistant"),
+							}
+							a.viewSettingsSearchResults(c, "global", m.search, matches, suggestions, func(it settingsSearchItem) {
+								m.returnSearch = strings.TrimSpace(m.search)
+								m.search = ""
+								m.tab = it.tab
+								m.highlightID = it.targetID
+								m.err = ""
+								m.msg = ""
+								a.refreshToolsTab(m.tab)
+								switch it.opensModal {
+								case "api":
+									m.apiModalOpen = true
+								case "ai":
+									m.aiModalOpen = true
+								}
+							}, func(sug string) {
+								m.search = sug
+							})
+							return
+						}
 						switch m.tab {
 						case toolsTabGeneral:
 							a.viewToolsGeneral(c)
+						case toolsTabDataRepo:
+							a.viewToolsDataRepo(c)
 						case toolsTabFolders:
 							a.viewToolsFolders(c)
 						case toolsTabOffline:
@@ -295,8 +356,8 @@ func (a *App) viewToolsGeneral(c *ui.Context) {
 	pal := a.pal
 	m := &a.toolsModal
 
-	// Language switcher card.
-	macInsetCard(c, pal, func() {
+	// Language switcher card (immediate effect).
+	macHighlightCard(c, pal, m.highlightID == "global-language", func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).AlignSelf(ui.Stretch).Children(func() {
 			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
 				ui.Text(c, a.t("settings.languageTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
@@ -321,31 +382,49 @@ func (a *App) viewToolsGeneral(c *ui.Context) {
 		})
 	})
 
-	// System behavior card.
-	macInsetCard(c, pal, func() {
-		ui.Text(c, a.t("settings.systemTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
-		preventSleep := a.backend != nil && a.backend.PreventSleep()
-		prev := preventSleep
-		ui.Checkbox(c.Key("settings-prevent-sleep"), &preventSleep, a.t("menu.preventSleep"))
-		if preventSleep != prev && a.backend != nil {
-			if err := a.backend.SetPreventSleep(preventSleep); err != nil {
-				m.err = a.tf("status.preventSleepErr", err.Error())
-			} else {
-				m.err = ""
-				if preventSleep {
-					m.msg = a.t("status.preventSleepOn")
+	// System behavior card (immediate effect).
+	macHighlightCard(c, pal, m.highlightID == "global-sleep", func() {
+		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).AlignSelf(ui.Stretch).Children(func() {
+			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
+				ui.Text(c, a.t("settings.systemTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
+				ui.Text(c, a.t("settings.search.sleepSummary")).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
+			})
+			preventSleep := a.backend != nil && a.backend.PreventSleep()
+			prev := preventSleep
+			ui.Checkbox(c.Key("settings-prevent-sleep"), &preventSleep, a.t("menu.preventSleep"))
+			if preventSleep != prev && a.backend != nil {
+				if err := a.backend.SetPreventSleep(preventSleep); err != nil {
+					m.err = a.tf("status.preventSleepErr", err.Error())
 				} else {
-					m.msg = a.t("status.preventSleepOff")
+					m.err = ""
+					if preventSleep {
+						a.setStatus(a.t("status.preventSleepOn"))
+					} else {
+						a.setStatus(a.t("status.preventSleepOff"))
+					}
 				}
 			}
-		}
+		})
 	})
+}
 
-	// Data directory & refresh card.
-	macInsetCard(c, pal, func() {
-		ui.Column(c).Gap(2).AlignSelf(ui.Stretch).Children(func() {
+func (a *App) viewToolsDataRepo(c *ui.Context) {
+	pal := a.pal
+	m := &a.toolsModal
+	dataDir := ""
+	if a.backend != nil {
+		dataDir = a.backend.DataDir()
+	}
+
+	macHighlightCard(c, pal, m.highlightID == "global-data-repo", func() {
+		ui.Column(c).Gap(4).AlignSelf(ui.Stretch).Children(func() {
 			ui.Text(c, a.t("settings.dataDirTitle")).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.prefsInk)
 			ui.Text(c, a.t("settings.dataDirDesc")).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
+			if dataDir != "" {
+				ui.Box(c).Padding(6, 10, 6, 10).Radius(6).Background(pal.hover).AlignSelf(ui.Stretch).Children(func() {
+					ui.Text(c, dataDir).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsSecondary).MaxLines(2).Ellipsis("…")
+				})
+			}
 		})
 		ui.Row(c).Gap(8).Wrap().Children(func() {
 			if macSecondaryButton(c, "settings-move-data", a.t("menu.moveDataDir"), pal) {
@@ -367,10 +446,23 @@ func (a *App) viewToolsGeneral(c *ui.Context) {
 	})
 }
 
+func (a *App) isIPFSOnline() bool {
+	if a.backend == nil {
+		return false
+	}
+	st, err := a.backend.IPFSStatus()
+	return err == nil && st.Online
+}
+
 func (a *App) viewToolsFolders(c *ui.Context) {
 	pal := a.pal
 	m := &a.toolsModal
 	folders := a.foldersModal.folders
+	ipfsOnline := a.isIPFSOnline()
+
+	if !ipfsOnline {
+		settingsPrerequisiteNote(c, pal, a.t("settings.prereq.foldersPublishIPFS"))
+	}
 
 	if len(folders) == 0 {
 		if settingsEmptyState(c, "folders-empty-add", lucide.FolderOpen(), a.t("settings.folders.emptyDesc"), a.t("common.add"), pal) {

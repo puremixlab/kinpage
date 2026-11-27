@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo"
+	"windows/internal/nativeui"
 	"windows/internal/publisher"
 	"windows/internal/services"
 	"windows/internal/store"
@@ -51,6 +52,22 @@ func (l *Library) DeploymentInfo(siteID, kind string) (DeploymentInfo, error) {
 		return DeploymentInfo{}, err
 	}
 	return DeploymentInfo{Configured: cfg.Token != "", Name: cfg.Name, Server: cfg.Server, AutoDeploy: cfg.AutoDeploy, DeleteRemote: cfg.DeleteRemote, Pending: cfg.PendingCID != "", LastURL: cfg.LastURL}, nil
+}
+
+func (l *Library) DeploymentSummary(siteID, kind string) (nativeui.DeploymentSummary, error) {
+	info, err := l.DeploymentInfo(siteID, kind)
+	if err != nil {
+		return nativeui.DeploymentSummary{}, err
+	}
+	return nativeui.DeploymentSummary{
+		Configured:   info.Configured,
+		Name:         info.Name,
+		Server:       info.Server,
+		AutoDeploy:   info.AutoDeploy,
+		DeleteRemote: info.DeleteRemote,
+		Pending:      info.Pending,
+		LastURL:      info.LastURL,
+	}, nil
 }
 
 // ConfigureDeployment stores a target locally; credentials never enter backups.

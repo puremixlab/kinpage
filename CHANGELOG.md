@@ -13,6 +13,10 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 - Replaced the built-in site avatars with 12 original illustrations and centered the picker rows at wide and narrow window sizes.
 
+### Changed
+
+- Unified Global Settings and Site Settings window structure: added persistent current-site identity in Site Settings, moved Data Repository into Data & Storage and Publish Behavior (IPNS + Prewarm) into Publish & Pinning with per-page save isolation, upgraded both windows with field-level search, target highlighting, and "Back to Search Results", aligned Deployment targets to Cloudflare Pages and SSH (rsync) with persisted backend summaries and isolated modal drafts, separated Custom Code enable checkboxes from expand-to-edit controls, and added per-action IPFS prerequisite notes.
+
 ## [0.1.0] - 2026-11-26
 
 ### Added
