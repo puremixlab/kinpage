@@ -29,7 +29,10 @@
 
 <br />
 
-<img src="docs/screenshots/workspace-dashboard.png" alt="Kinpage Native UI Writing Desk showing the date masthead, compact writing activity heatmap, elevated draft sheet, and article cards" width="900">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/workspace-dashboard-dark.png">
+  <img src="docs/screenshots/en/workspace-dashboard.png" alt="Kinpage Native UI Dashboard showing the date masthead, compact writing activity heatmap, elevated draft sheet, and article cards" width="900">
+</picture>
 
 <p><sub><strong>Kinpage (邻页)</strong> — an independent Windows native app derived from <a href="https://github.com/Planetable/Planet">Planetable/Planet</a> for macOS, built with MyGo Native UI.</sub></p>
 
@@ -67,21 +70,38 @@
 <table>
   <tr>
     <td width="50%" align="center" valign="top">
-      <img src="docs/screenshots/subscription-reader.png" alt="Kinpage three-pane reader showing subscriptions, article list, and rendered post" width="100%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/subscription-reader-dark.png">
+        <img src="docs/screenshots/en/subscription-reader.png" alt="Kinpage three-pane reader showing subscriptions, article list, and rendered post" width="100%">
+      </picture>
       <br />
       <sub><strong>Three-Column Reader</strong> — Subscriptions, article list, and rich Markdown reading view.</sub>
     </td>
     <td width="50%" align="center" valign="top">
-      <img src="docs/screenshots/writing-editor.png" alt="Markdown editor with private draft controls" width="100%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/writing-editor-dark.png">
+        <img src="docs/screenshots/en/writing-editor.png" alt="Markdown editor with private draft controls" width="100%">
+      </picture>
       <br />
       <sub><strong>Markdown Editor</strong> — Distraction-free authoring with local drafts and explicit publish actions.</sub>
     </td>
   </tr>
   <tr>
-    <td colspan="2" align="center">
-      <img src="docs/screenshots/writing-metadata.png" alt="Article metadata popover for tags and attachments" width="78%">
+    <td width="50%" align="center" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/writing-metadata-dark.png">
+        <img src="docs/screenshots/en/writing-metadata.png" alt="Split Markdown preview with article tags and attachments" width="100%">
+      </picture>
       <br />
-      <sub><strong>Tags, Attachments &amp; Split View</strong> — Manage article metadata and media inline inside the workspace.</sub>
+      <sub><strong>Tags, Attachments &amp; Split View</strong> — Manage article metadata and preview Markdown side by side.</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/settings-dark.png">
+        <img src="docs/screenshots/en/settings.png" alt="Kinpage layered Settings window with instant language switcher" width="100%">
+      </picture>
+      <br />
+      <sub><strong>Layered Settings &amp; Multi-Language</strong> — Switch between English, Simplified Chinese, and Traditional Chinese instantly.</sub>
     </td>
   </tr>
 </table>
@@ -102,11 +122,11 @@ Install via Microsoft Store (MSIX) or extract/install the Windows x64 setup into
 
 ## Quick Start
 
-- **Follow a site:** Click **+** at the bottom-right of the sidebar and choose **关注订阅** (Follow), enter a website URL (such as `https://olivida.eth.limo`), an RSS/Atom/JSON Feed URL, an IPNS address, or an ENS `.eth` name, then click **关注** (Follow).
-- **Create & publish a site:** Click **写文章** (Compose) or **+** to create a site and start a Markdown draft. Drafts stay local-only until you click **发布** (Publish), which queues public IPFS/IPNS publication of the site and its saved attachments.
-- **Keyboard shortcuts:** `Ctrl+N` new article, `Ctrl+D` quick post, `Ctrl+E` edit current article, `Ctrl+F` toggle list search, `Ctrl+O` open IPFS/IPNS/ENS resource.
+- **Follow a site:** Click **Settings** at the bottom-left of the sidebar and choose **Follow Site…**, enter a website URL (such as `https://olivida.eth.limo`), an RSS/Atom/JSON Feed URL, an IPNS address, or an ENS `.eth` name, then click **Follow**.
+- **Create & publish a site:** Click **New Article** (or **Settings → New Site…**) to create a site and start a Markdown draft. Drafts stay local-only until you click **Publish**, which queues public IPFS/IPNS publication of the site and its saved attachments.
+- **Keyboard shortcuts:** `Ctrl+N` new article, `Ctrl+D` quick post, `Ctrl+E` edit current article, `Ctrl+F` toggle list search, `Ctrl+O` open IPFS/IPNS/ENS resource, `Ctrl+,` open Settings.
 
-> The application interface is currently in Simplified Chinese. Step-by-step guides for writing, publishing, offline pinning, and service integrations are available in the [full Chinese user guide](windows/README.md).
+> Kinpage supports **English**, **Simplified Chinese**, and **Traditional Chinese** — switch languages anytime from **Settings** without restarting. Step-by-step guides for writing, publishing, offline pinning, and service integrations are available in the [full Chinese user guide](windows/README.md).
 
 ## Build from Source
 

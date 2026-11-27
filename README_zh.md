@@ -29,7 +29,10 @@
 
 <br />
 
-<img src="docs/screenshots/workspace-dashboard.png" alt="邻页（Kinpage）原生写作台，展示日期刊头、紧凑写作活动热力条、草稿大纸面与 3:2 活版印纸文章卡片" width="900">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/workspace-dashboard-dark.png">
+  <img src="docs/screenshots/workspace-dashboard.png" alt="邻页（Kinpage）原生写作台，展示日期刊头、紧凑写作活动热力条、草稿大纸面与 3:2 活版印纸文章卡片" width="900">
+</picture>
 
 <p><sub><strong>邻页 · Kinpage</strong> — 基于 macOS 原版 <a href="https://github.com/Planetable/Planet">Planetable/Planet</a> 独立开发的 Windows 原生桌面应用，采用 MyGo 原生界面构建。</sub></p>
 
@@ -67,21 +70,38 @@
 <table>
   <tr>
     <td width="50%" align="center" valign="top">
-      <img src="docs/screenshots/subscription-reader.png" alt="邻页（Kinpage）三栏阅读界面，展示订阅列表、文章列表与图文正文" width="100%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/subscription-reader-dark.png">
+        <img src="docs/screenshots/subscription-reader.png" alt="邻页（Kinpage）三栏阅读界面，展示订阅列表、文章列表与图文正文" width="100%">
+      </picture>
       <br />
       <sub><strong>三栏订阅阅读</strong> — 订阅导航、文章列表与原生图文阅读视图。</sub>
     </td>
     <td width="50%" align="center" valign="top">
-      <img src="docs/screenshots/writing-editor.png" alt="Markdown 编辑器与本地私有草稿控制" width="100%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/writing-editor-dark.png">
+        <img src="docs/screenshots/writing-editor.png" alt="Markdown 编辑器与本地私有草稿控制" width="100%">
+      </picture>
       <br />
       <sub><strong>Markdown 编辑器</strong> — 专注写作，清晰区分本地私有草稿与公开发布。</sub>
     </td>
   </tr>
   <tr>
-    <td colspan="2" align="center">
-      <img src="docs/screenshots/writing-metadata.png" alt="文章标签与附件管理浮层" width="78%">
+    <td width="50%" align="center" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/writing-metadata-dark.png">
+        <img src="docs/screenshots/writing-metadata.png" alt="Markdown 分栏实时预览与标签附件管理" width="100%">
+      </picture>
       <br />
-      <sub><strong>标签、附件与分栏预览</strong> — 在编辑区原地管理文章元数据与媒体文件。</sub>
+      <sub><strong>标签、附件与分栏预览</strong> — 在编辑区原地管理文章元数据并实时分栏预览。</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/settings-dark.png">
+        <img src="docs/screenshots/settings.png" alt="邻页（Kinpage）分层设置窗口与多语言即时切换" width="100%">
+      </picture>
+      <br />
+      <sub><strong>分层设置与多语言</strong> — 支持简体中文、繁體中文与 English 即时切换，集中管理本地 API、密钥与 AI 助手。</sub>
     </td>
   </tr>
 </table>
@@ -102,9 +122,9 @@
 
 ## 快速上手
 
-- **订阅站点**：点击侧栏右下角的 **+** 并选择 **关注订阅**，输入网站首页（例如 `https://olivida.eth.limo`）、RSS / Atom / JSON Feed 地址、IPNS 地址或 `.eth` 域名，点击 **关注** 即可开始阅读。
-- **创建并发布站点**：点击右上角 **写文章** 或侧栏 **+** 新建站点并撰写 Markdown 草稿。草稿默认仅保存在本机，点击工具栏 **发布** 会将整个站点及已保存附件公开发布到 IPFS / IPNS。
-- **常用快捷键**：`Ctrl+N` 新建文章、`Ctrl+D` 快捷发文、`Ctrl+E` 编辑当前文章、`Ctrl+F` 切换列表搜索、`Ctrl+O` 打开 IPFS / IPNS / ENS 资源。
+- **订阅站点**：点击侧栏左下角的 **设置** 并选择 **关注订阅…**，输入网站首页（例如 `https://olivida.eth.limo`）、RSS / Atom / JSON Feed 地址、IPNS 地址或 `.eth` 域名，点击 **关注** 即可开始阅读。
+- **创建并发布站点**：点击右上角 **写文章**（或 **设置 → 新建站点…**）新建站点并撰写 Markdown 草稿。草稿默认仅保存在本机，点击工具栏 **发布** 会将整个站点及已保存附件公开发布到 IPFS / IPNS。
+- **常用快捷键**：`Ctrl+N` 新建文章、`Ctrl+D` 快捷发文、`Ctrl+E` 编辑当前文章、`Ctrl+F` 切换列表搜索、`Ctrl+O` 打开 IPFS / IPNS / ENS 资源、`Ctrl+,` 打开设置。
 
 详细功能说明、离线固定与各项第三方服务配置请参阅[完整使用指南](windows/README.md)。
 
