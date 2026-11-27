@@ -22,7 +22,6 @@ import (
 	"windows/internal/audiostream"
 	"windows/internal/backup"
 	"windows/internal/feeds"
-	"windows/internal/follow"
 	"windows/internal/localapi"
 	"windows/internal/migration"
 	"windows/internal/nativeui"
@@ -31,7 +30,6 @@ import (
 	"windows/internal/preview"
 	"windows/internal/services"
 	"windows/internal/sitegen"
-	"windows/internal/siteimage"
 	"windows/internal/store"
 	"windows/internal/templateinstall"
 )
@@ -63,153 +61,6 @@ func (l *Library) closeAPIServer() {
 	}
 }
 
-func (l *Library) Sites() ([]store.Site, error) {
-	s, err := l.open()
-	if err != nil {
-		return nil, err
-	}
-	return s.ListSites()
-}
-
-func (l *Library) CreateSite(name, about string) (store.Site, error) {
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.CreateSite(name, about)
-}
-func (l *Library) UpdateSite(siteID, name, about string) (store.Site, error) {
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.UpdateSite(siteID, name, about)
-}
-
-func (l *Library) UpdateSiteSettings(siteID, name, about string, doNotIndex bool) (store.Site, error) {
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.UpdateSiteSettings(siteID, name, about, doNotIndex)
-}
-
-func (l *Library) UpdateSiteDetails(siteID, name, about string, doNotIndex bool, slug, author string) (store.Site, error) {
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.UpdateSiteDetails(siteID, name, about, doNotIndex, slug, author)
-}
-
-func (l *Library) UpdateSiteProfile(siteID, profileJSON string) (store.Site, error) {
-	var profile store.SiteProfile
-	if len(profileJSON) > 16<<10 || json.Unmarshal([]byte(profileJSON), &profile) != nil {
-		return store.Site{}, errors.New("站点公开资料无效")
-	}
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.UpdateSiteProfile(siteID, profile)
-}
-
-func (l *Library) UpdateSiteCustomCode(siteID, customCodeJSON string) (store.Site, error) {
-	var cfg store.SiteCustomCode
-	if len(customCodeJSON) > 256<<10 || json.Unmarshal([]byte(customCodeJSON), &cfg) != nil {
-		return store.Site{}, errors.New("站点自定义代码设置无效")
-	}
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.UpdateSiteCustomCode(siteID, cfg)
-}
-
-func (l *Library) UpdatePodcastSettings(siteID, language string, explicit bool, categoriesJSON string) (store.Site, error) {
-	var categories []string
-	if len(categoriesJSON) > 4096 || json.Unmarshal([]byte(categoriesJSON), &categories) != nil {
-		return store.Site{}, errors.New("播客分类无效")
-	}
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.UpdatePodcastSettings(siteID, language, explicit, categories)
-}
-
-func (l *Library) SelectPodcastCover(ctx context.Context, siteID string) (store.Site, error) {
-	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "选择播客封面（PNG、JPEG 或 GIF）"})
-	if err != nil || len(paths) == 0 {
-		return store.Site{}, err
-	}
-	cover, err := siteimage.ReadAvatar(paths[0])
-	if err != nil {
-		return store.Site{}, err
-	}
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.SetPodcastCover(siteID, cover)
-}
-
-func (l *Library) RemovePodcastCover(siteID string) (store.Site, error) {
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.SetPodcastCover(siteID, "")
-}
-
-// SelectSiteAvatar uses the native file picker and saves a normalized PNG.
-func (l *Library) SelectSiteAvatar(ctx context.Context, siteID string) (store.Site, error) {
-	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "选择站点头像（PNG、JPEG 或 GIF）"})
-	if err != nil || len(paths) == 0 {
-		return store.Site{}, err
-	}
-	avatar, err := siteimage.ReadAvatar(paths[0])
-	if err != nil {
-		return store.Site{}, err
-	}
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.SetSiteAvatar(siteID, avatar)
-}
-
-func (l *Library) RemoveSiteAvatar(siteID string) (store.Site, error) {
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.SetSiteAvatar(siteID, "")
-}
-
-func (l *Library) PresetAvatars() []siteimage.PresetAvatar {
-	return siteimage.PresetAvatars()
-}
-
-func (l *Library) ApplyPresetAvatar(siteID, key string) (store.Site, error) {
-	avatar, err := siteimage.PresetAvatarPNG(key)
-	if err != nil {
-		return store.Site{}, err
-	}
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.SetSiteAvatar(siteID, avatar)
-}
-
-func (l *Library) SetSaveRoundAvatar(siteID string, round bool) (store.Site, error) {
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.SetSaveRoundAvatar(siteID, round)
-}
 func (l *Library) Articles(siteID string) ([]store.Article, error) {
 	s, err := l.open()
 	if err != nil {
@@ -791,14 +642,6 @@ func (l *Library) RebuildSite(siteID string, quick bool) (int, error) {
 	return len(enriched), nil
 }
 
-func (l *Library) SetSiteArchived(siteID string, archived bool) (store.Site, error) {
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.SetSiteArchived(siteID, archived)
-}
-
 func (l *Library) UpdateArticleDate(siteID, articleID string, created time.Time) (store.Article, error) {
 	s, err := l.open()
 	if err != nil {
@@ -1360,90 +1203,6 @@ func (l *Library) RemovePublishedFolder(folderID string) error {
 	return s.RemovePublishedFolder(folderID)
 }
 
-// Content Aggregation (Phase 4.2)
-func (l *Library) UpdateSiteAggregation(siteID, sourcesText string) (store.Site, error) {
-	lines := strings.Split(sourcesText, "\n")
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	return s.UpdateSiteAggregation(siteID, lines)
-}
-
-func (l *Library) SyncSiteAggregation(siteID string) (int, error) {
-	s, err := l.open()
-	if err != nil {
-		return 0, err
-	}
-	sites, err := s.ListSites()
-	if err != nil {
-		return 0, err
-	}
-	var target *store.Site
-	for i := range sites {
-		if sites[i].ID == siteID {
-			target = &sites[i]
-			break
-		}
-	}
-	if target == nil {
-		return 0, errors.New("站点不存在")
-	}
-	if len(target.Aggregation) == 0 {
-		return 0, nil
-	}
-	existingArticles, _ := s.ListArticles(siteID)
-	seenTitles := map[string]bool{}
-	for _, a := range existingArticles {
-		seenTitles[strings.ToLower(strings.TrimSpace(a.Title))] = true
-	}
-	added := 0
-	for _, rawSource := range target.Aggregation {
-		address, err := follow.Normalize(rawSource)
-		if err != nil {
-			continue
-		}
-		var feed feeds.Feed
-		if strings.HasPrefix(strings.ToLower(address), "http://") || strings.HasPrefix(strings.ToLower(address), "https://") {
-			feed, err = feeds.Fetch(address)
-		} else {
-			l.publicMu.Lock()
-			if _, _, e := l.ensureNode(true); e == nil {
-				res, e2 := follow.Fetch(l.node, address, false)
-				feed, err = res.Feed, e2
-			} else {
-				err = e
-			}
-			l.publicMu.Unlock()
-		}
-		if err != nil {
-			continue
-		}
-		for _, item := range feed.Items {
-			title := strings.TrimSpace(item.Title)
-			if title == "" {
-				continue
-			}
-			key := strings.ToLower(title)
-			if seenTitles[key] {
-				continue
-			}
-			body := strings.TrimSpace(item.Content)
-			if body == "" {
-				body = strings.TrimSpace(item.Description)
-			}
-			if item.Link != "" {
-				body += "\n\n---\n原文链接：" + item.Link
-			}
-			if _, err := s.SaveArticle(siteID, "", title, body); err == nil {
-				seenTitles[key] = true
-				added++
-			}
-		}
-	}
-	return added, nil
-}
-
 // Quick Post (Phase 4.3)
 func (l *Library) QuickPost(siteID, title, content, attachmentName, attachmentBase64 string) (store.Article, error) {
 	s, err := l.open()
@@ -1560,23 +1319,6 @@ func (l *Library) CheckTemplateModified(siteID string) (int64, error) {
 		return nil
 	})
 	return latest, nil
-}
-
-// Phase 6: Web3 Donation / Juicebox Settings
-func (l *Library) UpdateSiteWeb3(siteID, web3JSON string) (store.Site, error) {
-	var cfg store.SiteWeb3Settings
-	if len(web3JSON) > 16<<10 || json.Unmarshal([]byte(web3JSON), &cfg) != nil {
-		return store.Site{}, errors.New("Web3 捐赠配置无效")
-	}
-	s, err := l.open()
-	if err != nil {
-		return store.Site{}, err
-	}
-	updated, err := s.UpdateSiteWeb3(siteID, cfg)
-	if err == nil {
-		applog.Global.Append("Kinpage", "已更新站点 Web3 捐赠设置："+updated.Name)
-	}
-	return updated, err
 }
 
 // OfflineMediaUsage reports managed feed-cache usage without modifying files.
