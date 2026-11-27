@@ -1,0 +1,11 @@
+{
+  "name": "Folio",
+  "description": "An image-led gallery for portfolios and case studies.",
+  "author": "Kinpage contributors",
+  "version": "1.0.0",
+  "idealItemsPerPage": 10,
+  "generateIndexPagination": true,
+  "generateTagPages": true,
+  "generateArchive": true,
+  "buildNumber": 1
+}

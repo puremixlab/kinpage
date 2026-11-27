@@ -1,0 +1,11 @@
+{
+  "name": "Dispatch",
+  "description": "A single-column publication for newsletters, essays, and serials.",
+  "author": "Kinpage contributors",
+  "version": "1.0.0",
+  "idealItemsPerPage": 8,
+  "generateIndexPagination": true,
+  "generateTagPages": true,
+  "generateArchive": true,
+  "buildNumber": 1
+}

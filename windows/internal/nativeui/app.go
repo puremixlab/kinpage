@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
+	"windows/internal/desktoppet"
 	"windows/internal/store"
 )
 
@@ -72,6 +73,7 @@ type App struct {
 	editorHeroImage   string
 	editorState       *editor.State
 	editorBuffer      *editor.Buffer
+	editorInspiration editorInspiration
 	markdownOpts      markdown.Options
 	previewScroll     ui.ScrollState
 	readerScroll      ui.ScrollState
@@ -212,6 +214,11 @@ type App struct {
 	siteOrder        []string
 	subOrder         []string
 
+	desktopPetPrefs    desktopPetPrefs
+	desktopPet         *desktoppet.Window
+	desktopPetAnchor   uintptr
+	onDesktopPetChange func()
+
 	// Feedback status (dispatched as non-blocking macOS bottom-right toasts).
 	statusText     string
 	statusIsErr    bool
@@ -251,6 +258,12 @@ func New(backend Backend) *App {
 		openExternal:     openBrowserFile,
 		imgLoader:        newImageLoader(),
 		locale:           LocaleZhCN,
+	}
+	a.editorState.OnInput = func(event ui.InputEvent) bool {
+		if event.Kind == ui.InputPointerDown {
+			a.editorInspiration.phase = inspirationClosed
+		}
+		return false
 	}
 	a.syncEditorLocale()
 	a.Reload()

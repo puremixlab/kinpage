@@ -11,4 +11,9 @@ and available attribution and license texts. Notices for bundled assets retain
 their original authorship; this notice does not assign a new license to them.
 The 8-bit upstream README contains icon attribution; it is reproduced below.
 
+The original Kinpage templates (Gazette, Folio, Notebook, Dispatch, Revision,
+Airwaves, Waypoint, and Linkshelf) are covered by the project's MIT license.
+Sample media used in their preview consists of two generated photographs and
+a synthesized audio clip.
+
 Sepia provides the following MIT license:

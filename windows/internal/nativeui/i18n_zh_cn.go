@@ -286,6 +286,18 @@ var i18nZhCN = map[string]string{
 	"editor.compressVideo":      "压缩视频",
 	"editor.compressBtn":        "压缩",
 
+	// Writing inspiration
+	"editor.inspiration":          "没思路",
+	"editor.inspirationPick":      "摘一颗苹果",
+	"editor.inspirationAgain":     "再摘一颗",
+	"editor.inspirationResume":    "继续写",
+	"editor.inspirationOpen1":     "你最想让读者记住什么？从那件事写起。",
+	"editor.inspirationOpen2":     "回想今天的一个画面。你第一眼看见了什么？",
+	"editor.inspirationOpen3":     "如果朋友问你这件事为什么重要，你会怎么回答？",
+	"editor.inspirationContinue1": "挑一个刚才一笔带过的细节，单独写一句。",
+	"editor.inspirationContinue2": "接下来发生了什么？从最先改变的那件事写起。",
+	"editor.inspirationContinue3": "读者看到这里会追问什么？试着用一句话回答。",
+
 	// Status & Error Messages
 	"status.stoppedSpeak":        "已停止朗读",
 	"status.speakErr":            "语音朗读失败：%s",
@@ -307,6 +319,7 @@ var i18nZhCN = map[string]string{
 	"status.preventSleepErr":     "设置防休眠失败：%s",
 	"status.preventSleepOn":      "已开启防休眠",
 	"status.preventSleepOff":     "已关闭防休眠",
+	"status.desktopPetError":     "无法显示桌面宠物：%s",
 	"status.moveDataDirErr":      "迁移数据目录失败：%s",
 	"status.moveDataDirDone":     "已迁移至 %s，重启邻页后生效",
 	"status.dataRefreshed":       "已刷新数据",
@@ -612,6 +625,21 @@ var i18nZhCN = map[string]string{
 	"int.web3.jbIntErr":            "Juicebox 项目 ID 必须为整数",
 	"int.web3.saved":               "Web3 设置已保存",
 
+	// Template descriptions
+	"int.tpl.description.plain":     "简洁的文字博客",
+	"int.tpl.description.gamedb":    "像素游戏风格",
+	"int.tpl.description.grid":      "适合图片的网格布局",
+	"int.tpl.description.platinum":  "经典桌面窗口风格",
+	"int.tpl.description.sepia":     "暖色调的微博客",
+	"int.tpl.description.gazette":   "头条与分栏的杂志版式",
+	"int.tpl.description.folio":     "以封面为主的作品集",
+	"int.tpl.description.notebook":  "按主题浏览的知识笔记",
+	"int.tpl.description.dispatch":  "适合连载与通讯的阅读版式",
+	"int.tpl.description.revision":  "按时间浏览的项目更新",
+	"int.tpl.description.airwaves":  "可在首页播放的播客与音频日志",
+	"int.tpl.description.waypoint":  "图文并排的旅行手记",
+	"int.tpl.description.linkshelf": "带短评的链接收藏",
+
 	// Dialogs: System Tools & Global Settings
 	"tools.sidebarTitle":                    "系统工具",
 	"settings.searchPlaceholder":            "搜索设置…",
@@ -742,4 +770,5 @@ var i18nZhCN = map[string]string{
 	"tools.api.saveAndStartBtn":             "保存并启动",
 	"tools.logs.searchPlaceholder":          "筛选当前日志…",
 	"tools.logs.noMatch":                    "没有匹配的日志记录",
+	"settings.desktopPet":                   "显示桌面宠物阿墨",
 }

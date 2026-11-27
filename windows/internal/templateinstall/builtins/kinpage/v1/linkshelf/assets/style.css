@@ -1,0 +1,44 @@
+:root {
+  --paper: #f8f8fc;
+  --surface: #ececf6;
+  --ink: #242739;
+  --muted: #535772;
+  --rule: #d2d4e2;
+  --accent: #443d94;
+  --max-width: 53rem;
+}
+.layout-index .site-intro {
+  padding: clamp(1rem, 4vw, 2rem);
+  margin-block-end: 0;
+  background: var(--surface);
+  border-block-start: 3px solid var(--accent);
+}
+.masthead { font-size: clamp(2.35rem, 7vw, 4.25rem); }
+.layout-index .site-nav { border-block-start: 0; }
+.bookmark {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem 1.25rem;
+  padding-block: 0.85rem;
+  border-block-end: 1px solid var(--rule);
+}
+.bookmark:first-child { padding-block-start: 0; }
+.bookmark h2 { font-size: clamp(1.22rem, 3.3vw, 1.55rem); }
+.bookmark h2 span { margin-inline-start: 0.2em; color: var(--accent); }
+.destination { margin-block-start: 0.24rem; color: var(--accent); font: 0.88rem/1.55 var(--mono); }
+.bookmark .excerpt { margin-block-start: 0.35rem; }
+.bookmark .entry-meta { justify-content: flex-end; }
+@media (max-width: 37rem) {
+  .bookmark { grid-template-columns: minmax(0, 1fr); }
+  .bookmark .entry-meta { justify-content: flex-start; }
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #201f2f;
+    --surface: #2d2b40;
+    --ink: #f2f0ff;
+    --muted: #c4c2df;
+    --rule: #504d67;
+    --accent: #cec2ff;
+  }
+}

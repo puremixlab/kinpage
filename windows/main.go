@@ -117,6 +117,8 @@ func main() {
 			}
 			return &mygoWebViewHost{wv: wv}, nil
 		})
+		nativeApp.RestoreDesktopPet(win.NativeHandle())
+		win.OnClosed(nativeApp.CloseDesktopPet)
 
 		showMainWindow := func() {
 			if win.IsDestroyed() {
@@ -157,10 +159,12 @@ func main() {
 					}
 				}
 				quitting.Store(true)
-				if tray != nil {
-					tray.Destroy()
-					tray = nil
-				}
+				mygo.RunOnMain(func() {
+					if tray != nil {
+						tray.Destroy()
+						tray = nil
+					}
+				})
 				nativeApp.Close()
 				if !win.IsDestroyed() {
 					win.Destroy()
@@ -171,21 +175,39 @@ func main() {
 
 		buildTrayMenu := func(loc nativeui.Locale) *mygo.Menu {
 			showLabel, quitLabel := trayMenuStrings(loc)
-			return mygo.NewMenu([]*mygo.MenuItem{
+			items := []*mygo.MenuItem{
 				{
 					Label: showLabel,
 					Click: func(_ *mygo.MenuItem, _ *mygo.Window) {
 						showMainWindow()
 					},
 				},
-				mygo.Separator(),
-				{
+			}
+			if nativeApp.DesktopPetAvailable() {
+				items = append(items, &mygo.MenuItem{
+					Label:   nativeApp.DesktopPetLabel(),
+					Type:    mygo.MenuItemCheckbox,
+					Checked: nativeApp.DesktopPetEnabled(),
+					Click: func(item *mygo.MenuItem, _ *mygo.Window) {
+						if quitting.Load() {
+							return
+						}
+						if !nativeApp.SetDesktopPetEnabled(item.IsChecked()) {
+							item.SetChecked(nativeApp.DesktopPetEnabled())
+							showMainWindow()
+						}
+						win.Invalidate()
+					},
+				})
+			}
+			return mygo.NewMenu(append(items, mygo.Separator(),
+				&mygo.MenuItem{
 					Label: quitLabel,
 					Click: func(_ *mygo.MenuItem, _ *mygo.Window) {
 						quitApp()
 					},
 				},
-			})
+			))
 		}
 
 		if createdTray, err := mygo.NewTray(mygo.TrayOptions{
@@ -196,10 +218,14 @@ func main() {
 		}); err == nil {
 			tray = createdTray
 			tray.OnClick(showMainWindow)
-			nativeApp.SetOnLocaleChange(func(loc nativeui.Locale) {
+			refreshTrayMenu := func(loc nativeui.Locale) {
 				if tray != nil {
 					tray.SetMenu(buildTrayMenu(loc))
 				}
+			}
+			nativeApp.SetOnLocaleChange(refreshTrayMenu)
+			nativeApp.SetOnDesktopPetChange(func() {
+				refreshTrayMenu(nativeApp.Locale())
 			})
 		} else {
 			log.Printf("system tray unavailable: %v", err)

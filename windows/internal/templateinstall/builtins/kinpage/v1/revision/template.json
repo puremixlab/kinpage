@@ -1,0 +1,11 @@
+{
+  "name": "Revision",
+  "description": "A timestamped timeline for project notes and release changes.",
+  "author": "Kinpage contributors",
+  "version": "1.0.0",
+  "idealItemsPerPage": 12,
+  "generateIndexPagination": true,
+  "generateTagPages": true,
+  "generateArchive": true,
+  "buildNumber": 1
+}

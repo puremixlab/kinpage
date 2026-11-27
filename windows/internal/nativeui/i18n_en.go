@@ -286,6 +286,18 @@ var i18nEn = map[string]string{
 	"editor.compressVideo":      "Compress Video",
 	"editor.compressBtn":        "Compress",
 
+	// Writing inspiration
+	"editor.inspiration":          "Need an idea?",
+	"editor.inspirationPick":      "Pick an apple",
+	"editor.inspirationAgain":     "Pick another",
+	"editor.inspirationResume":    "Keep writing",
+	"editor.inspirationOpen1":     "What’s one thing you want the reader to remember? Start there.",
+	"editor.inspirationOpen2":     "Recall a scene from today. What’s the first thing you noticed?",
+	"editor.inspirationOpen3":     "Imagine a friend asking why this matters. Write your first answer.",
+	"editor.inspirationContinue1": "Pick a detail you passed over. Give it one sentence of its own.",
+	"editor.inspirationContinue2": "What happened next? Start with the first thing that changed.",
+	"editor.inspirationContinue3": "What would a curious reader ask here? Try answering in one sentence.",
+
 	// Status & Error Messages
 	"status.stoppedSpeak":        "Stopped speaking",
 	"status.speakErr":            "Text-to-speech failed: %s",
@@ -307,6 +319,7 @@ var i18nEn = map[string]string{
 	"status.preventSleepErr":     "Failed to update sleep prevention: %s",
 	"status.preventSleepOn":      "Sleep prevention enabled",
 	"status.preventSleepOff":     "Sleep prevention disabled",
+	"status.desktopPetError":     "Could not show the desktop pet: %s",
 	"status.moveDataDirErr":      "Failed to move data directory: %s",
 	"status.moveDataDirDone":     "Moved to %s. Restart Kinpage to apply.",
 	"status.dataRefreshed":       "Data refreshed",
@@ -612,6 +625,21 @@ var i18nEn = map[string]string{
 	"int.web3.jbIntErr":            "Juicebox Project ID must be an integer",
 	"int.web3.saved":               "Web3 settings saved",
 
+	// Template descriptions
+	"int.tpl.description.plain":     "Minimal text blog",
+	"int.tpl.description.gamedb":    "Pixel-art game theme",
+	"int.tpl.description.grid":      "Image grid",
+	"int.tpl.description.platinum":  "Classic desktop window theme",
+	"int.tpl.description.sepia":     "Warm-toned microblog",
+	"int.tpl.description.gazette":   "Editorial lead story and columns",
+	"int.tpl.description.folio":     "Cover-led portfolio and projects",
+	"int.tpl.description.notebook":  "Public notebook with a topic index",
+	"int.tpl.description.dispatch":  "A reading layout for newsletters and serials",
+	"int.tpl.description.revision":  "A timeline for project updates",
+	"int.tpl.description.airwaves":  "Podcasts and audio journals with in-page playback",
+	"int.tpl.description.waypoint":  "A travel journal with photos and notes",
+	"int.tpl.description.linkshelf": "An annotated collection of links",
+
 	// Dialogs: System Tools & Global Settings
 	"tools.sidebarTitle":                    "System Tools",
 	"settings.searchPlaceholder":            "Search settings…",
@@ -742,4 +770,5 @@ var i18nEn = map[string]string{
 	"tools.api.saveAndStartBtn":             "Save & Start",
 	"tools.logs.searchPlaceholder":          "Filter logs…",
 	"tools.logs.noMatch":                    "No matching log entries",
+	"settings.desktopPet":                   "Show Amo the desktop pet",
 }

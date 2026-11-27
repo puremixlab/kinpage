@@ -1,0 +1,18 @@
+<div class="episode-list">
+  {% for article in articles %}
+  <article class="episode{% if article.heroImage %} has-cover{% endif %}">
+    {% include "modules/entry_image.html" %}
+    <div class="episode-copy">
+      {% include "modules/entry_meta.html" %}
+      <h2><a href=".{{ article.link|escape }}">{{ article.title|default:"Untitled post"|escape }}</a></h2>
+      {% if article.excerpt %}<p class="excerpt">{{ article.excerpt|escape }}</p>{% endif %}
+      {% if article.hasAudio %}
+      <div class="player">
+        <audio controls preload="none" aria-label="Audio for {{ article.title|default:"untitled post"|escape }}" src="{{ assets_prefix }}{{ article.id }}/{{ article.audioFilename|escape }}"></audio>
+        {% if article.audioDuration %}<span class="duration">{{ article.audioDuration|hhmmss }}</span>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</div>

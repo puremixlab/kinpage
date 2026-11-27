@@ -412,6 +412,15 @@ func (a *App) viewToolsGeneral(c *ui.Context) {
 				}
 			}
 		})
+		if a.DesktopPetAvailable() {
+			prefsHairlineH(c, pal)
+			active := a.DesktopPetEnabled()
+			enabled := active
+			ui.Checkbox(c.Key("settings-desktop-pet"), &enabled, a.DesktopPetLabel())
+			if enabled != active {
+				a.SetDesktopPetEnabled(enabled)
+			}
+		}
 	})
 }
 

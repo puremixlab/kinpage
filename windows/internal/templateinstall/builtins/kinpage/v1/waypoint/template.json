@@ -1,0 +1,11 @@
+{
+  "name": "Waypoint",
+  "description": "Alternating photo and text layouts for a travel journal.",
+  "author": "Kinpage contributors",
+  "version": "1.0.0",
+  "idealItemsPerPage": 8,
+  "generateIndexPagination": true,
+  "generateTagPages": true,
+  "generateArchive": true,
+  "buildNumber": 1
+}

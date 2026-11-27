@@ -1,6 +1,7 @@
 package templateinstall
 
 import (
+	"html"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,8 +13,8 @@ import (
 
 func TestBuiltinTemplatesCanBeVerifiedInstalledAndPreviewed(t *testing.T) {
 	items := Builtins()
-	if len(items) != 5 {
-		t.Fatalf("expected five built-in templates, got %d", len(items))
+	if len(items) != 13 {
+		t.Fatalf("expected thirteen built-in templates, got %d", len(items))
 	}
 	for _, item := range items {
 		t.Run(item.ID, func(t *testing.T) {
@@ -48,7 +49,12 @@ func TestBuiltinTemplatesCanBeVerifiedInstalledAndPreviewed(t *testing.T) {
 			if len(page) < 200 {
 				t.Fatalf("empty preview: %q", page)
 			}
-			if !strings.Contains(page, "My Planet") || !strings.Contains(page, "data:text/css;base64,") {
+			previewTitle := "My Planet"
+			if kinpageSource(item.ID) != "" {
+				site, _ := kinpagePreviewContent(item.ID, store.Site{})
+				previewTitle = site.Name
+			}
+			if !strings.Contains(page, html.EscapeString(previewTitle)) || !strings.Contains(page, "data:text/css;base64,") {
 				t.Fatal("preview is missing sample content or embedded stylesheet")
 			}
 			if regexp.MustCompile(`data:text/css;base64,[A-Za-z0-9+/=]+\?`).MatchString(page) {

@@ -1,0 +1,11 @@
+{
+  "name": "Airwaves",
+  "description": "An episode list with built-in audio players and a podcast feed link.",
+  "author": "Kinpage contributors",
+  "version": "1.0.0",
+  "idealItemsPerPage": 8,
+  "generateIndexPagination": true,
+  "generateTagPages": true,
+  "generateArchive": true,
+  "buildNumber": 1
+}

@@ -286,6 +286,18 @@ var i18nZhTW = map[string]string{
 	"editor.compressVideo":      "壓縮影片",
 	"editor.compressBtn":        "壓縮",
 
+	// Writing inspiration
+	"editor.inspiration":          "沒頭緒",
+	"editor.inspirationPick":      "摘一顆蘋果",
+	"editor.inspirationAgain":     "再摘一顆",
+	"editor.inspirationResume":    "繼續寫",
+	"editor.inspirationOpen1":     "你最想讓讀者記住什麼？從那件事寫起。",
+	"editor.inspirationOpen2":     "回想今天的一個畫面。你第一眼看見了什麼？",
+	"editor.inspirationOpen3":     "如果朋友問你這件事為什麼重要，你會怎麼回答？",
+	"editor.inspirationContinue1": "挑一個剛才一筆帶過的細節，單獨寫一句。",
+	"editor.inspirationContinue2": "接下來發生了什麼？從最先改變的那件事寫起。",
+	"editor.inspirationContinue3": "讀者看到這裡會追問什麼？試著用一句話回答。",
+
 	// Status & Error Messages
 	"status.stoppedSpeak":        "已停止朗讀",
 	"status.speakErr":            "語音朗讀失敗：%s",
@@ -307,6 +319,7 @@ var i18nZhTW = map[string]string{
 	"status.preventSleepErr":     "設定防休眠失敗：%s",
 	"status.preventSleepOn":      "已開啟防休眠",
 	"status.preventSleepOff":     "已關閉防休眠",
+	"status.desktopPetError":     "無法顯示桌面寵物：%s",
 	"status.moveDataDirErr":      "遷移資料目錄失敗：%s",
 	"status.moveDataDirDone":     "已遷移至 %s，重啟鄰頁後生效",
 	"status.dataRefreshed":       "已重新整理資料",
@@ -612,6 +625,21 @@ var i18nZhTW = map[string]string{
 	"int.web3.jbIntErr":            "Juicebox 專案 ID 必須為整數",
 	"int.web3.saved":               "Web3 設定已儲存",
 
+	// Template descriptions
+	"int.tpl.description.plain":     "簡潔的文字部落格",
+	"int.tpl.description.gamedb":    "像素遊戲風格",
+	"int.tpl.description.grid":      "適合圖片的網格版面",
+	"int.tpl.description.platinum":  "經典桌面視窗風格",
+	"int.tpl.description.sepia":     "暖色調的微型部落格",
+	"int.tpl.description.gazette":   "頭條與分欄的雜誌版面",
+	"int.tpl.description.folio":     "以封面為主的作品集",
+	"int.tpl.description.notebook":  "依主題瀏覽的知識筆記",
+	"int.tpl.description.dispatch":  "適合連載與通訊的閱讀版面",
+	"int.tpl.description.revision":  "依時間瀏覽的專案更新",
+	"int.tpl.description.airwaves":  "可在首頁播放的 Podcast 與音訊日誌",
+	"int.tpl.description.waypoint":  "圖文並排的旅行手記",
+	"int.tpl.description.linkshelf": "附短評的連結收藏",
+
 	// Dialogs: System Tools & Global Settings
 	"tools.sidebarTitle":                    "系統工具",
 	"settings.searchPlaceholder":            "搜尋設定…",
@@ -742,4 +770,5 @@ var i18nZhTW = map[string]string{
 	"tools.api.saveAndStartBtn":             "儲存並啟動",
 	"tools.logs.searchPlaceholder":          "篩選目前日誌…",
 	"tools.logs.noMatch":                    "沒有相符的日誌紀錄",
+	"settings.desktopPet":                   "顯示桌面寵物阿墨",
 }

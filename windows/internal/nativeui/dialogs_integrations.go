@@ -158,6 +158,7 @@ func (a *App) viewIntTemplates(c *ui.Context) {
 					m.err = err.Error()
 				} else if site.ID != "" {
 					m.templateName = site.TemplateName
+					m.templateValues, _ = a.backend.TemplateSettings(m.siteID)
 					m.err = ""
 					m.msg = a.tf("int.tpl.imported", site.TemplateName)
 					a.Reload()
@@ -170,13 +171,18 @@ func (a *App) viewIntTemplates(c *ui.Context) {
 		ui.Text(c, a.t("int.tpl.builtinLib")).Font(macPlanetFont).FontSize(12.5).FontWeight(600).TextColor(pal.ink)
 		for i, b := range a.backend.BuiltinTemplates() {
 			tpl := b
+			descriptionKey := "int.tpl.description." + tpl.ID
+			description := a.t(descriptionKey)
+			if description == descriptionKey {
+				description = tpl.Description
+			}
 			if i > 0 {
 				hairlineH(c, pal)
 			}
 			ui.Row(c.Key("tpl-row-" + tpl.ID)).PaddingY(4).Gap(10).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
 				ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
 					ui.Text(c, tpl.Name).Font(macPlanetFont).FontSize(13).FontWeight(600).TextColor(pal.ink)
-					ui.Text(c, tpl.Description).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
+					ui.Text(c, description).Font(macPlanetFont).FontSize(11.5).TextColor(pal.muted)
 				})
 				ui.Row(c).Gap(6).Shrink(0).Children(func() {
 					if macSecondaryButton(c, "tpl-preview-"+tpl.ID, a.t("common.preview"), pal) {
@@ -189,9 +195,7 @@ func (a *App) viewIntTemplates(c *ui.Context) {
 							m.templateName = site.TemplateName
 							m.err = ""
 							m.msg = a.tf("int.tpl.applied", tpl.Name)
-							if loaded, err := a.backend.TemplateSettings(m.siteID); err == nil && loaded != nil {
-								m.templateValues = loaded
-							}
+							m.templateValues, _ = a.backend.TemplateSettings(m.siteID)
 							a.Reload()
 						}
 					}

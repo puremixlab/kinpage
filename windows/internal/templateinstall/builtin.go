@@ -15,21 +15,15 @@ import (
 
 	"windows/internal/sitegen"
 	"windows/internal/store"
+	"windows/internal/templatecatalog"
 )
 
 //go:embed builtins
 var bundled embed.FS
 
-type Builtin struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Build       int    `json:"build"`
-}
+type Builtin = templatecatalog.Builtin
 
-func Builtins() []Builtin {
-	return []Builtin{{"plain", "Plain", "简洁的文字博客", 132}, {"gamedb", "8-bit", "像素游戏风格", 50}, {"grid", "Grid", "适合图片的网格布局", 99}, {"platinum", "Platinum", "经典桌面窗口风格", 20}, {"sepia", "Sepia", "暖色调的微博客", 90}}
-}
+func Builtins() []Builtin { return templatecatalog.Builtins() }
 
 func ExtractBuiltin(id string) (string, func(), error) {
 	valid := false
@@ -47,15 +41,32 @@ func ExtractBuiltin(id string) (string, func(), error) {
 		return "", nil, err
 	}
 	cleanup := func() { _ = os.RemoveAll(root) }
-	base := "builtins/" + id
-	err = fs.WalkDir(bundled, base, func(name string, entry fs.DirEntry, walkErr error) error {
+	sources := []string{"builtins/" + id}
+	if source := kinpageSource(id); source != "" {
+		sources = []string{kinpageV1 + "/common", source}
+	}
+	for _, source := range sources {
+		if err = extractBundled(root, source); err != nil {
+			cleanup()
+			return "", nil, err
+		}
+	}
+	if err = Verify(root); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+	return root, cleanup, nil
+}
+
+func extractBundled(root, base string) error {
+	return fs.WalkDir(bundled, base, func(name string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
-		rel := strings.TrimPrefix(strings.TrimPrefix(name, base), "/")
-		if rel == "" {
+		if name == base {
 			return nil
 		}
+		rel := strings.TrimPrefix(name, base+"/")
 		target := filepath.Join(root, filepath.FromSlash(rel))
 		if entry.IsDir() {
 			return os.MkdirAll(target, 0700)
@@ -66,14 +77,6 @@ func ExtractBuiltin(id string) (string, func(), error) {
 		}
 		return os.WriteFile(target, data, 0600)
 	})
-	if err == nil {
-		err = Verify(root)
-	}
-	if err != nil {
-		cleanup()
-		return "", nil, err
-	}
-	return root, cleanup, nil
 }
 
 var cssURL = regexp.MustCompile(`url\(\s*["']?([^"')]+)["']?\s*\)`)
@@ -94,6 +97,10 @@ func BuiltinPreview(id string) (string, error) {
 	now := time.Date(2026, 1, 10, 12, 0, 0, 0, time.UTC)
 	site := store.Site{ID: "00000000-0000-4000-8000-000000000001", Name: "My Planet", About: "A little space on the web", Created: now}
 	articles := []store.Article{{ID: "00000000-0000-4000-8000-000000000002", SiteID: site.ID, Title: "Hello, Planet", Content: "Welcome to my corner of the web. Here are some thoughts and stories.", Created: now, Modified: now}, {ID: "00000000-0000-4000-8000-000000000003", SiteID: site.ID, Title: "A new beginning", Content: "Notes, photographs, and things worth sharing.", Created: now.Add(-24 * time.Hour), Modified: now}}
+	isKinpage := kinpageSource(id) != ""
+	if isKinpage {
+		site, articles = kinpagePreviewContent(id, site)
+	}
 	if err = sitegen.RenderWithTemplate(dir, site, articles, source); err != nil {
 		return "", err
 	}
@@ -170,8 +177,16 @@ func BuiltinPreview(id string) (string, error) {
 		page = pattern.ReplaceAllStringFunc(page, func(string) string { return value })
 		return nil
 	})
+	policy := "default-src 'none'; img-src data:; style-src 'unsafe-inline' data:; font-src data:; base-uri 'none'; form-action 'none'"
+	if isKinpage {
+		page, err = embedPreviewMedia(page, articles)
+		if err != nil {
+			return "", err
+		}
+		policy += "; media-src data:"
+	}
 	// Keep the doctype first so the template is rendered in standards mode.
-	csp := `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline' data:; font-src data:; base-uri 'none'; form-action 'none'">`
+	csp := `<meta http-equiv="Content-Security-Policy" content="` + policy + `">`
 	head := regexp.MustCompile(`(?i)<head(?:\s[^>]*)?>`)
 	if loc := head.FindStringIndex(page); loc != nil {
 		page = page[:loc[1]] + csp + page[loc[1]:]
