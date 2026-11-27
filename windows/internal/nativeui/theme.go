@@ -261,7 +261,7 @@ func avatarCircleIndexed(c *ui.Context, name string, index int, size float32) {
 }
 
 func (a *App) siteAvatar(c *ui.Context, site store.Site, index int, size float32) {
-	if bmp := a.bitmapForDataURL(site.AvatarPNG); bmp != nil {
+	if bmp := a.bitmapForDataURL(site.AvatarPNG, siteAvatarBitmapMaxSide); bmp != nil {
 		ui.Box(c).Size(size, size).Radius(size / 2).Clip().Shrink(0).Children(func() {
 			ui.Image(c, bmp).Size(size, size)
 		})
@@ -271,7 +271,7 @@ func (a *App) siteAvatar(c *ui.Context, site store.Site, index int, size float32
 }
 
 func (a *App) subAvatar(c *ui.Context, sub store.Subscription, size float32, pal macPalette) {
-	if bmp := a.bitmapForDataURL(sub.Feed.IconPNG); bmp != nil {
+	if bmp := a.bitmapForDataURL(sub.Feed.IconPNG, 64); bmp != nil {
 		ui.Box(c).Size(size, size).Radius(5).Clip().Shrink(0).Children(func() {
 			ui.Image(c, bmp).Size(size, size)
 		})

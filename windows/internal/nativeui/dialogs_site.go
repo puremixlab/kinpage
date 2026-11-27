@@ -224,30 +224,27 @@ func (a *App) viewSiteSettingsModal(c *ui.Context) {
 									prefsHairlineH(c, pal)
 									ui.Column(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
 										ui.Text(c, a.t("siteSettings.avatarPresets")).Font(macPlanetFont).FontSize(11.5).TextColor(pal.prefsMuted)
-										ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
+										ui.Row(c).Gap(8).Wrap().AlignSelf(ui.Stretch).Center().Children(func() {
 											for i, p := range presets {
-												if i >= 12 {
-													break
-												}
-												idx, key, title, pngURL := i, p.Key, p.Title, p.PNG
+												title := p.Title
 												if title == "" {
-													title = key
+													title = p.Key
 												}
-												btn := ui.ButtonBase(c.Key("ss-preset-"+key)).Label(title).
-													Size(34, 34).Radius(17).Border(0.5, pal.prefsCardBorder).
+												btn := ui.ButtonBase(c.Key("ss-preset-"+p.Key)).Label(title).
+													Size(40, 40).Radius(20).Border(0.5, pal.prefsCardBorder).
 													Center().Clip().Cursor(ui.CursorPointer).Tooltip(title)
 												if btn.Hovered() {
 													btn.Border(0.5, pal.prefsInk)
 												}
 												btn.Children(func() {
-													if bmp := a.bitmapForDataURL(pngURL); bmp != nil {
-														ui.Image(c, bmp).Size(32, 32)
+													if bmp := a.bitmapForDataURL(p.PNG, siteAvatarBitmapMaxSide); bmp != nil {
+														ui.Image(c, bmp).Size(38, 38)
 													} else {
-														avatarCircleIndexed(c, title, idx, 32)
+														avatarCircleIndexed(c, title, i, 38)
 													}
 												})
 												if btn.Clicked() {
-													if _, err := a.backend.ApplyPresetAvatar(st.siteID, key); err != nil {
+													if _, err := a.backend.ApplyPresetAvatar(st.siteID, p.Key); err != nil {
 														st.err = err.Error()
 													} else {
 														st.err = ""
