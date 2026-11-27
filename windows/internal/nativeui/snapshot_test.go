@@ -166,6 +166,17 @@ func TestNativeUIRenderSnapshots(t *testing.T) {
 	tt.Frame()
 	savePNG(t, outDir, "13-sheet-badge-wall-dark.png", tt)
 	app.badgeWallOpen = false
+
+	// Weekly and Monthly heatmap mode snapshots.
+	tt.SetDark(false)
+	app.activityMode = activityModeWeekly
+	tt.Frame()
+	savePNG(t, outDir, "14-dashboard-weekly.png", tt)
+
+	app.activityMode = activityModeMonthly
+	tt.Frame()
+	savePNG(t, outDir, "15-dashboard-monthly.png", tt)
+	app.activityMode = activityModeDaily
 	app.siteSettings.open = false
 
 	// Dark mode site settings sheet snapshot.

@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	activityModeDaily      = 0
-	activityModeWeekly     = 1
-	activityModeCumulative = 2
+	activityModeDaily   = 0
+	activityModeWeekly  = 1
+	activityModeMonthly = 2
 
 	dashboardFilterDrafts = "__drafts__"
 )
@@ -208,24 +208,128 @@ func (a *App) viewDashboardMasthead(c *ui.Context, containerW float32) {
 
 	const (
 		dateSize     = float32(26)
+		utilityRailW = float32(84)
 		heatmapW     = float32(14*9 + 13*3) // 165px
-		mastheadGaps = float32(18 + 16)
+		mastheadGaps = float32(18 + 12 + 12)
 	)
 	dateW, _ := c.MeasureText(0, ui.Span{Text: dateText, Font: macPlanetFont, Size: dateSize, Weight: 600})
-	availBadgeW := containerW - dateW - heatmapW - mastheadGaps
+	availBadgeW := containerW - dateW - utilityRailW - heatmapW - mastheadGaps
 
-	ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).Children(func() {
+	badgesVisible := false
+	ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(12).Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(18).Grow(1).MinWidth(0).Children(func() {
 			ui.Text(c, dateText).
 				Font(macPlanetFont).FontSize(dateSize).FontWeight(600).LetterSpacing(-0.02).
 				TextColor(pal.prefsInk).NoWrap().Shrink(0)
-			a.viewDashboardBadgeTray(c, availBadgeW)
+			badgesVisible = a.viewDashboardBadgeTray(c, availBadgeW)
 		})
-		a.viewMiniHeatmap(c, counts)
+		ui.Row(c).AlignItems(ui.Center).Gap(12).Shrink(0).Children(func() {
+			a.viewMastheadUtilityRail(c, badgesVisible)
+			a.viewMiniHeatmap(c, counts)
+		})
+	})
+}
+
+func (a *App) viewMastheadUtilityRail(c *ui.Context, badgesVisible bool) {
+	pal := a.pal
+	rail := ui.Column(c.Key("dash-masthead-rail")).AlignItems(ui.End).Justify(ui.Center).Gap(8).Height(81).Shrink(0)
+	railHovered := rail.Hovered()
+	rail.Children(func() {
+		// Top row: Trophy button (Achievement Wall) + optional × collapse for floating badges.
+		ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
+			if badgesVisible {
+				hideBtn := ui.ButtonBase(c.Key("dash-badges-hide")).
+					Label(a.t("dashboard.badge.hide")).
+					Size(20, 20).Radius(10).Center().Cursor(ui.CursorPointer).
+					Tooltip(a.t("dashboard.badge.hideTooltip")).
+					Transition(rowHoverTransition)
+				if hideBtn.Hovered() {
+					hideBtn.Background(pal.hover)
+				}
+				iconColor := pal.prefsMuted.Alpha(0.45)
+				if railHovered || hideBtn.Hovered() {
+					iconColor = pal.prefsMuted
+				}
+				hideBtn.Children(func() {
+					ui.Icon(c, lucide.X()).Size(11, 11).TextColor(iconColor)
+				})
+				if hideBtn.Clicked() {
+					a.badgesHidden = true
+				}
+			}
+
+			wallBtn := ui.ButtonBase(c.Key("dash-badges-wall")).
+				Label(a.t("dashboard.badge.wallTitle")).
+				Size(24, 24).Radius(6).Center().Cursor(ui.CursorPointer).
+				Tooltip(a.t("dashboard.badge.wallTooltip")).
+				Transition(rowHoverTransition)
+			if wallBtn.Hovered() {
+				wallBtn.Background(pal.hover)
+			}
+			wallBtn.Children(func() {
+				ui.Icon(c, lucide.Trophy()).Size(13.5, 13.5).TextColor(pal.prefsMuted)
+			})
+			if wallBtn.Clicked() {
+				a.badgeWallOpen = true
+			}
+		})
+
+		// Directly below the Trophy: compact Day / Week / Month heatmap mode switcher.
+		a.viewHeatmapModeSwitcher(c)
+	})
+}
+
+func (a *App) viewHeatmapModeSwitcher(c *ui.Context) {
+	pal := a.pal
+	modes := [...]struct {
+		mode  int
+		key   string
+		label string
+	}{
+		{activityModeDaily, "daily", a.t("dashboard.heatmap.daily")},
+		{activityModeWeekly, "weekly", a.t("dashboard.heatmap.weekly")},
+		{activityModeMonthly, "monthly", a.t("dashboard.heatmap.monthly")},
+	}
+
+	ui.Row(c.Key("dash-hm-switcher")).AlignItems(ui.Center).Padding(2).Gap(1).Radius(6).
+		Background(pal.hover).Border(0.5, pal.prefsCardBorder).Children(func() {
+		for _, m := range modes {
+			active := a.activityMode == m.mode
+			btn := ui.ButtonBase(c.Key("dash-hm-mode-" + m.key)).Label(m.label).
+				Height(18).PaddingX(6).Radius(4.5).Center().Cursor(ui.CursorPointer).
+				Transition(rowHoverTransition)
+			fg := pal.prefsMuted
+			if active {
+				btn.Background(pal.prefsNavActiveBg).Shadow(0, 1, 2, 0, pal.prefsNavActiveShadow)
+				fg = pal.prefsInk
+			} else if btn.Hovered() {
+				fg = pal.prefsSecondary
+			}
+			btn.Children(func() {
+				txt := ui.Text(c, m.label).Font(macPlanetFont).FontSize(10.5).TextColor(fg).NoWrap()
+				if active {
+					txt.FontWeight(600)
+				}
+			})
+			if btn.Clicked() {
+				a.activityMode = m.mode
+			}
+		}
 	})
 }
 
 func (a *App) viewMiniHeatmap(c *ui.Context, counts map[string]int) {
+	switch a.activityMode {
+	case activityModeWeekly:
+		a.viewWeeklyHeatmap(c, counts)
+	case activityModeMonthly:
+		a.viewMonthlyHeatmap(c, counts)
+	default:
+		a.viewDailyHeatmap(c, counts)
+	}
+}
+
+func (a *App) viewDailyHeatmap(c *ui.Context, counts map[string]int) {
 	pal := a.pal
 	const weeks = 14
 	today := time.Now()
@@ -234,7 +338,7 @@ func (a *App) viewMiniHeatmap(c *ui.Context, counts map[string]int) {
 	endDay := today.AddDate(0, 0, endOffset)
 	startDay := endDay.AddDate(0, 0, -(weeks*7 - 1))
 
-	ui.Row(c).AlignItems(ui.Center).Gap(3).Children(func() {
+	ui.Row(c).Size(165, 81).AlignItems(ui.Center).Gap(3).Children(func() {
 		for w := range weeks {
 			ui.Column(c.Key(fmt.Sprintf("hm-mw-%d", w))).Gap(3).Children(func() {
 				for d := range 7 {
@@ -248,6 +352,122 @@ func (a *App) viewMiniHeatmap(c *ui.Context, counts map[string]int) {
 			})
 		}
 	})
+}
+
+func (a *App) viewWeeklyHeatmap(c *ui.Context, counts map[string]int) {
+	pal := a.pal
+	const (
+		cols  = 13
+		rows  = 4
+		weeks = cols * rows // 52 weeks (1 year), column-major oldest -> newest
+	)
+	today := time.Now()
+	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.Local)
+	endOffset := int(time.Saturday - today.Weekday())
+	endDay := today.AddDate(0, 0, endOffset)
+	startDay := endDay.AddDate(0, 0, -(weeks*7 - 1))
+
+	type weekBucket struct {
+		start time.Time
+		end   time.Time
+		total int
+	}
+	buckets := make([]weekBucket, weeks)
+	maxTotal := 1
+	for w := range weeks {
+		ws := startDay.AddDate(0, 0, w*7)
+		we := ws.AddDate(0, 0, 6)
+		sum := 0
+		for d := range 7 {
+			sum += counts[ws.AddDate(0, 0, d).Format("2006-01-02")]
+		}
+		buckets[w] = weekBucket{start: ws, end: we, total: sum}
+		if sum > maxTotal {
+			maxTotal = sum
+		}
+	}
+
+	ui.Row(c.Key("hm-weekly")).Size(166, 81).Center().Gap(3).Children(func() {
+		for col := range cols {
+			ui.Column(c.Key(fmt.Sprintf("hm-wkc-%d", col))).Gap(3).Children(func() {
+				for row := range rows {
+					idx := col*rows + row
+					b := buckets[idx]
+					label := fmt.Sprintf("%d/%d–%d/%d", int(b.start.Month()), b.start.Day(), int(b.end.Month()), b.end.Day())
+					ui.Box(c.Key(fmt.Sprintf("hm-wk-%d", idx))).Size(10, 10).Radius(2.5).
+						Background(heatmapScaleColor(b.total, maxTotal, pal)).
+						Tooltip(a.tf("dashboard.heatmap.weekTooltip", label, b.total))
+				}
+			})
+		}
+	})
+}
+
+func (a *App) viewMonthlyHeatmap(c *ui.Context, counts map[string]int) {
+	pal := a.pal
+	const (
+		cols   = 6
+		rows   = 2
+		months = cols * rows // 12 months (1 year)
+	)
+	now := time.Now()
+	firstOfCurMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
+
+	monthTotals := make(map[string]int, months)
+	for dateKey, n := range counts {
+		if len(dateKey) >= 7 && n > 0 {
+			monthTotals[dateKey[:7]] += n
+		}
+	}
+
+	type monthBucket struct {
+		key   string
+		total int
+	}
+	buckets := make([]monthBucket, months)
+	maxTotal := 1
+	for i := range months {
+		m := firstOfCurMonth.AddDate(0, -(months - 1 - i), 0)
+		key := m.Format("2006-01")
+		tot := monthTotals[key]
+		buckets[i] = monthBucket{key: key, total: tot}
+		if tot > maxTotal {
+			maxTotal = tot
+		}
+	}
+
+	ui.Column(c.Key("hm-monthly")).Size(166, 81).Center().Gap(4).Children(func() {
+		for row := range rows {
+			ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
+				for col := range cols {
+					b := buckets[row*cols+col]
+					ui.Box(c.Key("hm-mo-"+b.key)).Size(24, 24).Radius(4.5).
+						Background(heatmapScaleColor(b.total, maxTotal, pal)).
+						Tooltip(a.tf("dashboard.heatmap.monthTooltip", b.key, b.total))
+				}
+			})
+		}
+	})
+}
+
+func heatmapScaleColor(count, maxCount int, pal macPalette) ui.Color {
+	if count <= 0 {
+		return heatmapColor(0, pal)
+	}
+	if maxCount <= 1 {
+		return pal.prefsInk.Alpha(0.70)
+	}
+	ratio := float32(count) / float32(maxCount)
+	switch {
+	case ratio <= 0.25:
+		return pal.prefsInk.Alpha(0.24)
+	case ratio <= 0.50:
+		return pal.prefsInk.Alpha(0.45)
+	case ratio <= 0.75:
+		return pal.prefsInk.Alpha(0.68)
+	default:
+		return pal.prefsInk.Alpha(0.88)
+	}
 }
 
 func (a *App) viewDashboardHeroPaper(c *ui.Context) {
