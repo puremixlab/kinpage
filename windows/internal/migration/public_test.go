@@ -11,6 +11,7 @@ import (
 	"time"
 	"windows/internal/backup"
 	"windows/internal/store"
+	"windows/internal/templateinstall"
 )
 
 func TestImportedEmptyTemplateSettingsArePublicButUnknownSettingsAreRejected(t *testing.T) {
@@ -595,23 +596,24 @@ func TestImportedTemplateUsesSiteSpecificPlausibleScript(t *testing.T) {
 }
 
 func TestImportedSiteSupportsVerifiedTemplates(t *testing.T) {
-	root := os.Getenv("PLANET_TEST_TEMPLATES_DIR")
-	if root == "" {
-		t.Skip("verified templates required")
-	}
 	const id = "11111111-1111-4111-8111-111111111111"
 	const post = "22222222-2222-4222-8222-222222222222"
-	for _, tc := range []struct{ dir, name string }{{"plain", "Plain"}, {"gamedb", "8-bit"}, {"grid", "Grid"}, {"platinum", "Platinum"}, {"sepia", "Sepia"}} {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, item := range templateinstall.Builtins() {
+		t.Run(item.Name, func(t *testing.T) {
+			template, cleanup, err := templateinstall.ExtractBuiltin(item.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(cleanup)
 			tmp := t.TempDir()
 			archive := filepath.Join(tmp, "imports", id)
 			os.MkdirAll(filepath.Join(archive, post), 0700)
-			raw := `{"id":"` + id + `","name":"Site","about":"","templateName":"` + tc.name + `","articles":[{"id":"` + post + `","link":"/` + post + `/","title":"Post","content":"Body","created":10,"starType":0}]}`
+			raw := `{"id":"` + id + `","name":"Site","about":"","templateName":"` + item.Name + `","articles":[{"id":"` + post + `","link":"/` + post + `/","title":"Post","content":"Body","created":10,"starType":0}]}`
 			site := store.Site{ID: id, Name: "Site", Imported: true, Created: time.Now()}
 			article := store.Article{ID: post, SiteID: id, Title: "Post", Content: "Body", Created: time.Now(), Modified: time.Now()}
 			out := filepath.Join(tmp, "out")
 			os.Mkdir(out, 0700)
-			if err := StageImportedPublic(archive, out, []byte(raw), site, []store.Article{article}, filepath.Join(root, tc.dir)); err != nil {
+			if err := StageImportedPublic(archive, out, []byte(raw), site, []store.Article{article}, template); err != nil {
 				t.Fatal(err)
 			}
 			if b, err := os.ReadFile(filepath.Join(out, post, "index.html")); err != nil || !strings.Contains(string(b), "Body") {

@@ -1,0 +1,12 @@
+<div class="edition">
+  {% for article in articles %}
+  <article class="story{% if forloop.First and current_page == 1 and not tag_key %} lead-story{% endif %}">
+    {% include "modules/entry_image.html" %}
+    <div class="story-copy">
+      {% include "modules/entry_meta.html" %}
+      <h2><a href=".{{ article.link|escape }}">{{ article.title|default:"Untitled post"|escape }}</a></h2>
+      {% if article.excerpt %}<p class="excerpt">{{ article.excerpt|escape }}</p>{% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</div>

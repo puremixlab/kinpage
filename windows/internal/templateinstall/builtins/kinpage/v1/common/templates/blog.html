@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block main %}
+  <article class="reading">
+    <header class="reading-header">
+      {% if article_type != 1 %}{% include "modules/entry_meta.html" %}{% endif %}
+      <h1>{{ article.title|default:"Untitled post"|escape }}</h1>
+      {% if planet.authorName %}<p class="byline">{{ planet.authorName|escape }}</p>{% endif %}
+    </header>
+    {% if article.externalLink %}<p><a href="{{ article.externalLink|escape }}">Open {{ article.linkHost|default:"external link"|escape }} <span aria-hidden="true">↗</span></a></p>{% endif %}
+    {% if article.articleCover %}<img class="reading-cover" src="./{{ article.articleCover|escape }}" alt="" decoding="async">{% endif %}
+    {% if article.hasVideo %}<video controls playsinline preload="none" src="./{{ article.videoFilename|escape }}"></video>{% endif %}
+    {% if article.hasAudio %}<audio controls preload="metadata" aria-label="Article audio" src="./{{ article.audioFilename|escape }}"></audio>{% endif %}
+    <div class="prose">{{ content_html }}</div>
+    {% if article.files %}
+    <section class="attachments" aria-labelledby="attachments-heading">
+      <h2 id="attachments-heading">Attachments</h2>
+      <ul>{% for file in article.files %}<li><a href="./{{ file.Path|escape }}">{{ file.Name|escape }}</a></li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+    {% if article_type != 1 %}{% include "modules/entry_tags.html" %}{% endif %}
+  </article>
+{% endblock %}

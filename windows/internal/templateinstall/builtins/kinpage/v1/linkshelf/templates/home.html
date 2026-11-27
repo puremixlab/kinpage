@@ -1,0 +1,18 @@
+<div class="bookmarks">
+  {% for article in articles %}
+  <article class="bookmark">
+    <div class="bookmark-main">
+      <h2>
+        {% if article.externalLink %}
+        <a href="{{ article.externalLink|escape }}">{{ article.title|default:article.linkHost|default:"External link"|escape }} <span aria-hidden="true">↗</span></a>
+        {% else %}
+        <a href=".{{ article.link|escape }}">{{ article.title|default:"Untitled post"|escape }}</a>
+        {% endif %}
+      </h2>
+      {% if article.linkHost %}<p class="destination">{{ article.linkHost|escape }}</p>{% endif %}
+      {% if article.excerpt %}<p class="excerpt">{{ article.excerpt|escape }}</p>{% endif %}
+    </div>
+    {% include "modules/entry_meta.html" %}
+  </article>
+  {% endfor %}
+</div>

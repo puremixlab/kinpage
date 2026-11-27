@@ -1,0 +1,26 @@
+<header class="site-header">
+  {% if current_item_type == "index" %}
+  <div class="site-intro">
+    {% if has_avatar %}<img class="site-avatar" src="{{ assets_prefix }}avatar.png" alt="" width="56" height="56">{% endif %}
+    <h1 class="masthead">{{ planet.name|escape }}</h1>
+    {% if page_description_html %}<div class="site-about">{{ page_description_html }}</div>{% endif %}
+  </div>
+  {% else %}
+  <a class="site-name" href="{{ assets_prefix }}">
+    {% if has_avatar %}<img class="site-avatar" src="{{ assets_prefix }}avatar.png" alt="" width="32" height="32">{% endif %}
+    {{ planet.name|escape }}
+  </a>
+  {% endif %}
+  <nav class="site-nav" aria-label="Site">
+    <ul class="link-row">
+      <li><a href="{{ assets_prefix }}"{% if current_item_type == "index" and current_page == 1 %} aria-current="page"{% endif %}>Home</a></li>
+      {% if active_tags %}<li><a href="{{ assets_prefix }}tags.html"{% if current_item_type == "tags" and not tag_key %} aria-current="page"{% endif %}>Topics</a></li>{% endif %}
+      <li><a href="{{ assets_prefix }}archive.html"{% if current_item_type == "archive" %} aria-current="page"{% endif %}>Archive</a></li>
+      {% for item in site_navigation %}
+      <li><a href="{% if item.externalLink %}{{ item.externalLink|escape }}{% else %}{{ assets_prefix }}{{ item.slug|escape }}/{% endif %}"{% if item.id == article_id %} aria-current="page"{% endif %}>{{ item.title|default:"Untitled page"|escape }}</a></li>
+      {% endfor %}
+      <li><a class="feed-link" href="{{ assets_prefix }}rss.xml">RSS</a></li>
+      {% if has_podcast %}<li><a class="podcast-link" href="{{ assets_prefix }}podcast.xml">Podcast feed</a></li>{% endif %}
+    </ul>
+  </nav>
+</header>

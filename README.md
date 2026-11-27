@@ -60,7 +60,7 @@
     </td>
     <td width="50%" valign="top">
       <strong>Templates, Backups, Web3 &amp; Integrations</strong><br />
-      Ships with 5 upstream templates (<em>Plain</em>, <em>8-bit</em>, <em>Grid</em>, <em>Platinum</em>, <em>Sepia</em>) with sandboxed in-app preview, static HTML export, <code>.planet</code> backup import/export, and custom repository relocation. Integrates Cloudflare Pages, SSH/rsync, Pinnable, Filebase, <code>dWebServices.xyz</code>, Farcaster <code>.well-known/farcaster.json</code>, EIP-681 ETH creator tipping, Plausible, Telegram, and X sync.
+      Ships with 13 templates across the Planet collection and Kinpage's original layouts, with sandboxed in-app previews and static HTML export. Supports <code>.planet</code> backup import/export and custom repository relocation. Integrates Cloudflare Pages, SSH/rsync, Pinnable, Filebase, <code>dWebServices.xyz</code>, Farcaster <code>.well-known/farcaster.json</code>, EIP-681 ETH creator tipping, Plausible, Telegram, and X sync.
     </td>
   </tr>
 </table>

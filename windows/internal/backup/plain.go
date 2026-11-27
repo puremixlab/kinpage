@@ -9,6 +9,7 @@ import (
 
 	"windows/internal/services"
 	"windows/internal/store"
+	"windows/internal/templatecatalog"
 )
 
 var unsupportedMarkup = regexp.MustCompile(`(?i)<[a-z!/][^>]*>|https?://(?:www\.)?(?:youtube\.com|youtu\.be)/`)
@@ -114,7 +115,7 @@ func CheckSimplePlain(original json.RawMessage, site store.Site, articles []stor
 	if err := json.Unmarshal(original, &p); err != nil {
 		return err
 	}
-	if p.TemplateName != "Plain" && p.TemplateName != "8-bit" && p.TemplateName != "Grid" && p.TemplateName != "Platinum" && p.TemplateName != "Sepia" {
+	if !templatecatalog.SupportsName(p.TemplateName) {
 		return errors.New("当前只能重建使用已支持模板且站点设置兼容的备份")
 	}
 	if site.PlausibleOverride == nil {

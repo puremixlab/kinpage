@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block main %}
+  {% if tag_key %}<h1 class="section-title">{{ tag_value }}</h1>{% endif %}
+  {% if articles %}
+    {% include "home.html" %}
+  {% else %}
+    <p class="empty-state">No posts yet.</p>
+  {% endif %}
+  {% if total_pages > 1 %}
+  <nav class="pagination" aria-label="Pages">
+    {% if previous_page %}<a rel="prev" href="{{ assets_prefix }}{% if current_page > 2 %}{{ previous_page }}{% endif %}">Newer posts</a>{% endif %}
+    <span>Page {{ current_page }} of {{ total_pages }}</span>
+    {% if next_page %}<a rel="next" href="{{ assets_prefix }}{{ next_page }}">Older posts</a>{% endif %}
+  </nav>
+  {% endif %}
+{% endblock %}

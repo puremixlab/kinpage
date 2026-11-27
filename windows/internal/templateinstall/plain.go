@@ -111,6 +111,15 @@ var sepiaFiles = map[string]string{
 	"tags.html":                 "fa83c9d89bc44ca6e0e60e81eeeafe43241e55dc7f96dc445cbc627a6cd08e24",
 }
 
+func normalizeTemplateText(data []byte) []byte {
+	return bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
+}
+
+func templateTextDigest(data []byte) string {
+	sum := sha256.Sum256(normalizeTemplateText(data))
+	return hex.EncodeToString(sum[:])
+}
+
 func verifyFiles(root string, files map[string]string) error {
 	count := 0
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
@@ -129,15 +138,14 @@ func verifyFiles(root string, files map[string]string) error {
 			return errors.New("模板包含未验证的文件")
 		}
 		info, err := os.Lstat(path)
-		if err != nil || !info.Mode().IsRegular() {
+		if err != nil || !info.Mode().IsRegular() || info.Size() > 4<<20 {
 			return errors.New("模板包含不支持的文件")
 		}
 		b, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
-		sum := sha256.Sum256(bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n")))
-		if hex.EncodeToString(sum[:]) != expected {
+		if templateTextDigest(b) != expected {
 			return errors.New("模板文件与已验证版本不同")
 		}
 		count++
@@ -163,10 +171,9 @@ func Verify(root string) error {
 	if err != nil {
 		return err
 	}
-	sum := sha256.Sum256(bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n")))
 	var files map[string]string
 	var assetsHash string
-	switch hex.EncodeToString(sum[:]) {
+	switch templateTextDigest(b) {
 	case "b103b8288e67811257d00dfccafeb0a0ee5d463345244e5a373191a8cfc68ca5":
 		files = plainFiles
 		assetsHash = "f9ba47c3bdbb7f119cb74d6ccc914bacf515d7f283c6c15821b26cd0b03d412b"
@@ -184,7 +191,7 @@ func Verify(root string) error {
 		files = sepiaFiles
 		assetsHash = "146e7dffea1e9fcca7b3470cbd5d1d9bc710520a4d8de16bb7cccb6544540bd1"
 	default:
-		return errors.New("模板信息与已验证版本不同")
+		return verifyKinpage(root, b)
 	}
 	if err := verifyFiles(filepath.Join(root, "templates"), files); err != nil {
 		return err
@@ -219,7 +226,7 @@ func verifyAssets(root, expected string) error {
 		}
 		ext := strings.ToLower(filepath.Ext(path))
 		if ext == ".css" || ext == ".js" || ext == ".svg" || ext == ".html" || ext == ".json" || ext == ".xsl" {
-			data = bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
+			data = normalizeTemplateText(data)
 		}
 		hash.Write([]byte(filepath.ToSlash(rel)))
 		hash.Write([]byte{0})
