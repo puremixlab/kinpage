@@ -32,6 +32,7 @@ type layoutPrefs struct {
 	SubOrder         []string            `json:"subOrder,omitempty"`
 	BadgesHidden     bool                `json:"badgesHidden,omitempty"`
 	BadgePositions   map[string]badgePos `json:"badgePositions,omitempty"`
+	ActivityMode     int                 `json:"activityMode,omitempty"`
 }
 
 func layoutPrefsEqual(a, b layoutPrefs) bool {
@@ -48,7 +49,8 @@ func layoutPrefsEqual(a, b layoutPrefs) bool {
 		slices.Equal(a.SiteOrder, b.SiteOrder) &&
 		slices.Equal(a.SubOrder, b.SubOrder) &&
 		a.BadgesHidden == b.BadgesHidden &&
-		maps.Equal(a.BadgePositions, b.BadgePositions)
+		maps.Equal(a.BadgePositions, b.BadgePositions) &&
+		a.ActivityMode == b.ActivityMode
 }
 
 // EnablePrefsPersistence loads saved split widths, panel collapse states,
@@ -84,6 +86,9 @@ func (a *App) EnablePrefsPersistence(path string) {
 	a.siteOrder = append([]string(nil), p.SiteOrder...)
 	a.subOrder = append([]string(nil), p.SubOrder...)
 	a.badgesHidden = p.BadgesHidden
+	if p.ActivityMode >= activityModeDaily && p.ActivityMode <= activityModeMonthly {
+		a.activityMode = p.ActivityMode
+	}
 	if len(p.BadgePositions) > 0 {
 		a.badgePositions = make(map[string]ui.Point, len(p.BadgePositions))
 		a.badgeDragOffsets = make(map[string]*ui.Point, len(p.BadgePositions))
@@ -165,6 +170,7 @@ func (a *App) currentLayoutPrefs() layoutPrefs {
 		SubOrder:         append([]string(nil), a.subOrder...),
 		BadgesHidden:     a.badgesHidden,
 		BadgePositions:   badgePosMap,
+		ActivityMode:     a.activityMode,
 	}
 }
 
