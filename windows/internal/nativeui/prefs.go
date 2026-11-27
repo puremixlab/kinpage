@@ -33,6 +33,7 @@ type layoutPrefs struct {
 	BadgesHidden     bool                `json:"badgesHidden,omitempty"`
 	BadgePositions   map[string]badgePos `json:"badgePositions,omitempty"`
 	ActivityMode     int                 `json:"activityMode,omitempty"`
+	DesktopPet       desktopPetPrefs     `json:"desktopPet,omitzero"`
 }
 
 func layoutPrefsEqual(a, b layoutPrefs) bool {
@@ -50,7 +51,8 @@ func layoutPrefsEqual(a, b layoutPrefs) bool {
 		slices.Equal(a.SubOrder, b.SubOrder) &&
 		a.BadgesHidden == b.BadgesHidden &&
 		maps.Equal(a.BadgePositions, b.BadgePositions) &&
-		a.ActivityMode == b.ActivityMode
+		a.ActivityMode == b.ActivityMode &&
+		a.DesktopPet == b.DesktopPet
 }
 
 // EnablePrefsPersistence loads saved split widths, panel collapse states,
@@ -86,6 +88,7 @@ func (a *App) EnablePrefsPersistence(path string) {
 	a.siteOrder = append([]string(nil), p.SiteOrder...)
 	a.subOrder = append([]string(nil), p.SubOrder...)
 	a.badgesHidden = p.BadgesHidden
+	a.desktopPetPrefs = p.DesktopPet
 	if p.ActivityMode >= activityModeDaily && p.ActivityMode <= activityModeMonthly {
 		a.activityMode = p.ActivityMode
 	}
@@ -171,6 +174,7 @@ func (a *App) currentLayoutPrefs() layoutPrefs {
 		BadgesHidden:     a.badgesHidden,
 		BadgePositions:   badgePosMap,
 		ActivityMode:     a.activityMode,
+		DesktopPet:       a.desktopPetPrefs,
 	}
 }
 
