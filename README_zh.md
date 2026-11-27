@@ -2,16 +2,16 @@
 
 <a href="docs/branding/README.md">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/planet-horizontal-reversed.svg">
-    <img src="docs/branding/planet-horizontal-color.svg" alt="Planet Windows" width="320">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/kinpage-horizontal-reversed.svg">
+    <img src="docs/branding/kinpage-horizontal-color.svg" alt="邻页 · Kinpage" width="320">
   </picture>
 </a>
 
 <h3>面向 Windows 的去中心化博客写作、IPFS 发布与订阅阅读桌面应用。</h3>
 
 <p>
-  <a href="https://github.com/puremixlab/planet-windows/releases"><img src="https://img.shields.io/github/v/release/puremixlab/planet-windows?include_prereleases&label=release&color=007aff" alt="最新版本"></a>
-  <a href="https://github.com/puremixlab/planet-windows/actions/workflows/windows-ci.yml"><img src="https://github.com/puremixlab/planet-windows/actions/workflows/windows-ci.yml/badge.svg" alt="Windows Checks"></a>
+  <a href="https://github.com/puremixlab/kinpage/releases"><img src="https://img.shields.io/github/v/release/puremixlab/kinpage?include_prereleases&label=release&color=007aff" alt="最新版本"></a>
+  <a href="https://github.com/puremixlab/kinpage/actions/workflows/windows-ci.yml"><img src="https://github.com/puremixlab/kinpage/actions/workflows/windows-ci.yml/badge.svg" alt="Windows Checks"></a>
   <img src="https://img.shields.io/badge/platform-Windows%20x64-0078d4" alt="平台：Windows x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2ea043" alt="MIT 许可证"></a>
   <a href="https://awesomemygo.dev/apps/planet-windows"><img src="https://awesomemygo.dev/badge.svg" alt="Listed on Awesome MyGo"></a>
@@ -29,9 +29,12 @@
 
 <br />
 
-<img src="docs/screenshots/workspace-dashboard.png" alt="Planet Windows 原生写作台，展示日期刊头、紧凑写作活动热力条、草稿大纸面与 3:2 活版印纸文章卡片" width="900">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/workspace-dashboard-dark.png">
+  <img src="docs/screenshots/workspace-dashboard.png" alt="邻页（Kinpage）原生写作台，展示日期刊头、紧凑写作活动热力条、草稿大纸面与 3:2 活版印纸文章卡片" width="900">
+</picture>
 
-<p><sub>基于 macOS 原版 <a href="https://github.com/Planetable/Planet">Planetable/Planet</a> 独立开发的 Windows 移植版本，采用 MyGo 原生桌面界面构建。</sub></p>
+<p><sub><strong>邻页 · Kinpage</strong> — 基于 macOS 原版 <a href="https://github.com/Planetable/Planet">Planetable/Planet</a> 独立开发的 Windows 原生桌面应用，采用 MyGo 原生界面构建。</sub></p>
 
 </div>
 
@@ -67,21 +70,38 @@
 <table>
   <tr>
     <td width="50%" align="center" valign="top">
-      <img src="docs/screenshots/subscription-reader.png" alt="Planet Windows 三栏阅读界面，展示订阅列表、文章列表与图文正文" width="100%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/subscription-reader-dark.png">
+        <img src="docs/screenshots/subscription-reader.png" alt="邻页（Kinpage）三栏阅读界面，展示订阅列表、文章列表与图文正文" width="100%">
+      </picture>
       <br />
       <sub><strong>三栏订阅阅读</strong> — 订阅导航、文章列表与原生图文阅读视图。</sub>
     </td>
     <td width="50%" align="center" valign="top">
-      <img src="docs/screenshots/writing-editor.png" alt="Markdown 编辑器与本地私有草稿控制" width="100%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/writing-editor-dark.png">
+        <img src="docs/screenshots/writing-editor.png" alt="Markdown 编辑器与本地私有草稿控制" width="100%">
+      </picture>
       <br />
       <sub><strong>Markdown 编辑器</strong> — 专注写作，清晰区分本地私有草稿与公开发布。</sub>
     </td>
   </tr>
   <tr>
-    <td colspan="2" align="center">
-      <img src="docs/screenshots/writing-metadata.png" alt="文章标签与附件管理浮层" width="78%">
+    <td width="50%" align="center" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/writing-metadata-dark.png">
+        <img src="docs/screenshots/writing-metadata.png" alt="Markdown 分栏实时预览与标签附件管理" width="100%">
+      </picture>
       <br />
-      <sub><strong>标签、附件与分栏预览</strong> — 在编辑区原地管理文章元数据与媒体文件。</sub>
+      <sub><strong>标签、附件与分栏预览</strong> — 在编辑区原地管理文章元数据并实时分栏预览。</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/settings-dark.png">
+        <img src="docs/screenshots/settings.png" alt="邻页（Kinpage）分层设置窗口与多语言即时切换" width="100%">
+      </picture>
+      <br />
+      <sub><strong>分层设置与多语言</strong> — 支持简体中文、繁體中文与 English 即时切换，集中管理本地 API、密钥与 AI 助手。</sub>
     </td>
   </tr>
 </table>
@@ -90,9 +110,9 @@
 
 | 版本 | 适用平台 | 运行环境 | 校验与说明 |
 | --- | --- | --- | --- |
-| **[Planet Windows v0.0.1-rc.1](https://github.com/puremixlab/planet-windows/releases/download/v0.0.1-rc.1/planet-windows-safe-setup-0.0.1-rc.1-amd64.exe)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release 页面](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-rc.1)（含 SHA-256、源码归档与验收附件） |
+| **[邻页 · Kinpage v0.1.0](https://github.com/puremixlab/kinpage/releases/tag/v0.1.0)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release 页面](https://github.com/puremixlab/kinpage/releases)（支持 Microsoft Store MSIX / 独立 NSIS 安装包、SHA-256 与源码归档） |
 
-安装到空目录后，从开始菜单打开 **Planet Windows** 即可使用。
+可通过 Microsoft Store（MSIX）安装，或将独立安装包安装到空目录后，从开始菜单打开 **Kinpage** 即可使用。商店打包与侧载说明见 [MSIX 打包文档](windows/docs/msix-packaging.md)。
 
 > [!NOTE]
 > **未签名 RC 预发布版本。** 运行安装包时 Windows SmartScreen 可能会给出提示，安装前建议核对 Release 页面提供的 SHA-256 校验值。完整桌面界面、输入法、跨版本升级及真实 Mac `.planet` 备份双向兼容仍在持续验证中，详见[已知限制](windows/README.md#尚未完成与待验证)与 [rc.1 验收范围](docs/acceptance-0.0.1-rc.1.md)。
@@ -102,9 +122,9 @@
 
 ## 快速上手
 
-- **订阅站点**：点击侧栏右下角的 **+** 并选择 **关注订阅**，输入网站首页（例如 `https://olivida.eth.limo`）、RSS / Atom / JSON Feed 地址、IPNS 地址或 `.eth` 域名，点击 **关注** 即可开始阅读。
-- **创建并发布站点**：点击右上角 **写文章** 或侧栏 **+** 新建站点并撰写 Markdown 草稿。草稿默认仅保存在本机，点击工具栏 **发布** 会将整个站点及已保存附件公开发布到 IPFS / IPNS。
-- **常用快捷键**：`Ctrl+N` 新建文章、`Ctrl+D` 快捷发文、`Ctrl+E` 编辑当前文章、`Ctrl+F` 切换列表搜索、`Ctrl+O` 打开 IPFS / IPNS / ENS 资源。
+- **订阅站点**：点击侧栏左下角的 **设置** 并选择 **关注订阅…**，输入网站首页（例如 `https://olivida.eth.limo`）、RSS / Atom / JSON Feed 地址、IPNS 地址或 `.eth` 域名，点击 **关注** 即可开始阅读。
+- **创建并发布站点**：点击右上角 **写文章**（或 **设置 → 新建站点…**）新建站点并撰写 Markdown 草稿。草稿默认仅保存在本机，点击工具栏 **发布** 会将整个站点及已保存附件公开发布到 IPFS / IPNS。
+- **常用快捷键**：`Ctrl+N` 新建文章、`Ctrl+D` 快捷发文、`Ctrl+E` 编辑当前文章、`Ctrl+F` 切换列表搜索、`Ctrl+O` 打开 IPFS / IPNS / ENS 资源、`Ctrl+,` 打开设置。
 
 详细功能说明、离线固定与各项第三方服务配置请参阅[完整使用指南](windows/README.md)。
 
@@ -113,8 +133,8 @@
 **环境准备**：Windows x64、Git、[Go 1.27.4](https://go.dev/dl/)（或兼容工具链）、[Bun](https://bun.sh/)、WebView2 Runtime；如需打包安装程序还需安装 [7-Zip](https://www.7-zip.org/)。
 
 ```powershell
-git clone https://github.com/puremixlab/planet-windows.git
-cd planet-windows/windows
+git clone https://github.com/puremixlab/kinpage.git
+cd kinpage/windows
 bun install --frozen-lockfile
 powershell -NoProfile -File scripts/prepare-kubo.ps1
 bun run dev
@@ -130,7 +150,7 @@ bun run dev
 | `bun run check` | 运行完整质量检查：文档、Go 格式、`go vet`、工具与发布脚本测试、Go 测试 |
 | `bun run check:docs` | 仅修改[文档白名单](docs/git-workflow.md#纯文档检查)时的轻量检查（仅需 Git 和 Bun） |
 | `bun run security:check` | 运行依赖漏洞安全扫描（需联网） |
-| `bun run build` | 构建程序与独立安装包，输出到 `windows/build/windows-amd64/`（构建前先关闭 Planet/Kubo） |
+| `bun run build` | 构建程序与独立安装包，输出到 `windows/build/windows-amd64/`（构建前先关闭 Kinpage/Kubo） |
 
 ## 技术栈
 
@@ -145,11 +165,11 @@ bun run dev
 - [更新日志](CHANGELOG.md) — 各版本变更与未发布改动记录。
 - [Logo 与品牌规范](docs/branding/README.md) — 品牌视觉说明与矢量素材。
 - [贡献指南](CONTRIBUTING.md) · [Git 协作指南](docs/git-workflow.md) · [发布流程](docs/releasing.md) — 开发协作与发版规范。
-- [安全政策](SECURITY.md) · [GitHub Issues](https://github.com/puremixlab/planet-windows/issues) — 漏洞反馈、缺陷提交与功能建议。
+- [安全政策](SECURITY.md) · [隐私政策](PRIVACY.md) · [GitHub Issues](https://github.com/puremixlab/kinpage/issues) — 漏洞反馈、隐私说明、缺陷提交与功能建议。
 
 ## 致谢
 
-Planet Windows 是基于 [Planetable/Planet](https://github.com/Planetable/Planet) 独立开发的 Windows 移植版本，感谢上游项目以及 [MyGo](https://github.com/egoist/mygo) 和 [IPFS Kubo](https://github.com/ipfs/kubo) 社区。
+邻页（Kinpage）是基于 [Planetable/Planet](https://github.com/Planetable/Planet) 独立开发的 Windows 移植版本，感谢上游项目以及 [MyGo](https://github.com/egoist/mygo) 和 [IPFS Kubo](https://github.com/ipfs/kubo) 社区。
 
 ## 许可证
 

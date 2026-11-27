@@ -25,7 +25,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: '1.3.5'
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: windows/go.mod
           cache-dependency-path: windows/go.sum
@@ -43,7 +43,7 @@ jobs:
           PLANET_NATIVE_INSTALLER_SMOKE: '1'
         run: |
           $taskVersion = (Get-Content release.json -Raw -Encoding UTF8 | ConvertFrom-Json).version
-          $taskInstaller = Join-Path $PWD "build/windows-amd64/planet-windows-safe-setup-$taskVersion-amd64.exe"
+          $taskInstaller = Join-Path $PWD "build/windows-amd64/kinpage-safe-setup-$taskVersion-amd64.exe"
           $taskHash = (Get-FileHash -LiteralPath $taskInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
           & scripts/test-installer-native.ps1 -Installer $taskInstaller -ExpectedSHA256 $taskHash -ExpectedVersion $taskVersion -EvidenceDir (Join-Path $PWD 'build/native-smoke-evidence')
           $taskAudit = & scripts/audit-release.ps1 -BundleDir (Join-Path $PWD 'build/windows-amd64')
@@ -61,7 +61,7 @@ jobs:
             foreach ($taskBundle in Get-ChildItem -Path '.mygo/releases/*/windows-amd64' -Directory) {
               $taskCopy = Join-Path $taskEvidence ('failed-bundle-' + $taskBundle.Parent.Name)
               Copy-Item -LiteralPath $taskBundle.FullName -Destination $taskCopy -Recurse
-              foreach ($taskInstaller in Get-ChildItem -LiteralPath $taskCopy -Filter 'planet-windows-safe-setup-*.exe' -File) {
+              foreach ($taskInstaller in Get-ChildItem -LiteralPath $taskCopy -Filter 'kinpage-safe-setup-*.exe' -File) {
                 & $taskSevenZip l -slt -ba $taskInstaller.FullName | Out-File -LiteralPath (Join-Path $taskCopy '7zip-listing.txt') -Encoding utf8
               }
             }

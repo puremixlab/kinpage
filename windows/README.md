@@ -1,12 +1,12 @@
-# Planet Windows 使用指南
+# 邻页（Kinpage）使用指南
 
 在 Windows 上写博客、发布到 IPFS，并订阅和阅读喜欢的网站。
 
 > **上游项目（原版）：[Planetable/Planet](https://github.com/Planetable/Planet)**
 >
-> Planet Windows 基于上述上游项目，是独立开发的 Windows 移植版本。
+> 邻页（Kinpage，原名 Planet Windows）基于上述上游项目，是独立开发的 Windows 原生应用，兼容 `.planet` 备份与 Local API。
 
-[下载 v0.0.1-rc.1](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-rc.1) · [简体中文主页](../README_zh.md) · [English README](../README.md) · [贡献指南](../CONTRIBUTING.md)
+[发行页面（v0.1.0）](https://github.com/puremixlab/kinpage/releases) · [MSIX 商店打包说明](docs/msix-packaging.md) · [简体中文主页](../README_zh.md) · [English README](../README.md) · [贡献指南](../CONTRIBUTING.md)
 
 [![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/planet-windows)
 
@@ -32,7 +32,7 @@
 ### 下载与安装
 
 1. 准备 Windows x64 和 WebView2 Runtime。
-2. [下载 Windows x64 安装包](https://github.com/puremixlab/planet-windows/releases/download/v0.0.1-rc.1/planet-windows-safe-setup-0.0.1-rc.1-amd64.exe)，安装到空目录后，从开始菜单打开 **Planet Windows**。[发行页面](https://github.com/puremixlab/planet-windows/releases/tag/v0.0.1-rc.1)同时提供对应源码、SHA-256 校验文件和本次最终安装包的验收证据。
+2. [下载 Windows x64 安装包](https://github.com/puremixlab/kinpage/releases/download/v0.1.0/kinpage-safe-setup-0.1.0-amd64.exe)，安装到空目录后，从开始菜单打开 **Kinpage**。[发行页面](https://github.com/puremixlab/kinpage/releases/tag/v0.1.0)同时提供对应源码、SHA-256 校验文件和本次最终安装包的验收证据。
 3. 在写作台点击右上角 **写文章** 或侧栏右下角 **+** 创建站点、关注订阅。
 
 ### 写作台
@@ -49,9 +49,9 @@
 
 ### 添加并阅读订阅
 
-![Planet Windows 的订阅列表、文章列表和含图片的文章阅读界面](../docs/screenshots/subscription-reader.png)
+![邻页（Kinpage）的订阅列表、文章列表和含图片的文章阅读界面](../docs/screenshots/subscription-reader.png)
 
-在 Planet Windows 中阅读「沿途手记」示例订阅。
+在邻页（Kinpage）中阅读「沿途手记」示例订阅。
 
 1. 点击侧栏右下角的 **+** 并选择「关注订阅」。
 2. 输入 RSS、Atom 或 JSON Feed 地址，也可以输入支持的网站首页（例如 `https://olivida.eth.limo`）、IPNS 地址或 ENS 名称（例如 `olivida.eth`），然后点击“添加”。
@@ -344,7 +344,7 @@ bun run build
 
 构建脚本从 Kubo 官方 GitHub release 下载固定版本 0.38.2 并核验 SHA-512，构建时将程序及许可证放入安装包。
 
-`bun run release:prepare -BundleDir <独立发行目录>` 只生成本地草稿材料，正式发布要求见 [发布流程](../docs/releasing.md) 与 [原生 Windows 验收模板](../docs/release-acceptance-template.md)。
+`bun run release:prepare -BundleDir <独立发行目录>` 只生成本地草稿材料，正式发布要求见 [发布流程](../docs/releasing.md) 与 [原生 Windows 验收模板](../docs/release-acceptance-template.md)。如需打包面向 Microsoft Store 的 `.msix`，可先完成 `bun run build`，再执行 `bun run build:msix`，详见 [MSIX 打包说明](docs/msix-packaging.md)。
 
 安装包包含 Planet、Go 与第三方依赖许可材料及 Kubo 构建清单。Kubo 的 241 个依赖模块均已收集许可材料，四项无根目录许可文件的模块已补充固定版本的源码或嵌套许可证据；材料收集本身不代表全面合规结论。go-ethereum 库的对应源码及重新构建步骤见[源码与重建说明](../docs/rebuilding-release.md)，收集范围见[发行检查记录](docs/release-audit.md)。
 

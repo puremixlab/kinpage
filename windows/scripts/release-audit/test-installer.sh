@@ -15,7 +15,7 @@ xvfb-run -a sh -eu <<'WINE_TEST'
 wineboot -u >/dev/null 2>&1
 wineserver -w
 shared="$WINEPREFIX/drive_c/audit/shared"
-userdata="$WINEPREFIX/drive_c/users/root/AppData/Roaming/Planet Windows"
+userdata="$WINEPREFIX/drive_c/users/root/AppData/Roaming/Kinpage"
 mkdir -p "$shared/user-directory" "$userdata"
 printf 'unrelated-root' > "$shared/keep.txt"
 printf 'unrelated-nested' > "$shared/user-directory/keep.txt"
@@ -24,7 +24,7 @@ first=/input/setup.exe
 if [ -f /input/previous.exe ]; then first=/input/previous.exe; fi
 wine "$first" /S '/D=C:\audit\shared'
 wineserver -w
-[ -f "$shared/Planet Windows.exe" ] && [ -f "$shared/Uninstall.exe" ] || { echo 'FAIL: silent installation did not create payload and uninstaller'; exit 1; }
+[ -f "$shared/Kinpage.exe" ] && [ -f "$shared/Uninstall.exe" ] || { echo 'FAIL: silent installation did not create payload and uninstaller'; exit 1; }
 echo 'PASS: silent install into a pre-existing directory'
 wine /input/setup.exe /S '/D=C:\audit\shared'
 wineserver -w
@@ -39,7 +39,7 @@ wineserver -w
 [ -f "$shared/keep.txt" ] && [ "$(cat "$shared/keep.txt")" = unrelated-root ] || { echo 'FAIL: uninstall removed unrelated file'; exit 1; }
 [ -f "$shared/user-directory/keep.txt" ] || { echo 'FAIL: uninstall removed unrelated nested file'; exit 1; }
 [ -f "$userdata/library.json" ] && [ "$(cat "$userdata/library.json")" = user-library ] || { echo 'FAIL: uninstall removed user data'; exit 1; }
-for owned in 'Planet Windows.exe' 'ipfs.exe' 'icon.png' 'kubo-LICENSE.txt' 'kubo-LICENSE-MIT.txt' 'kubo-LICENSE-APACHE.txt' 'LICENSE-PLANET.txt' 'THIRD-PARTY-NOTICES.txt' 'KUBO-BUILDINFO.txt' 'KUBO-DEPENDENCY-LICENSES.txt' 'Uninstall.exe'; do
+for owned in 'Kinpage.exe' 'ipfs.exe' 'icon.png' 'kubo-LICENSE.txt' 'kubo-LICENSE-MIT.txt' 'kubo-LICENSE-APACHE.txt' 'LICENSE-PLANET.txt' 'THIRD-PARTY-NOTICES.txt' 'KUBO-BUILDINFO.txt' 'KUBO-DEPENDENCY-LICENSES.txt' 'Uninstall.exe'; do
   [ ! -e "$shared/$owned" ] || { echo "FAIL: uninstall left owned payload: $owned"; exit 1; }
 done
 echo 'PASS: uninstall preserved unrelated files and user data while removing owned payload'

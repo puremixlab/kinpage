@@ -133,7 +133,7 @@ func TestSignProducesVerifiableEnvelopeAndInstallerDigest(t *testing.T) {
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(content)
-	if release.Schema != 1 || release.App != "org.planetable.planetwindows" || release.Platform != "windows-amd64" || release.Version != "1.2.3" || release.MinimumVersion != "0.2.0" || release.URL != "https://downloads.example.test/setup.exe" || release.SHA256 != hex.EncodeToString(digest[:]) || release.Size != int64(len(content)) {
+	if release.Schema != 1 || release.App != "dev.puremixlab.kinpage" || release.Platform != "windows-amd64" || release.Version != "1.2.3" || release.MinimumVersion != "0.2.0" || release.URL != "https://downloads.example.test/setup.exe" || release.SHA256 != hex.EncodeToString(digest[:]) || release.Size != int64(len(content)) {
 		t.Fatalf("unexpected release: %+v", release)
 	}
 	if release.PublishedAt.Before(before) || release.PublishedAt.After(time.Now().UTC().Add(time.Second)) || release.ExpiresAt.Sub(release.PublishedAt) != 7*24*time.Hour {

@@ -1,7 +1,6 @@
 package nativeui
 
 import (
-	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -28,7 +27,7 @@ func (a *App) viewEditor(c *ui.Context) {
 				// 26px SemiBold truly borderless paper title input aligned flush with editor body (+8px).
 				ui.Box(c).AlignSelf(ui.Stretch).PaddingX(8).Children(func() {
 					ui.TextInputBase(c.Key("editor-title"), &a.editorTitle).
-						Placeholder("输入文章标题…").Label("文章标题").
+						Placeholder(a.t("editor.titlePlaceholder")).Label(a.t("editor.titleLabel")).
 						Font(macPlanetFont).FontSize(26).FontWeight(600).TextColor(pal.ink).
 						Background(ui.Transparent).Border(0, ui.Transparent).Padding(0).FocusRing(false).
 						AlignSelf(ui.Stretch)
@@ -36,12 +35,12 @@ func (a *App) viewEditor(c *ui.Context) {
 
 				// Metadata floating popover trigger + crisp Segmented switch aligned flush with editor body.
 				ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).PaddingX(8).Shrink(0).Children(func() {
-					metaSummary := fmt.Sprintf("标签与附件   %d 个标签 / %d 个附件", len(a.editorTags), len(a.editorAttachments))
+					metaSummary := a.tf("editor.metaSummary", len(a.editorTags), len(a.editorAttachments))
 					metaBg := pal.subtle
 					if a.editorMetaOpen {
 						metaBg = pal.selection
 					}
-					metaAnchor := ui.ButtonBase(c.Key("editor-meta-toggle")).Label("元数据").
+					metaAnchor := ui.ButtonBase(c.Key("editor-meta-toggle")).Label(a.t("editor.metaLabel")).
 						Background(metaBg).Border(0.5, pal.line).Radius(6).PaddingX(10).PaddingY(5).
 						Cursor(ui.CursorPointer).Transition(rowHoverTransition)
 					if !a.editorMetaOpen && metaAnchor.Hovered() {
@@ -59,7 +58,7 @@ func (a *App) viewEditor(c *ui.Context) {
 						})
 					})
 
-					macSegmented(c, "editor-mode", &a.editorPaneMode, []string{"编辑", "分屏", "预览"}, pal)
+					macSegmented(c, "editor-mode", &a.editorPaneMode, []string{a.t("editor.modeWrite"), a.t("editor.modeSplit"), a.t("editor.modePreview")}, pal)
 				})
 
 				ui.Box(c).Grow(1).MinHeight(0).AlignSelf(ui.Stretch).Children(func() {
@@ -83,8 +82,8 @@ func (a *App) viewEditor(c *ui.Context) {
 		pos := a.editorState.CursorPos()
 		chars := utf8.RuneCountInString(a.editorBuffer.String())
 		ui.Row(c).MinHeight(36).PaddingX(32).Gap(16).AlignItems(ui.Center).Justify(ui.SpaceBetween).Background(pal.canvas).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, "草稿仅保存本地").Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
-			ui.Text(c, fmt.Sprintf("行 %d, 列 %d  ·  %d 字", pos.Line+1, pos.Col+1, chars)).Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
+			ui.Text(c, a.t("editor.footerLocalOnly")).Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
+			ui.Text(c, a.tf("editor.footerCursor", pos.Line+1, pos.Col+1, chars)).Font(macPlanetFont).FontSize(11).TextColor(pal.muted)
 		})
 	})
 }
@@ -99,8 +98,8 @@ func (a *App) viewMarkdownPreview(c *ui.Context, title, content string, scroll *
 			if strings.TrimSpace(content) == "" {
 				display.Empty(c, display.EmptyProps{
 					Icon:        lucide.Eye(),
-					Title:       "预览区域为空",
-					Description: "输入 Markdown 内容后将实时渲染",
+					Title:       a.t("editor.previewEmptyTitle"),
+					Description: a.t("editor.previewEmptyDesc"),
 				})
 			} else {
 				lobemd.Markdown(c, content, lobemd.MarkdownProps{

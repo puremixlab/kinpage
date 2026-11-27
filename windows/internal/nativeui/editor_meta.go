@@ -19,7 +19,7 @@ func (a *App) viewEditorMetadata(c *ui.Context) {
 	ui.Column(c).Padding(12, 14, 12, 14).Gap(12).Background(pal.canvas).Shrink(0).AlignSelf(ui.Stretch).Children(func() {
 		// Tags section.
 		ui.Column(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
-			ui.Text(c, "标签").Font(macPlanetFont).FontSize(11.5).FontWeight(600).TextColor(pal.muted)
+			ui.Text(c, a.t("editor.tagsHeading")).Font(macPlanetFont).FontSize(11.5).FontWeight(600).TextColor(pal.muted)
 			keys := sortedTagKeys(a.editorTags)
 			if len(keys) > 0 {
 				ui.Row(c).Gap(6).Wrap().AlignSelf(ui.Stretch).Children(func() {
@@ -42,10 +42,10 @@ func (a *App) viewEditorMetadata(c *ui.Context) {
 				})
 			}
 			ui.Row(c).Gap(6).AlignItems(ui.Center).AlignSelf(ui.Stretch).Children(func() {
-				if ui.TextInput(c.Key("add-tag-input"), &a.newTagInput).Placeholder("添加标签并回车…").Label("添加标签").Grow(1).Submitted() {
+				if ui.TextInput(c.Key("add-tag-input"), &a.newTagInput).Placeholder(a.t("editor.addTagPlaceholder")).Label(a.t("editor.addTagLabel")).Grow(1).Submitted() {
 					a.addEditorTag()
 				}
-				if macSecondaryButton(c, "add-tag-btn", "+ 标签", pal) {
+				if macSecondaryButton(c, "add-tag-btn", a.t("editor.addTagBtn"), pal) {
 					a.addEditorTag()
 				}
 			})
@@ -56,13 +56,13 @@ func (a *App) viewEditorMetadata(c *ui.Context) {
 		// Attachments & HeroImage section.
 		ui.Column(c).Gap(8).AlignSelf(ui.Stretch).Children(func() {
 			ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).AlignSelf(ui.Stretch).Children(func() {
-				ui.Text(c, "附件").Font(macPlanetFont).FontSize(11.5).FontWeight(600).TextColor(pal.muted)
-				if macSecondaryButton(c, "add-attachment-btn", "+ 添加附件", pal) {
+				ui.Text(c, a.t("editor.attachmentsHeading")).Font(macPlanetFont).FontSize(11.5).FontWeight(600).TextColor(pal.muted)
+				if macSecondaryButton(c, "add-attachment-btn", a.t("editor.addAttachmentBtn"), pal) {
 					a.addDraftAttachment()
 				}
 			})
 			if len(a.editorAttachments) == 0 {
-				ui.Text(c, "暂无附件").Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+				ui.Text(c, a.t("editor.noAttachments")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
 			}
 			for _, name := range a.editorAttachments {
 				isHero := a.editorHeroImage == name
@@ -71,13 +71,13 @@ func (a *App) viewEditorMetadata(c *ui.Context) {
 						ui.Icon(c, iconStarSolid).Size(12, 12).TextColor(pal.yellow).Shrink(0)
 					}
 					ui.Text(c, name).Font(macPlanetFont).FontSize(12).TextColor(pal.ink).MaxLines(1).Ellipsis("…").Grow(1)
-					if macSecondaryButton(c, "att-insert-"+name, "插入", pal) {
+					if macSecondaryButton(c, "att-insert-"+name, a.t("editor.insertBtn"), pal) {
 						a.insertAttachmentMarkdown(name)
 					}
 					if isImageFilename(name) {
-						heroLabel := "设为封面"
+						heroLabel := a.t("editor.setHeroBtn")
 						if isHero {
-							heroLabel = "取消封面"
+							heroLabel = a.t("editor.unsetHeroBtn")
 						}
 						if macSecondaryButton(c, "att-hero-"+name, heroLabel, pal) {
 							nextHero := name
@@ -88,14 +88,14 @@ func (a *App) viewEditorMetadata(c *ui.Context) {
 						}
 					}
 					if isVideoFilename(name) {
-						btn := ui.ButtonBase(c.Key("att-compress-"+name)).Label("压缩视频").
+						btn := ui.ButtonBase(c.Key("att-compress-"+name)).Label(a.t("editor.compressVideo")).
 							Height(26).PaddingX(8).Radius(6).Background(pal.canvas).Border(0.5, pal.controlLine).
 							Center().Cursor(ui.CursorPointer)
 						if btn.Hovered() {
 							btn.Background(pal.hover)
 						}
 						btn.Children(func() {
-							ui.Text(c, "压缩").Font(macPlanetFont).FontSize(11.5).TextColor(pal.ink).NoWrap()
+							ui.Text(c, a.t("editor.compressBtn")).Font(macPlanetFont).FontSize(11.5).TextColor(pal.ink).NoWrap()
 						})
 						btn.Menu(func(m *ui.Menu) {
 							presets := []struct{ id, label string }{
@@ -108,9 +108,9 @@ func (a *App) viewEditorMetadata(c *ui.Context) {
 								if m.Item(p.label).Chosen() {
 									if a.backend != nil && a.selectedSiteID != "" && a.activeDraftID != "" {
 										if _, err := a.backend.CompressDraftVideo(a.selectedSiteID, a.activeDraftID, name, p.id); err != nil {
-											a.setError("压缩视频失败：" + err.Error())
+											a.setError(a.tf("status.compressErr", err.Error()))
 										} else {
-											a.setStatus("视频压缩完成：" + name + " (" + p.label + ")")
+											a.setStatus(a.tf("status.compressDone", name, p.label))
 										}
 									}
 								}
@@ -133,7 +133,7 @@ func (a *App) addEditorTag() {
 	}
 	key := makeTagKey(label)
 	if !tagname.Valid(key, label) {
-		a.setError("标签名称无效（不能使用保留词或特殊路径字符）")
+		a.setError(a.t("status.invalidTagErr"))
 		return
 	}
 	if a.editorTags == nil {
@@ -156,7 +156,7 @@ func (a *App) addDraftAttachment() {
 	}
 	draft, err := a.backend.AddDraftAttachment(context.Background(), a.selectedSiteID, a.activeDraftID)
 	if err != nil {
-		a.setError("添加附件失败：" + err.Error())
+		a.setError(a.tf("status.addAttErr", err.Error()))
 		return
 	}
 	if draft.ID == "" {
@@ -165,7 +165,7 @@ func (a *App) addDraftAttachment() {
 	a.editorAttachments = append([]string(nil), draft.Attachments...)
 	a.editorHeroImage = draft.HeroImage
 	a.Reload()
-	a.setStatus("已更新草稿附件")
+	a.setStatus(a.t("status.attUpdated"))
 }
 
 func (a *App) removeDraftAttachment(name string) {
@@ -174,13 +174,13 @@ func (a *App) removeDraftAttachment(name string) {
 	}
 	draft, err := a.backend.RemoveDraftAttachment(a.selectedSiteID, a.activeDraftID, name)
 	if err != nil {
-		a.setError("移除附件失败：" + err.Error())
+		a.setError(a.tf("status.removeAttErr", err.Error()))
 		return
 	}
 	a.editorAttachments = append([]string(nil), draft.Attachments...)
 	a.editorHeroImage = draft.HeroImage
 	a.Reload()
-	a.setStatus("已移除附件：" + name)
+	a.setStatus(a.tf("status.attRemoved", name))
 }
 
 func (a *App) setDraftHeroImage(name string) {
@@ -189,15 +189,15 @@ func (a *App) setDraftHeroImage(name string) {
 	}
 	draft, err := a.backend.SetDraftHeroImage(a.selectedSiteID, a.activeDraftID, name)
 	if err != nil {
-		a.setError("设置封面图失败：" + err.Error())
+		a.setError(a.tf("status.setHeroErr", err.Error()))
 		return
 	}
 	a.editorHeroImage = draft.HeroImage
 	a.Reload()
 	if name == "" {
-		a.setStatus("已取消封面图")
+		a.setStatus(a.t("status.heroUnset"))
 	} else {
-		a.setStatus("已设为封面图：" + name)
+		a.setStatus(a.tf("status.heroSet", name))
 	}
 }
 
@@ -209,7 +209,7 @@ func (a *App) insertAttachmentMarkdown(name string) {
 	pos := a.editorState.CursorPos()
 	off := a.editorBuffer.Offset(pos)
 	a.editorBuffer.Edit(editor.Edit{Start: off, End: off, Text: snippet})
-	a.setStatus("已插入引用：" + name)
+	a.setStatus(a.tf("status.attInserted", name))
 }
 
 func (a *App) marshalEditorTags() (string, error) {

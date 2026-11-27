@@ -59,7 +59,7 @@ foreach ($line in $dependencies) {
 if ($manualCount -gt 0) { Write-Warning "Kubo license evidence contains $manualCount modules requiring manual review; distribution is not cleared." }
 
 $notice = New-Object System.Text.StringBuilder
-[void]$notice.AppendLine('Third-party license materials for Planet Windows (windows/amd64).')
+[void]$notice.AppendLine('Third-party license materials for Kinpage (windows/amd64).')
 [void]$notice.AppendLine('Generated from the linked Go modules; assess additional obligations before distribution.')
 [void]$notice.AppendLine("Kubo ships separately; see KUBO-BUILDINFO.txt and KUBO-DEPENDENCY-LICENSES.txt. Unresolved module evidence entries: $manualCount. Collection alone is not distribution approval.")
 function Add-License([string]$Title, [string]$Path) {

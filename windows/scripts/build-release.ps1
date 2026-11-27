@@ -31,7 +31,7 @@ try {
         # Windows PowerShell's Start-Process may expose a null ExitCode for a
         # fast GUI process. Own the native Process handle through completion.
         $taskVersionProcess=New-Object System.Diagnostics.Process
-        $taskVersionProcess.StartInfo.FileName=Join-Path $taskPayload 'Planet Windows.exe'
+        $taskVersionProcess.StartInfo.FileName=Join-Path $taskPayload 'Kinpage.exe'
         $taskVersionProcess.StartInfo.Arguments='--planet-version'
         $taskVersionProcess.StartInfo.WorkingDirectory=$taskPayload
         $taskVersionProcess.StartInfo.UseShellExecute=$false
@@ -44,13 +44,13 @@ try {
         [IO.File]::WriteAllText($taskVersionOutput,$taskObservedVersion,[Text.UTF8Encoding]::new($false))
         if ($taskObservedExit -ne 0 -or $taskObservedVersion -cne $taskReleaseVersion) { throw "Built app version check failed: exit=[$taskObservedExit], observed=[$taskObservedVersion], expected=[$taskReleaseVersion]." }
     } finally { if($taskVersionProcess){$taskVersionProcess.Dispose()}; $env:APPDATA=$taskPreviousAppData; $env:LOCALAPPDATA=$taskPreviousLocal }
-    $taskFiles = @('Planet Windows.exe','ipfs.exe','icon.png','kubo-LICENSE.txt','kubo-LICENSE-MIT.txt','kubo-LICENSE-APACHE.txt','LICENSE-PLANET.txt','THIRD-PARTY-NOTICES.txt','KUBO-BUILDINFO.txt','KUBO-DEPENDENCY-LICENSES.txt')
+    $taskFiles = @('Kinpage.exe','ipfs.exe','icon.png','kubo-LICENSE.txt','kubo-LICENSE-MIT.txt','kubo-LICENSE-APACHE.txt','LICENSE-PLANET.txt','THIRD-PARTY-NOTICES.txt','KUBO-BUILDINFO.txt','KUBO-DEPENDENCY-LICENSES.txt')
     foreach ($taskName in $taskFiles) {
         $taskSource = Join-Path $taskPayload $taskName
         if (-not (Test-Path -LiteralPath $taskSource -PathType Leaf)) { throw "Build payload missing: $taskName" }
         Copy-Item -LiteralPath $taskSource -Destination (Join-Path $taskReleaseRoot $taskName)
     }
-    $taskInstaller = Join-Path $taskReleaseRoot ('planet-windows-safe-setup-' + $taskReleaseVersion + '-amd64.exe')
+    $taskInstaller = Join-Path $taskReleaseRoot ('kinpage-safe-setup-' + $taskReleaseVersion + '-amd64.exe')
     & (Join-Path $PSScriptRoot 'build-safe-installer.ps1') -PayloadDir $taskReleaseRoot -OutputFile $taskInstaller
     & (Join-Path $PSScriptRoot 'audit-release.ps1') -BundleDir $taskReleaseRoot
     & (Join-Path $PSScriptRoot 'publish-build.ps1') -BundleDir $taskReleaseRoot -BuildDir (Join-Path $taskProjectRoot 'build') -InstallerName ([IO.Path]::GetFileName($taskInstaller))

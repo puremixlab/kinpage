@@ -1,4 +1,4 @@
-// pn is Planet Windows' command-line utility supporting --source auto|api|disk.
+// pn is Kinpage's command-line utility supporting --source auto|api|disk.
 package main
 
 import (
@@ -31,7 +31,7 @@ func defaultLibraryPath() string {
 		home, _ := os.UserHomeDir()
 		appData = filepath.Join(home, "AppData", "Roaming")
 	}
-	return filepath.Join(appData, "Planet Windows")
+	return filepath.Join(appData, "Kinpage")
 }
 
 func parseGlobalArgs(args []string) (cliOptions, []string, error) {

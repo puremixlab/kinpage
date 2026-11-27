@@ -30,16 +30,16 @@ function fixture(version = "0.3.0") {
   writeFileSync(join(root, ".gitignore"), "windows/.mygo/\n");
   writeFileSync(join(root, "windows/release.json"), JSON.stringify({ version }) + "\n");
   writeFileSync(join(root, "CHANGELOG.md"), `# Changelog\n\n## [Unreleased]\n- Draft fix.\n\n## [${version}] - 2020-01-01\n- Released fix.\n`);
-  writeFileSync(join(bundle, `planet-windows-safe-setup-${version}-amd64.exe`), "TEST TEXT ONLY, NOT EXECUTABLE");
+  writeFileSync(join(bundle, `kinpage-safe-setup-${version}-amd64.exe`), "TEST TEXT ONLY, NOT EXECUTABLE");
   // Stub only the existing binary audit. Exercise real git, Bun, PowerShell,
   // metadata checks, copy and hashing without a certificate or installer execution.
   writeFileSync(join(root, "windows/scripts/audit-release.ps1"), `param([string]$BundleDir)
-$name = 'planet-windows-safe-setup-${version}-amd64.exe'
+$name = 'kinpage-safe-setup-${version}-amd64.exe'
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $BundleDir $name)).Hash.ToLowerInvariant()
 $signature = if ($env:PLANET_RELEASE_FIXTURE -in @('unsigned', 'unsigned-license')) { 'NotSigned' } else { 'Valid' }
 $reviews = if ($env:PLANET_RELEASE_FIXTURE -in @('license', 'unsigned-license')) { 1 } else { 0 }
 if ($env:PLANET_RELEASE_FIXTURE -eq 'hash') { $hash = '0' * 64 }
-$signatures = @(@{file='Planet Windows.exe';status=$signature},@{file=$name;status=$signature})
+$signatures = @(@{file='Kinpage.exe';status=$signature},@{file=$name;status=$signature})
 switch ($env:PLANET_RELEASE_FIXTURE) {
   'app-unsigned' { $signatures[0].status = 'NotSigned' }
   'installer-unsigned' { $signatures[1].status = 'NotSigned' }
@@ -49,7 +49,7 @@ switch ($env:PLANET_RELEASE_FIXTURE) {
   'missing-signature' { $signatures = @($signatures[0]) }
   'empty-signatures' { $signatures = @() }
   'duplicate-signature' { $signatures += $signatures[0] }
-  'case-duplicate-signature' { $signatures += @{file='planet windows.exe';status='Valid'} }
+  'case-duplicate-signature' { $signatures += @{file='kinpage.exe';status='Valid'} }
   'missing-signature-status' { $signatures[0].Remove('status') }
   'null-signature' { $signatures[0] = $null }
 }
@@ -63,7 +63,7 @@ switch ($env:PLANET_RELEASE_FIXTURE) {
   git("add", ".");
   git("commit", "--quiet", "-m", "test: release fixture");
   git("tag", "-a", `v${version}`, "-m", "Test only");
-  const sourceArchive = join(folder, `planet-windows-source-${version}.zip`);
+  const sourceArchive = join(folder, `kinpage-source-${version}.zip`);
   const sourceManifest = join(folder, "source-manifest.json");
   const sourceBytes = Buffer.from("TEST SOURCE ARCHIVE BYTES");
   writeFileSync(sourceArchive, sourceBytes);
@@ -71,7 +71,7 @@ switch ($env:PLANET_RELEASE_FIXTURE) {
     schemaVersion: 1,
     sourceCommit: Bun.spawnSync(["git", "-C", root, "rev-parse", "HEAD"], { env: fixtureEnv }).stdout.toString().trim(),
     version,
-    archive: `planet-windows-source-${version}.zip`,
+    archive: `kinpage-source-${version}.zip`,
     archiveSha256: createHash("sha256").update(sourceBytes).digest("hex"),
     archiveBytes: sourceBytes.length,
   };

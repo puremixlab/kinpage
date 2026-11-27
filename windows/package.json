@@ -1,10 +1,11 @@
 {
-  "name": "planet-windows",
+  "name": "kinpage",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "mygo dev",
     "build": "powershell -NoProfile -File scripts/build-release.ps1",
+    "build:msix": "powershell -NoProfile -File scripts/build-msix.ps1",
     "test": "bun test",
     "check": "powershell -NoProfile -File ../scripts/check.ps1",
     "check:docs": "bun ../scripts/check-docs.ts",

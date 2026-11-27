@@ -86,11 +86,14 @@ func TestNativeUISiteSettingsAndPublishModal(t *testing.T) {
 		t.Fatalf("expected site moved to trash, live=%d trash=%d", len(backend.sites), len(backend.removedSites))
 	}
 
-	if err := tt.Click("更多工具"); err != nil {
-		t.Fatalf("failed to open tools menu: %v", err)
+	if err := tt.Click("设置"); err != nil {
+		t.Fatalf("failed to open settings popover: %v", err)
 	}
-	if err := tt.ChooseMenuItem("回收站"); err != nil {
-		t.Fatalf("failed to open trash modal: %v", err)
+	if err := tt.Click("更多设置…"); err != nil {
+		t.Fatalf("failed to open global settings: %v", err)
+	}
+	if err := tt.Click("回收站"); err != nil {
+		t.Fatalf("failed to switch to trash tab: %v", err)
 	}
 	if err := tt.Click("恢复"); err != nil {
 		t.Fatalf("failed to restore site: %v", err)
@@ -130,12 +133,15 @@ func TestNativeUIIPFSOfflineAndFoldersModals(t *testing.T) {
 		t.Fatalf("failed to close IPFS modal: %v", err)
 	}
 
-	// Offline storage modal: cleanup.
-	if err := tt.Click("更多工具"); err != nil {
-		t.Fatalf("failed to open tools menu: %v", err)
+	// Offline storage tab in Global Settings: cleanup.
+	if err := tt.Click("设置"); err != nil {
+		t.Fatalf("failed to open settings popover: %v", err)
 	}
-	if err := tt.ChooseMenuItem("离线存储"); err != nil {
-		t.Fatalf("failed to open offline modal: %v", err)
+	if err := tt.Click("更多设置…"); err != nil {
+		t.Fatalf("failed to open global settings: %v", err)
+	}
+	if err := tt.Click("离线存储"); err != nil {
+		t.Fatalf("failed to switch to offline tab: %v", err)
 	}
 	if err := tt.Click("清理可回收空间"); err != nil {
 		t.Fatalf("failed to cleanup offline storage: %v", err)
@@ -143,21 +149,18 @@ func TestNativeUIIPFSOfflineAndFoldersModals(t *testing.T) {
 	if backend.offlineUsage.ReclaimableBytes != 0 {
 		t.Fatalf("expected reclaimable bytes cleared, got %d", backend.offlineUsage.ReclaimableBytes)
 	}
-	if err := tt.Click("关闭"); err != nil {
-		t.Fatalf("failed to close offline modal: %v", err)
-	}
 
-	// Published folders modal: add + publish + remove.
-	if err := tt.Click("更多工具"); err != nil {
-		t.Fatalf("failed to open tools menu: %v", err)
+	// Published folders tab in Global Settings: empty state -> secondary add modal -> publish + remove.
+	if err := tt.Click("已发布文件夹"); err != nil {
+		t.Fatalf("failed to switch to folders tab: %v", err)
 	}
-	if err := tt.ChooseMenuItem("已发布文件夹"); err != nil {
-		t.Fatalf("failed to open folders modal: %v", err)
+	if err := tt.Click("添加"); err != nil {
+		t.Fatalf("failed to open add folder secondary modal: %v", err)
 	}
 	app.foldersModal.newName = "图库"
 	tt.Frame()
-	if err := tt.Click("+ 添加"); err != nil {
-		t.Fatalf("failed to add folder: %v", err)
+	if err := tt.Click("添加"); err != nil {
+		t.Fatalf("failed to submit add folder modal: %v", err)
 	}
 	if len(backend.folders) != 1 || backend.folders[0].Name != "图库" {
 		t.Fatalf("expected added folder, got %+v", backend.folders)
