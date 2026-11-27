@@ -1,0 +1,24 @@
+<div class="notebook{% if active_tags %} has-topics{% endif %}">
+  <div class="note-list">
+    {% for article in articles %}
+    <article class="note">
+      <header class="note-heading">
+        <h2><a href=".{{ article.link|escape }}">{{ article.title|default:"Untitled post"|escape }}</a></h2>
+        {% include "modules/entry_meta.html" %}
+      </header>
+      {% if article.excerpt %}<p class="excerpt">{{ article.excerpt|escape }}</p>{% endif %}
+      {% include "modules/entry_tags.html" %}
+    </article>
+    {% endfor %}
+  </div>
+  {% if active_tags %}
+  <aside class="topic-rail" aria-labelledby="topic-rail-heading">
+    <h2 id="topic-rail-heading">Browse by topic</h2>
+    <ul>
+      {% for key, label in active_tags sorted %}
+      <li><a href="{{ assets_prefix }}{{ key|escape }}.html"{% if key == tag_key %} aria-current="page"{% endif %}>{{ label }}</a></li>
+      {% endfor %}
+    </ul>
+  </aside>
+  {% endif %}
+</div>

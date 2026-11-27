@@ -1,0 +1,11 @@
+{
+  "name": "Notebook",
+  "description": "A compact reading list and topic rail for a public notebook.",
+  "author": "Kinpage contributors",
+  "version": "1.0.0",
+  "idealItemsPerPage": 12,
+  "generateIndexPagination": true,
+  "generateTagPages": true,
+  "generateArchive": true,
+  "buildNumber": 1
+}

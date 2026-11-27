@@ -1,0 +1,11 @@
+{
+  "name": "Linkshelf",
+  "description": "An annotated link collection with visible destinations.",
+  "author": "Kinpage contributors",
+  "version": "1.0.0",
+  "idealItemsPerPage": 12,
+  "generateIndexPagination": true,
+  "generateTagPages": true,
+  "generateArchive": true,
+  "buildNumber": 1
+}

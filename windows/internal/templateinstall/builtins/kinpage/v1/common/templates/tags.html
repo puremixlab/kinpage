@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block main %}
+  <h1 class="section-title">Topics</h1>
+  <ul class="topic-list">
+    {% for key, label in active_tags sorted %}
+    <li><a href="{{ assets_prefix }}{{ key|escape }}.html">{{ label }}</a><span>{{ tag_articles[key].count }}</span></li>
+    {% empty %}
+    <li class="empty-state">No topics yet.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

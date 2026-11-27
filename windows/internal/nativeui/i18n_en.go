@@ -613,6 +613,21 @@ var i18nEn = map[string]string{
 	"int.web3.jbIntErr":            "Juicebox Project ID must be an integer",
 	"int.web3.saved":               "Web3 settings saved",
 
+	// Template descriptions
+	"int.tpl.description.plain":     "Minimal text blog",
+	"int.tpl.description.gamedb":    "Pixel-art game theme",
+	"int.tpl.description.grid":      "Image grid",
+	"int.tpl.description.platinum":  "Classic desktop window theme",
+	"int.tpl.description.sepia":     "Warm-toned microblog",
+	"int.tpl.description.gazette":   "Editorial lead story and columns",
+	"int.tpl.description.folio":     "Cover-led portfolio and projects",
+	"int.tpl.description.notebook":  "Public notebook with a topic index",
+	"int.tpl.description.dispatch":  "A reading layout for newsletters and serials",
+	"int.tpl.description.revision":  "A timeline for project updates",
+	"int.tpl.description.airwaves":  "Podcasts and audio journals with in-page playback",
+	"int.tpl.description.waypoint":  "A travel journal with photos and notes",
+	"int.tpl.description.linkshelf": "An annotated collection of links",
+
 	// Dialogs: System Tools & Global Settings
 	"tools.sidebarTitle":           "System Tools",
 	"settings.searchPlaceholder":   "Search settings…",

@@ -1,0 +1,44 @@
+:root {
+  --paper: #f4f1e7;
+  --surface: #e7eadc;
+  --ink: #242d24;
+  --muted: #4d5d50;
+  --rule: #c2c9b6;
+  --accent: #325d42;
+  --heading: var(--serif);
+  --max-width: 64rem;
+}
+.layout-index .site-intro { border-block-start: 1px solid var(--rule); padding-block-start: 1rem; }
+.masthead { color: var(--accent); }
+.postcard {
+  display: grid;
+  gap: clamp(0.8rem, 4vw, 2.6rem);
+  align-items: center;
+  padding-block: clamp(1rem, 3vw, 1.8rem);
+  border-block-end: 1px solid var(--rule);
+}
+.postcard:first-child { padding-block-start: 0; }
+.postcard.has-photo { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+.postcard .entry-image { aspect-ratio: 16 / 10; }
+.postcard:nth-child(even) .entry-image { order: 1; }
+.postcard h2 {
+  margin-block: 0.3rem 0.5rem;
+  font-size: clamp(1.5rem, 4vw, 2.7rem);
+  letter-spacing: -0.035em;
+}
+.postcard-copy { max-inline-size: 46rem; }
+.postcard:not(.has-photo) .postcard-copy { padding-inline-start: 1rem; border-inline-start: 2px solid var(--accent); }
+@media (max-width: 42rem) {
+  .postcard.has-photo { grid-template-columns: minmax(0, 1fr); }
+  .postcard:nth-child(even) .entry-image { order: 0; }
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1d281f;
+    --surface: #2b392e;
+    --ink: #edf2e3;
+    --muted: #c6d1bd;
+    --rule: #506652;
+    --accent: #aadaaf;
+  }
+}

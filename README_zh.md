@@ -59,8 +59,8 @@
       支持 RSS、Atom、JSON Feed、网站首页自动发现、IPNS 与 ENSIP-15 <code>.eth</code> 站点；提供「今天 / 未读 / 收藏」智能视图与 6 类多类型星标、可交互待办清单、隐私增强 YouTube 嵌入、沙箱原网页切换、BM25 + 语义混合检索、语音朗读及离线固定阅读。
     </td>
     <td width="50%" valign="top">
-      <strong>原版模板、备份、Web3 与外部集成</strong><br />
-      内置 5 套原版模板（<em>Plain</em>、<em>8-bit</em>、<em>Grid</em>、<em>Platinum</em>、<em>Sepia</em>）及沙箱内嵌预览；支持静态 HTML 导出、<code>.planet</code> 备份导入导出与数据仓库迁移；集成 Cloudflare Pages、SSH/rsync、Pinnable、Filebase、<code>dWebServices.xyz</code>、Farcaster <code>.well-known/farcaster.json</code>、EIP-681 ETH 打赏、Plausible、Telegram 与 X 同步。
+      <strong>站点模板、备份、Web3 与外部集成</strong><br />
+      内置 13 套模板，包含 Planet 原版及邻页原创版式，支持沙箱内嵌预览和静态 HTML 导出。支持 <code>.planet</code> 备份导入导出与数据仓库迁移，集成 Cloudflare Pages、SSH/rsync、Pinnable、Filebase、<code>dWebServices.xyz</code>、Farcaster <code>.well-known/farcaster.json</code>、EIP-681 ETH 打赏、Plausible、Telegram 与 X 同步。
     </td>
   </tr>
 </table>

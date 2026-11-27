@@ -1,0 +1,3 @@
+{% if article.heroImage %}
+<img class="entry-image" src="{{ assets_prefix }}{{ article.id }}/{{ article.heroImage|escape }}" alt="" decoding="async"{% if not forloop.First %} loading="lazy"{% endif %}>
+{% endif %}

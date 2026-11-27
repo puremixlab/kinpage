@@ -69,7 +69,7 @@ func Install(root, source string, site store.Site, articles []store.Article, lib
 		}
 	}
 	if err = Verify(stage); err != nil {
-		return "", fmt.Errorf("当前仅支持已验证的 Plain、8-bit、Grid、Platinum 和 Sepia 原版模板：%w", err)
+		return "", fmt.Errorf("请选择已验证的内置模板版本：%w", err)
 	}
 	check, err := os.MkdirTemp(root, ".template-check-")
 	if err != nil {
