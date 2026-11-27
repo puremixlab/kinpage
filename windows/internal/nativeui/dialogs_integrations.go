@@ -704,55 +704,6 @@ func (a *App) viewIntegrationsSecondarySheets(c *ui.Context) {
 	a.viewWeb3ConfigSheet(c, pal, m)
 }
 
-func (a *App) viewDeployConfigSheet(c *ui.Context, pal macPalette, m *integrationsModalState) {
-	kind := deployKinds[m.deployKindIdx]
-	label := deployLabels[m.deployKindIdx]
-	if macSheet(c, &m.deployModalOpen, macSheetProps{
-		Title:        a.tf("int.deploy.modalTitle", label),
-		Width:        500,
-		PrimaryText:  a.t("int.deploy.save"),
-		CancelText:   a.t("common.cancel"),
-		CloseTooltip: a.t("common.close"),
-	}, pal, func() {
-		macInsetCard(c, pal, func() {
-			ui.Row(c).Gap(12).AlignSelf(ui.Stretch).Children(func() {
-				ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-					macField(c, a.t("int.deploy.nameField"), "", pal, func() {
-						ui.TextInput(c.Key("dep-name"), &m.deployName).Label(a.t("int.deploy.nameLabel")).AlignSelf(ui.Stretch)
-					})
-				})
-				ui.Box(c).Grow(1).MinWidth(0).Children(func() {
-					macField(c, a.t("int.deploy.serverField"), "", pal, func() {
-						ui.TextInput(c.Key("dep-server"), &m.deployServer).Label(a.t("int.deploy.serverLabel")).AlignSelf(ui.Stretch)
-					})
-				})
-			})
-			macField(c, a.t("int.deploy.tokenField"), "", pal, func() {
-				ui.TextInput(c.Key("dep-token"), &m.deployToken).Password().Label(a.t("int.deploy.tokenLabel")).AlignSelf(ui.Stretch)
-			})
-			ui.Row(c).Gap(20).Wrap().Children(func() {
-				ui.Checkbox(c.Key("dep-auto"), &m.deployAuto, a.t("int.deploy.auto"))
-				ui.Checkbox(c.Key("dep-del"), &m.deployDelete, a.t("int.deploy.deleteRemote"))
-			})
-		})
-		if m.err != "" {
-			ui.Text(c, m.err).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
-		}
-	}) {
-		if err := a.backend.ConfigureDeployment(m.siteID, kind, strings.TrimSpace(m.deployName), strings.TrimSpace(m.deployServer), strings.TrimSpace(m.deployToken), m.deployAuto, m.deployDelete); err != nil {
-			m.err = err.Error()
-		} else {
-			if m.deployConfigured == nil {
-				m.deployConfigured = map[string]bool{}
-			}
-			m.deployConfigured[kind] = true
-			m.err = ""
-			m.msg = a.tf("int.deploy.saved", kind)
-			m.deployModalOpen = false
-		}
-	}
-}
-
 func (a *App) viewPlausibleConfigSheet(c *ui.Context, pal macPalette, m *integrationsModalState) {
 	if macSheet(c, &m.plausibleModalOpen, macSheetProps{
 		Title:        a.t("int.srv.plausibleModal"),
