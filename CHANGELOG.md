@@ -8,6 +8,10 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 - Added locally computed, freely draggable low-saturation writing badges (Active Days, Best Streak, Published Posts, and Live Planets) to the right of the Writing Desk date masthead alongside the 14-week activity heatmap, with persistent placement and collapse state in `nativeui-layout.json`, narrow-window trophy fallback, and a full Writing Achievements sheet (`macSheet`) with milestone progress and one-click layout reset.
 
+### Changed
+
+- Replaced the built-in site avatars with 12 original illustrations and centered the picker rows at wide and narrow window sizes.
+
 ## [0.1.0] - 2026-11-26
 
 ### Added

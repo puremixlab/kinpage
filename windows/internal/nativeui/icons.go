@@ -48,17 +48,25 @@ var (
 	iconStarSolid = ui.MustParseSVG([]byte(`<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 1.9L11.2 6.35L16.1 7.06L12.55 10.52L13.39 15.4L9 13.09L4.61 15.4L5.45 10.52L1.9 7.06L6.8 6.35L9 1.9Z" fill="currentColor"/></svg>`))
 )
 
-// bitmapForDataURL decodes and caches base64 PNG strings (site avatars and
-// subscription favicons) so they render natively via ui.Image.
-func (a *App) bitmapForDataURL(raw string) *ui.Bitmap {
+// Preserve the 52-DIP site avatar preview at up to 300% scaling.
+const siteAvatarBitmapMaxSide = 160
+
+type bitmapDataKey struct {
+	data    string
+	maxSide int
+}
+
+// bitmapForDataURL decodes and caches base64 PNGs at the requested size limit.
+func (a *App) bitmapForDataURL(raw string, maxSide int) *ui.Bitmap {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return nil
 	}
 	if a.bitmapCache == nil {
-		a.bitmapCache = map[string]*ui.Bitmap{}
+		a.bitmapCache = map[bitmapDataKey]*ui.Bitmap{}
 	}
-	if bmp, ok := a.bitmapCache[raw]; ok {
+	key := bitmapDataKey{data: raw, maxSide: maxSide}
+	if bmp, ok := a.bitmapCache[key]; ok {
 		return bmp
 	}
 	payload := raw
@@ -69,15 +77,15 @@ func (a *App) bitmapForDataURL(raw string) *ui.Bitmap {
 	if err != nil {
 		decoded, err = base64.RawStdEncoding.DecodeString(payload)
 		if err != nil {
-			a.bitmapCache[raw] = nil
+			a.bitmapCache[key] = nil
 			return nil
 		}
 	}
-	bmp, err := ui.DecodeBitmapScaled(decoded, 64)
+	bmp, err := ui.DecodeBitmapScaled(decoded, maxSide)
 	if err != nil {
-		a.bitmapCache[raw] = nil
+		a.bitmapCache[key] = nil
 		return nil
 	}
-	a.bitmapCache[raw] = bmp
+	a.bitmapCache[key] = bmp
 	return bmp
 }

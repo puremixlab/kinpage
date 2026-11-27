@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"windows/internal/ipfs"
 	"windows/internal/offline"
+	"windows/internal/siteimage"
 	"windows/internal/store"
 )
 
@@ -100,6 +101,49 @@ func TestNativeUISiteSettingsAndPublishModal(t *testing.T) {
 	}
 	if len(backend.sites) != 1 || len(backend.removedSites) != 0 {
 		t.Fatalf("expected site restored, live=%d trash=%d", len(backend.sites), len(backend.removedSites))
+	}
+}
+
+type presetAvatarTestBackend struct{ *fakeBackend }
+
+func (*presetAvatarTestBackend) PresetAvatars() []siteimage.PresetAvatar {
+	return siteimage.PresetAvatars()
+}
+
+func TestNativeUISiteSettingsCentersPresetAvatarRows(t *testing.T) {
+	site := store.Site{ID: "s1", Name: "Example site"}
+	backend := &presetAvatarTestBackend{&fakeBackend{sites: []store.Site{site}}}
+	app := New(backend)
+	app.openSiteSettings(site)
+	tt := ui.NewTester(app.View, 820, 760)
+	tt.Frame()
+
+	header, ok := tt.Find(app.t("siteSettings.avatarPresets"))
+	if !ok {
+		t.Fatal("preset gallery is missing")
+	}
+	rows := map[float32][2]float32{}
+	for _, preset := range backend.PresetAvatars() {
+		button, ok := tt.Find(preset.Title)
+		if !ok {
+			t.Fatalf("preset button %q is missing", preset.Title)
+		}
+		limits, seen := rows[button.Y]
+		if !seen {
+			limits[0] = button.X
+		}
+		limits[1] = button.X + button.W
+		rows[button.Y] = limits
+	}
+	if len(rows) < 2 {
+		t.Fatal("the narrow settings pane should wrap the presets")
+	}
+	for y, limits := range rows {
+		rowCenter := (limits[0] + limits[1]) / 2
+		paneCenter := header.X + header.W/2
+		if delta := rowCenter - paneCenter; delta < -0.5 || delta > 0.5 {
+			t.Errorf("preset row at y=%.1f is centered at %.1f, want %.1f", y, rowCenter, paneCenter)
+		}
 	}
 }
 

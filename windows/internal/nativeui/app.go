@@ -203,7 +203,7 @@ type App struct {
 	pal              macPalette
 	locale           Locale
 	onLocaleChange   func(Locale)
-	bitmapCache      map[string]*ui.Bitmap
+	bitmapCache      map[bitmapDataKey]*ui.Bitmap
 	settingsMenuOpen bool
 	sidebarCollapsed bool
 	postsCollapsed   bool
