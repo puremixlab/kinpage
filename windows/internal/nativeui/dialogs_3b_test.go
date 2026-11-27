@@ -1,6 +1,7 @@
 package nativeui
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -112,6 +113,17 @@ func TestNativeUIIntegrationsModalBatch3B(t *testing.T) {
 	app.integrations.web3Donate = true
 	app.integrations.web3ETH = "vitalik.eth"
 	app.integrations.web3Juicebox = true
+	app.integrations.web3JuiceboxID = "invalid"
+	tt.Frame()
+	if err := tt.Click("保存 Web3 设置"); err != nil {
+		t.Fatalf("failed to try saving invalid Web3 settings: %v", err)
+	}
+	if !app.integrations.web3ModalOpen || app.integrations.err != app.t("int.web3.jbIntErr") {
+		t.Fatalf("expected Web3 sheet to stay open with the ID error, got open=%v error=%q", app.integrations.web3ModalOpen, app.integrations.err)
+	}
+	if backend.sites[0].AcceptsDonation || backend.sites[0].JuiceboxProjectID != 0 {
+		t.Fatalf("invalid settings changed the site: %+v", backend.sites[0])
+	}
 	app.integrations.web3JuiceboxID = "42"
 	tt.Frame()
 	if err := tt.Click("保存 Web3 设置"); err != nil {
@@ -119,5 +131,79 @@ func TestNativeUIIntegrationsModalBatch3B(t *testing.T) {
 	}
 	if !backend.sites[0].AcceptsDonation || backend.sites[0].AcceptsDonationETHAddress != "vitalik.eth" || backend.sites[0].JuiceboxProjectID != 42 {
 		t.Fatalf("expected Web3 settings saved, got %+v", backend.sites[0])
+	}
+}
+
+type integrationServiceSave struct {
+	siteID string
+	kind   string
+}
+
+type integrationServiceTestBackend struct {
+	*fakeBackend
+	saves   []integrationServiceSave
+	saveErr error
+}
+
+func (b *integrationServiceTestBackend) recordSave(siteID, kind string) error {
+	b.saves = append(b.saves, integrationServiceSave{siteID: siteID, kind: kind})
+	return b.saveErr
+}
+
+func (b *integrationServiceTestBackend) ConfigureService(siteID, kind, _, _ string) error {
+	return b.recordSave(siteID, kind)
+}
+
+func (b *integrationServiceTestBackend) ConfigurePlausibleAt(siteID, _, _, _, _ string) error {
+	return b.recordSave(siteID, "plausible")
+}
+
+func (b *integrationServiceTestBackend) ConfigurePinnable(siteID, _ string) error {
+	return b.recordSave(siteID, "pinnable")
+}
+
+func TestNativeUIIntegrationServiceSheetsSaveAndReportErrors(t *testing.T) {
+	saveErr := errors.New("test save failed")
+	cases := []struct {
+		kind     string
+		saveKey  string
+		savedKey string
+		open     func(*integrationsModalState) *bool
+	}{
+		{"plausible", "int.srv.savePlausible", "int.srv.savedPlausible", func(s *integrationsModalState) *bool { return &s.plausibleModalOpen }},
+		{"filebase", "int.srv.saveFilebase", "int.srv.savedFilebase", func(s *integrationsModalState) *bool { return &s.filebaseModalOpen }},
+		{"pinnable", "int.srv.savePinnable", "int.srv.savedPinnable", func(s *integrationsModalState) *bool { return &s.pinnableModalOpen }},
+		{"dwebservices", "int.srv.saveDweb", "int.srv.savedDweb", func(s *integrationsModalState) *bool { return &s.dwebModalOpen }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.kind, func(t *testing.T) {
+			backend := &integrationServiceTestBackend{fakeBackend: &fakeBackend{}, saveErr: saveErr}
+			app := New(backend)
+			app.integrations.siteID = "s1"
+			open := tc.open(&app.integrations)
+			*open = true
+
+			tt := ui.NewTester(app.viewIntegrationsSecondarySheets, 1280, 900)
+			tt.Frame()
+			if err := tt.Click(app.t(tc.saveKey)); err != nil {
+				t.Fatal(err)
+			}
+			if !*open || app.integrations.err != saveErr.Error() || app.integrations.msg != "" {
+				t.Fatalf("failed save left open=%v, error=%q, message=%q", *open, app.integrations.err, app.integrations.msg)
+			}
+
+			backend.saveErr = nil
+			tt.Frame()
+			if err := tt.Click(app.t(tc.saveKey)); err != nil {
+				t.Fatal(err)
+			}
+			if *open || app.integrations.err != "" || app.integrations.msg != app.t(tc.savedKey) {
+				t.Fatalf("successful save left open=%v, error=%q, message=%q", *open, app.integrations.err, app.integrations.msg)
+			}
+			want := integrationServiceSave{siteID: "s1", kind: tc.kind}
+			if len(backend.saves) != 2 || backend.saves[0] != want || backend.saves[1] != want {
+				t.Fatalf("expected both saves to target %+v, got %+v", want, backend.saves)
+			}
+		})
 	}
 }
