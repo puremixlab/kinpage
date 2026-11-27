@@ -23,7 +23,6 @@ import (
 	"windows/internal/backup"
 	"windows/internal/feeds"
 	"windows/internal/follow"
-	"windows/internal/ipfs"
 	"windows/internal/localapi"
 	"windows/internal/migration"
 	"windows/internal/nativeui"
@@ -35,49 +34,10 @@ import (
 	"windows/internal/siteimage"
 	"windows/internal/store"
 	"windows/internal/templateinstall"
-	"windows/internal/updates"
 )
 
 //go:embed resources/icon.png
 var appIconPNG []byte
-
-// Library exposes the local authoring functions to the application window.
-type Library struct {
-	once                sync.Once
-	store               *store.Store
-	err                 error
-	publicMu            sync.Mutex
-	feedMu              sync.Mutex
-	nodeMu              sync.RWMutex
-	node                *ipfs.Client
-	provideMu           sync.Mutex
-	provideCtx          context.Context
-	provideCancel       context.CancelFunc
-	provideWorkers      sync.WaitGroup
-	providePollInterval time.Duration
-	provideWaitLimit    time.Duration
-	audioMu             sync.Mutex
-	audio               *audiostream.Server
-	audioTemp           string
-	audioSnapshot       string
-	audioFile           string
-	editorMediaMu       sync.Mutex
-	editorMedia         *audiostream.Server
-	updateMu            sync.Mutex
-	checkedUpdate       *updates.Release
-	updateIdentity      string
-	downloadedUpdate    string
-	updateGeneration    uint64
-	updateCancel        context.CancelFunc
-	updateClosing       bool
-	updateWorkers       sync.WaitGroup
-	xPoster             services.XPoster
-	telegramAPI         services.TelegramAPI
-	apiMu               sync.Mutex
-	apiServer           *localapi.Server
-	activePublishes     atomic.Int32
-	defaultDataDir      string
-}
 
 func (l *Library) ensureAPIServer() *localapi.Server {
 	l.apiMu.Lock()
@@ -101,21 +61,6 @@ func (l *Library) closeAPIServer() {
 	if srv != nil {
 		_ = srv.Close()
 	}
-}
-
-func (l *Library) open() (*store.Store, error) {
-	l.once.Do(func() {
-		var path string
-		path, l.err = mygo.App.Path(mygo.PathUserData)
-		if l.err == nil {
-			l.store, l.err = store.Open(path)
-			if l.err == nil {
-				attachments.CleanupDraftFiles(path, l.store)
-				attachments.CleanupArticleFiles(path, l.store)
-			}
-		}
-	})
-	return l.store, l.err
 }
 
 func (l *Library) Sites() ([]store.Site, error) {
