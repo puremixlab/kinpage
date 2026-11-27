@@ -229,6 +229,11 @@ var i18nEn = map[string]string{
 	"dashboard.badge.published.stat":   "%d articles published",
 	"dashboard.badge.planet.title":     "Live Planets",
 	"dashboard.badge.planet.stat":      "%d sites published",
+	"dashboard.badge.trophy.bronze":    "Bronze Trophy",
+	"dashboard.badge.trophy.silver":    "Silver Trophy",
+	"dashboard.badge.trophy.gold":      "Gold Trophy",
+	"dashboard.badge.trophy.platinum":  "Platinum Trophy",
+	"dashboard.badge.trophy.orbit":     "Orbit Trophy",
 
 	// Article & Subscription Lists
 	"list.articleCount":          "%d articles",

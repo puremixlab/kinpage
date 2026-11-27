@@ -258,16 +258,24 @@ func (a *App) viewMastheadUtilityRail(c *ui.Context, badgesVisible bool) {
 				}
 			}
 
+			trophyTier, trophyTitleKey, hasAnyBadge := writingTrophyRank(a.writingBadges())
 			wallBtn := ui.ButtonBase(c.Key("dash-badges-wall")).
 				Label(a.t("dashboard.badge.wallTitle")).
-				Size(24, 24).Radius(6).Center().Cursor(ui.CursorPointer).
-				Tooltip(a.t("dashboard.badge.wallTooltip")).
+				Size(28, 28).Radius(6).Center().Cursor(ui.CursorPointer).
+				Tooltip(a.t(trophyTitleKey) + " · " + a.t("dashboard.badge.wallTooltip")).
 				Transition(rowHoverTransition)
 			if wallBtn.Hovered() {
 				wallBtn.Background(pal.hover)
 			}
 			wallBtn.Children(func() {
-				ui.Icon(c, lucide.Trophy()).Size(13.5, 13.5).TextColor(pal.prefsMuted)
+				if bmp := trophyBitmapFor(trophyTier); bmp != nil {
+					img := ui.Image(c, bmp).Size(24, 24)
+					if !hasAnyBadge {
+						img.Grayscale().Opacity(0.50)
+					}
+				} else {
+					ui.Icon(c, lucide.Trophy()).Size(13.5, 13.5).TextColor(pal.prefsMuted)
+				}
 			})
 			if wallBtn.Clicked() {
 				a.badgeWallOpen = true
