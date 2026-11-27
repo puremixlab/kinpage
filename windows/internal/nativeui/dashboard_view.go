@@ -185,8 +185,8 @@ func (a *App) viewDashboard(c *ui.Context) {
 					return
 				}
 
-				// 1. Editorial Date Masthead (left) + compact 14-week monochrome mini-heatmap (right).
-				a.viewDashboardMasthead(c)
+				// 1. Editorial Date Masthead (left) + draggable writing badges (center-left) + compact 14-week mini-heatmap (right).
+				a.viewDashboardMasthead(c, containerW)
 
 				// 2. Single Elevated Manuscript Paper Sheet (focal point: most recent draft or blank sheet).
 				a.viewDashboardHeroPaper(c)
@@ -198,17 +198,29 @@ func (a *App) viewDashboard(c *ui.Context) {
 	})
 }
 
-func (a *App) viewDashboardMasthead(c *ui.Context) {
+func (a *App) viewDashboardMasthead(c *ui.Context, containerW float32) {
 	pal := a.pal
+	dateText := a.formatMastheadDate(time.Now())
 	counts := make(map[string]int, len(a.activity))
 	for _, item := range a.activity {
 		counts[item.Date] = item.Articles + item.Drafts
 	}
 
+	const (
+		dateSize     = float32(26)
+		heatmapW     = float32(14*9 + 13*3) // 165px
+		mastheadGaps = float32(18 + 16)
+	)
+	dateW, _ := c.MeasureText(0, ui.Span{Text: dateText, Font: macPlanetFont, Size: dateSize, Weight: 600})
+	availBadgeW := containerW - dateW - heatmapW - mastheadGaps
+
 	ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).Children(func() {
-		ui.Text(c, a.formatMastheadDate(time.Now())).
-			Font(macPlanetFont).FontSize(26).FontWeight(600).LetterSpacing(-0.02).
-			TextColor(pal.prefsInk).NoWrap()
+		ui.Row(c).AlignItems(ui.Center).Gap(18).Grow(1).MinWidth(0).Children(func() {
+			ui.Text(c, dateText).
+				Font(macPlanetFont).FontSize(dateSize).FontWeight(600).LetterSpacing(-0.02).
+				TextColor(pal.prefsInk).NoWrap().Shrink(0)
+			a.viewDashboardBadgeTray(c, availBadgeW)
+		})
 		a.viewMiniHeatmap(c, counts)
 	})
 }

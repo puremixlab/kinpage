@@ -138,6 +138,12 @@ type App struct {
 	trendHoverPoint     int
 	articleFilterSiteID string
 	composePickerOpen   bool
+	badgeWallOpen       bool
+	badgesHidden        bool
+	badgePositions      map[string]ui.Point
+	badgeDragOffsets    map[string]*ui.Point
+	badgeZOrder         []string
+	badgeDraggingID     string
 
 	// Subscriptions & global search state.
 	selectedSubURL        string
@@ -623,7 +629,7 @@ func (a *App) currentArticle() *store.Article {
 }
 
 func (a *App) anyModalOpen() bool {
-	return a.createSiteOpen || a.composePickerOpen || a.articleSettingsOpen ||
+	return a.createSiteOpen || a.composePickerOpen || a.badgeWallOpen || a.articleSettingsOpen ||
 		a.moveArticleOpen || a.quickPostOpen || a.deleteArticleOpen || a.unsavedDialogOpen ||
 		a.followModalOpen || a.editSubOpen || a.unfollowOpen ||
 		a.searchModalOpen || a.relatedModalOpen ||

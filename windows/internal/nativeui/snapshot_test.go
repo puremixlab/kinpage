@@ -149,6 +149,24 @@ func TestNativeUIRenderSnapshots(t *testing.T) {
 	tt.Frame()
 	savePNG(t, outDir, "10-sheet-integrations.png", tt)
 	app.siteSettings.open = false
+	app.integrations.open = false
+
+	// Dashboard dark mode + Writing Achievements sheet snapshots.
+	app.mode = viewOverview
+	tt.SetDark(true)
+	tt.Frame()
+	savePNG(t, outDir, "11-dashboard-dark.png", tt)
+
+	tt.SetDark(false)
+	app.badgeWallOpen = true
+	tt.Frame()
+	savePNG(t, outDir, "12-sheet-badge-wall.png", tt)
+
+	tt.SetDark(true)
+	tt.Frame()
+	savePNG(t, outDir, "13-sheet-badge-wall-dark.png", tt)
+	app.badgeWallOpen = false
+	app.siteSettings.open = false
 
 	// Dark mode site settings sheet snapshot.
 	tt.SetDark(true)

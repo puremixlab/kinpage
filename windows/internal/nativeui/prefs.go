@@ -2,27 +2,36 @@ package nativeui
 
 import (
 	"encoding/json"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
 	"slices"
 
+	"github.com/egoist/mygo/ui"
 	"windows/internal/store"
 )
 
+type badgePos struct {
+	X float32 `json:"x"`
+	Y float32 `json:"y"`
+}
+
 type layoutPrefs struct {
-	Locale           string   `json:"locale,omitempty"`
-	SidebarWidth     float32  `json:"sidebarWidth"`
-	PostsPanelWidth  float32  `json:"postsPanelWidth"`
-	SidebarCollapsed bool     `json:"sidebarCollapsed"`
-	PostsCollapsed   bool     `json:"postsCollapsed"`
-	LastMode         int      `json:"lastMode,omitempty"`
-	LastSiteID       string   `json:"lastSiteId,omitempty"`
-	LastArticleID    string   `json:"lastArticleId,omitempty"`
-	LastSubURL       string   `json:"lastSubUrl,omitempty"`
-	LastSubItemKey   string   `json:"lastSubItemKey,omitempty"`
-	SiteOrder        []string `json:"siteOrder,omitempty"`
-	SubOrder         []string `json:"subOrder,omitempty"`
+	Locale           string              `json:"locale,omitempty"`
+	SidebarWidth     float32             `json:"sidebarWidth"`
+	PostsPanelWidth  float32             `json:"postsPanelWidth"`
+	SidebarCollapsed bool                `json:"sidebarCollapsed"`
+	PostsCollapsed   bool                `json:"postsCollapsed"`
+	LastMode         int                 `json:"lastMode,omitempty"`
+	LastSiteID       string              `json:"lastSiteId,omitempty"`
+	LastArticleID    string              `json:"lastArticleId,omitempty"`
+	LastSubURL       string              `json:"lastSubUrl,omitempty"`
+	LastSubItemKey   string              `json:"lastSubItemKey,omitempty"`
+	SiteOrder        []string            `json:"siteOrder,omitempty"`
+	SubOrder         []string            `json:"subOrder,omitempty"`
+	BadgesHidden     bool                `json:"badgesHidden,omitempty"`
+	BadgePositions   map[string]badgePos `json:"badgePositions,omitempty"`
 }
 
 func layoutPrefsEqual(a, b layoutPrefs) bool {
@@ -37,7 +46,9 @@ func layoutPrefsEqual(a, b layoutPrefs) bool {
 		a.LastSubURL == b.LastSubURL &&
 		a.LastSubItemKey == b.LastSubItemKey &&
 		slices.Equal(a.SiteOrder, b.SiteOrder) &&
-		slices.Equal(a.SubOrder, b.SubOrder)
+		slices.Equal(a.SubOrder, b.SubOrder) &&
+		a.BadgesHidden == b.BadgesHidden &&
+		maps.Equal(a.BadgePositions, b.BadgePositions)
 }
 
 // EnablePrefsPersistence loads saved split widths, panel collapse states,
@@ -72,6 +83,17 @@ func (a *App) EnablePrefsPersistence(path string) {
 	a.postsCollapsed = p.PostsCollapsed
 	a.siteOrder = append([]string(nil), p.SiteOrder...)
 	a.subOrder = append([]string(nil), p.SubOrder...)
+	a.badgesHidden = p.BadgesHidden
+	if len(p.BadgePositions) > 0 {
+		a.badgePositions = make(map[string]ui.Point, len(p.BadgePositions))
+		a.badgeDragOffsets = make(map[string]*ui.Point, len(p.BadgePositions))
+		for id, pos := range p.BadgePositions {
+			pt := ui.Point{X: pos.X, Y: pos.Y}
+			a.badgePositions[id] = pt
+			live := pt
+			a.badgeDragOffsets[id] = &live
+		}
+	}
 	a.restoreLastSelection(p)
 	a.lastSavedPrefs = a.currentLayoutPrefs()
 }
@@ -118,6 +140,16 @@ func (a *App) restoreLastSelection(p layoutPrefs) {
 }
 
 func (a *App) currentLayoutPrefs() layoutPrefs {
+	var badgePosMap map[string]badgePos
+	if len(a.badgePositions) > 0 {
+		badgePosMap = make(map[string]badgePos, len(a.badgePositions))
+		for id, pt := range a.badgePositions {
+			badgePosMap[id] = badgePos{
+				X: float32(math.Round(float64(pt.X))),
+				Y: float32(math.Round(float64(pt.Y))),
+			}
+		}
+	}
 	return layoutPrefs{
 		Locale:           string(a.Locale()),
 		SidebarWidth:     float32(math.Round(float64(a.sidebarWidth))),
@@ -131,6 +163,8 @@ func (a *App) currentLayoutPrefs() layoutPrefs {
 		LastSubItemKey:   a.selectedSubItemKey,
 		SiteOrder:        append([]string(nil), a.siteOrder...),
 		SubOrder:         append([]string(nil), a.subOrder...),
+		BadgesHidden:     a.badgesHidden,
+		BadgePositions:   badgePosMap,
 	}
 }
 

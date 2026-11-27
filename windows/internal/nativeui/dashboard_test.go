@@ -1,6 +1,7 @@
 package nativeui
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -88,5 +89,120 @@ func TestDashboardResponsiveColumnsAndWordCount(t *testing.T) {
 	}
 	if got := formatWordCount(1280); got != "1,280 字" {
 		t.Fatalf("formatWordCount(1280) = %q", got)
+	}
+}
+
+func TestDashboardBadgesWallHideAndPersistence(t *testing.T) {
+	now := time.Now()
+	backend := &fakeBackend{
+		sites: []store.Site{
+			{ID: "s1", Name: "山野通信", Created: now, LastPublished: &now},
+		},
+		articles: []store.Article{
+			{ID: "a1", SiteID: "s1", Title: "第一篇", Content: "正文", Created: now, Modified: now},
+		},
+		activity: []store.DailyActivity{
+			{Date: now.AddDate(0, 0, -1).Format("2006-01-02"), Articles: 1},
+			{Date: now.Format("2006-01-02"), Articles: 1},
+		},
+	}
+
+	prefsFile := filepath.Join(t.TempDir(), "nativeui-layout.json")
+	app := New(backend)
+	app.EnablePrefsPersistence(prefsFile)
+	tt := ui.NewTester(app.View, 1360, 900)
+	tt.Frame()
+
+	// Real pointer drag: moving updates live drag offset without persisting mid-drag.
+	badgeRect, ok := tt.Find("累计写作天数")
+	if !ok {
+		t.Fatal("expected active days badge to be rendered on dashboard")
+	}
+	cx, cy := badgeRect.X+badgeRect.W/2, badgeRect.Y+badgeRect.H/2
+	tt.Press(cx, cy)
+	tt.Move(cx+80, cy+12)
+	if app.badgeDragOffsets["active_days"] == nil || app.badgeDragOffsets["active_days"].X <= 10 {
+		t.Fatalf("expected live drag offset to follow pointer, got %+v", app.badgeDragOffsets["active_days"])
+	}
+	if len(app.badgePositions) != 0 {
+		t.Fatalf("unfinished drag must not persist badgePositions, got %+v", app.badgePositions)
+	}
+	// Canceling press restores original position.
+	tt.CancelPress()
+	tt.Advance(600 * time.Millisecond)
+	if len(app.badgePositions) != 0 {
+		t.Fatalf("canceling press should keep badgePositions empty, got %+v", app.badgePositions)
+	}
+
+	// Complete drag and drop: persists position without falsely opening Achievement Wall.
+	tt.Press(cx, cy)
+	tt.Move(cx+90, cy+10)
+	tt.Release(cx+90, cy+10)
+	tt.Frame()
+	if app.badgeWallOpen {
+		t.Fatal("dropping a dragged badge must not open the achievement wall")
+	}
+	savedPos, ok := app.badgePositions["active_days"]
+	if !ok || savedPos.X < 60 {
+		t.Fatalf("expected dragged active_days position to be saved, got saved=%+v (ok=%v) offset=%+v rect=%+v", savedPos, ok, app.badgeDragOffsets["active_days"], badgeRect)
+	}
+
+	// Clicking the moved badge still opens the Achievement Wall sheet, and Escape closes it.
+	if err := tt.Click("累计写作天数"); err != nil {
+		t.Fatalf("expected moved active days badge to be clickable: %v", err)
+	}
+	if !app.badgeWallOpen {
+		t.Fatal("expected badge wall sheet to open after clicking badge")
+	}
+
+	// Reset layout button restores default positions.
+	if err := tt.Click("重置排布"); err != nil {
+		t.Fatalf("expected reset layout button in badge wall: %v", err)
+	}
+	if len(app.badgePositions) != 0 {
+		t.Fatalf("expected custom badgePositions cleared after reset, got %+v", app.badgePositions)
+	}
+	tt.Key(0, ui.KeyEscape)
+	if app.badgeWallOpen {
+		t.Fatal("expected Escape to close the achievement wall")
+	}
+
+	// Drag again, then collapse via × button, and verify both persist across reload.
+	tt.Advance(600 * time.Millisecond)
+	badgeRect2, _ := tt.Find("累计写作天数")
+	cx2, cy2 := badgeRect2.X+badgeRect2.W/2, badgeRect2.Y+badgeRect2.H/2
+	tt.Press(cx2, cy2)
+	tt.Move(cx2+70, cy2+6)
+	tt.Release(cx2+70, cy2+6)
+	tt.Frame()
+	persistedPos := app.badgePositions["active_days"]
+
+	if err := tt.Click("收起徽章"); err != nil {
+		t.Fatalf("expected hide badges button to work: %v", err)
+	}
+	if !app.badgesHidden {
+		t.Fatal("expected badgesHidden=true after clicking hide button")
+	}
+	tt.Frame()
+
+	// Reload into a fresh App and verify both badgePositions and badgesHidden persisted.
+	app2 := New(backend)
+	app2.EnablePrefsPersistence(prefsFile)
+	if !app2.badgesHidden {
+		t.Fatal("expected badgesHidden=true to persist across reload")
+	}
+	gotPos, ok := app2.badgePositions["active_days"]
+	if !ok || !badgePointsNear(gotPos, persistedPos) {
+		t.Fatalf("expected persisted active_days position near %+v, got %+v (ok=%v)", persistedPos, gotPos, ok)
+	}
+
+	// Clicking the compact trophy pill restores badges when hidden.
+	tt2 := ui.NewTester(app2.View, 1360, 900)
+	tt2.Frame()
+	if err := tt2.Click("写作徽章 (3/4)"); err != nil {
+		t.Fatalf("expected compact badge pill to be clickable: %v", err)
+	}
+	if app2.badgesHidden {
+		t.Fatal("expected clicking compact badge pill to restore floating badges")
 	}
 }
