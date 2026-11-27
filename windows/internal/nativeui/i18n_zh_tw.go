@@ -286,6 +286,18 @@ var i18nZhTW = map[string]string{
 	"editor.compressVideo":      "壓縮影片",
 	"editor.compressBtn":        "壓縮",
 
+	// Writing inspiration
+	"editor.inspiration":          "沒頭緒",
+	"editor.inspirationPick":      "摘一顆蘋果",
+	"editor.inspirationAgain":     "再摘一顆",
+	"editor.inspirationResume":    "繼續寫",
+	"editor.inspirationOpen1":     "你最想讓讀者記住什麼？從那件事寫起。",
+	"editor.inspirationOpen2":     "回想今天的一個畫面。你第一眼看見了什麼？",
+	"editor.inspirationOpen3":     "如果朋友問你這件事為什麼重要，你會怎麼回答？",
+	"editor.inspirationContinue1": "挑一個剛才一筆帶過的細節，單獨寫一句。",
+	"editor.inspirationContinue2": "接下來發生了什麼？從最先改變的那件事寫起。",
+	"editor.inspirationContinue3": "讀者看到這裡會追問什麼？試著用一句話回答。",
+
 	// Status & Error Messages
 	"status.stoppedSpeak":        "已停止朗讀",
 	"status.speakErr":            "語音朗讀失敗：%s",

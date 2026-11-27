@@ -73,6 +73,7 @@ type App struct {
 	editorHeroImage   string
 	editorState       *editor.State
 	editorBuffer      *editor.Buffer
+	editorInspiration editorInspiration
 	markdownOpts      markdown.Options
 	previewScroll     ui.ScrollState
 	readerScroll      ui.ScrollState
@@ -257,6 +258,12 @@ func New(backend Backend) *App {
 		openExternal:     openBrowserFile,
 		imgLoader:        newImageLoader(),
 		locale:           LocaleZhCN,
+	}
+	a.editorState.OnInput = func(event ui.InputEvent) bool {
+		if event.Kind == ui.InputPointerDown {
+			a.editorInspiration.phase = inspirationClosed
+		}
+		return false
 	}
 	a.syncEditorLocale()
 	a.Reload()

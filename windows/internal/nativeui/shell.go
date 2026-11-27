@@ -15,6 +15,10 @@ func (a *App) View(c *ui.Context) {
 	if !a.loaded || a.externalDirty.Swap(false) {
 		a.Reload()
 	}
+	if a.editorInspiration.phase != inspirationClosed &&
+		(!a.editing || a.mode != viewSite || a.editorBuffer.Version() != a.editorInspiration.bufferVersion) {
+		a.editorInspiration.phase = inspirationClosed
+	}
 
 	if !a.anyModalOpen() {
 		if a.editing && c.Shortcut(ui.Ctrl, ui.KeyS) {
