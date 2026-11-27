@@ -693,8 +693,18 @@ func (a *App) viewIntWeb3(c *ui.Context) {
 func (a *App) viewIntegrationsSecondarySheets(c *ui.Context) {
 	pal := a.pal
 	m := &a.integrations
+	a.viewDeployConfigSheet(c, pal, m)
+	a.viewPlausibleConfigSheet(c, pal, m)
+	a.viewFilebaseConfigSheet(c, pal, m)
+	a.viewPinnableConfigSheet(c, pal, m)
+	a.viewDWebServicesConfigSheet(c, pal, m)
+	a.viewXSyncConfigSheet(c, pal, m)
+	a.viewTelegramConfigSheet(c, pal, m)
+	a.viewAggregationConfigSheet(c, pal, m)
+	a.viewWeb3ConfigSheet(c, pal, m)
+}
 
-	// 1. Deploy secondary sheet.
+func (a *App) viewDeployConfigSheet(c *ui.Context, pal macPalette, m *integrationsModalState) {
 	kind := deployKinds[m.deployKindIdx]
 	label := deployLabels[m.deployKindIdx]
 	if macSheet(c, &m.deployModalOpen, macSheetProps{
@@ -741,8 +751,9 @@ func (a *App) viewIntegrationsSecondarySheets(c *ui.Context) {
 			m.deployModalOpen = false
 		}
 	}
+}
 
-	// 2. Plausible secondary sheet.
+func (a *App) viewPlausibleConfigSheet(c *ui.Context, pal macPalette, m *integrationsModalState) {
 	if macSheet(c, &m.plausibleModalOpen, macSheetProps{
 		Title:        a.t("int.srv.plausibleModal"),
 		Width:        480,
@@ -783,8 +794,9 @@ func (a *App) viewIntegrationsSecondarySheets(c *ui.Context) {
 			m.plausibleModalOpen = false
 		}
 	}
+}
 
-	// 3. Filebase secondary sheet.
+func (a *App) viewFilebaseConfigSheet(c *ui.Context, pal macPalette, m *integrationsModalState) {
 	if macSheet(c, &m.filebaseModalOpen, macSheetProps{
 		Title:        a.t("int.srv.filebaseModal"),
 		Width:        460,
@@ -809,8 +821,9 @@ func (a *App) viewIntegrationsSecondarySheets(c *ui.Context) {
 			m.filebaseModalOpen = false
 		}
 	}
+}
 
-	// 4. Pinnable secondary sheet.
+func (a *App) viewPinnableConfigSheet(c *ui.Context, pal macPalette, m *integrationsModalState) {
 	if macSheet(c, &m.pinnableModalOpen, macSheetProps{
 		Title:        a.t("int.srv.pinnableModal"),
 		Width:        460,
@@ -834,8 +847,9 @@ func (a *App) viewIntegrationsSecondarySheets(c *ui.Context) {
 			m.pinnableModalOpen = false
 		}
 	}
+}
 
-	// 5. dWebServices secondary sheet.
+func (a *App) viewDWebServicesConfigSheet(c *ui.Context, pal macPalette, m *integrationsModalState) {
 	if macSheet(c, &m.dwebModalOpen, macSheetProps{
 		Title:        a.t("int.srv.dwebModal"),
 		Width:        460,
@@ -864,8 +878,9 @@ func (a *App) viewIntegrationsSecondarySheets(c *ui.Context) {
 			m.dwebModalOpen = false
 		}
 	}
+}
 
-	// 6. X Sync secondary sheet.
+func (a *App) viewXSyncConfigSheet(c *ui.Context, pal macPalette, m *integrationsModalState) {
 	if macSheet(c, &m.xModalOpen, macSheetProps{
 		Title:        a.t("int.x.modalTitle"),
 		Width:        500,
@@ -905,8 +920,9 @@ func (a *App) viewIntegrationsSecondarySheets(c *ui.Context) {
 			m.xModalOpen = false
 		}
 	}
+}
 
-	// 7. Telegram secondary sheet.
+func (a *App) viewTelegramConfigSheet(c *ui.Context, pal macPalette, m *integrationsModalState) {
 	if macSheet(c, &m.tgModalOpen, macSheetProps{
 		Title:        a.t("int.tg.modalTitle"),
 		Width:        460,
@@ -933,8 +949,9 @@ func (a *App) viewIntegrationsSecondarySheets(c *ui.Context) {
 			m.tgModalOpen = false
 		}
 	}
+}
 
-	// 8. Aggregation secondary sheet.
+func (a *App) viewAggregationConfigSheet(c *ui.Context, pal macPalette, m *integrationsModalState) {
 	if macSheet(c, &m.aggModalOpen, macSheetProps{
 		Title:        a.t("int.agg.modalTitle"),
 		Width:        500,
@@ -960,8 +977,9 @@ func (a *App) viewIntegrationsSecondarySheets(c *ui.Context) {
 			a.Reload()
 		}
 	}
+}
 
-	// 9. Web3 secondary sheet.
+func (a *App) viewWeb3ConfigSheet(c *ui.Context, pal macPalette, m *integrationsModalState) {
 	if macSheet(c, &m.web3ModalOpen, macSheetProps{
 		Title:        a.t("int.web3.modalTitle"),
 		Width:        520,
