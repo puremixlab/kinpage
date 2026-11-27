@@ -7,6 +7,7 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 ### Added
 
 - Added Amo, an optional desktop pet that blinks, looks toward the pointer, and taps its page when clicked. Show or hide it in General settings or from the system tray. Drag it to move it, and Kinpage remembers where you left it.
+- Added eight original site templates with sample previews for magazines, portfolios, public notebooks, newsletters, changelogs, podcasts, travel journals, and link collections.
 - Restored Day / Week / Month heatmap modes (`日` / `周` / `月`) on the Writing Desk masthead with a compact segmented switcher positioned directly below the Trophy icon and persisted in `nativeui-layout.json`.
 - Added locally computed, freely draggable low-saturation writing badges (Active Days, Best Streak, Published Posts, and Live Planets) to the right of the Writing Desk date masthead alongside the 14-week activity heatmap, with persistent placement and collapse state in `nativeui-layout.json`, narrow-window trophy fallback, and a full Writing Achievements sheet (`macSheet`) with milestone progress and one-click layout reset.
 

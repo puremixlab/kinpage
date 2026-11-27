@@ -17,6 +17,7 @@ import (
 	"windows/internal/preview"
 	"windows/internal/services"
 	"windows/internal/store"
+	"windows/internal/templatecatalog"
 	"windows/internal/templates"
 )
 
@@ -115,6 +116,7 @@ func renderWithTemplateSettings(dir string, site store.Site, articles []store.Ar
 	if err = json.Unmarshal(b, &metadata); err != nil || metadata.Name == "" {
 		return errors.New("模板信息无效")
 	}
+	isKinpage := templatecatalog.IsKinpage(metadata.Name)
 	seenTags := map[string]string{}
 	for _, tags := range append([]map[string]string{site.Tags}, articleTagMaps(articles)...) {
 		for key, label := range tags {
@@ -209,6 +211,9 @@ func renderWithTemplateSettings(dir string, site store.Site, articles []store.Ar
 			}
 			row["attachments"] = names
 		}
+		if isKinpage {
+			addKinpageArticleFields(row, a, html, heroName)
+		}
 		byID[a.ID] = row
 		if a.ArticleType == 1 {
 			continue
@@ -245,6 +250,14 @@ func renderWithTemplateSettings(dir string, site store.Site, articles []store.Ar
 	}
 	_, podcastErr := os.Stat(filepath.Join(dir, "podcast.xml"))
 	context := map[string]any{"planet": planet, "articles": rows, "assets_prefix": "./", "page_title": site.Name, "page_description": site.About, "page_description_html": aboutHTML, "article_summary": "", "current_item_type": "index", "site_navigation": navigation, "template_settings": map[string]any{}, "user_settings": userSettings, "og_image_url": ogImage, "style_css_sha256": cssHash, "custom_code_head": string(customCodeHead(site)), "custom_code_body_start": string(customCodeBodyStart(site)), "custom_code_body_end": string(customCodeBodyEnd(site)), "total_pages": 1, "current_page": 1, "has_avatar": hasAvatar, "has_podcast": podcastErr == nil}
+	if isKinpage {
+		activeTags := make(map[string]string, len(tagArticles))
+		for key := range tagArticles {
+			activeTags[key] = planetTags[key]
+		}
+		context["active_tags"] = activeTags
+		context["social_links"] = socialLinks(site)
+	}
 	if buildTimestamp != "" {
 		context["build_timestamp"] = buildTimestamp
 	}

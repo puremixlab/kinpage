@@ -1,0 +1,12 @@
+<div class="portfolio">
+  {% for article in articles %}
+  <article class="project{% if not article.heroImage %} text-project{% endif %}">
+    {% include "modules/entry_image.html" %}
+    <header class="project-caption">
+      <h2><a href=".{{ article.link|escape }}">{{ article.title|default:"Untitled post"|escape }}</a></h2>
+      {% include "modules/entry_meta.html" %}
+    </header>
+    {% if not article.heroImage and article.excerpt %}<p class="excerpt">{{ article.excerpt|escape }}</p>{% endif %}
+  </article>
+  {% endfor %}
+</div>

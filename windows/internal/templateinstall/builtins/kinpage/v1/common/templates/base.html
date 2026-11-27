@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title|escape }}{% if current_item_type == "article" %} · {{ planet.name|escape }}{% endif %}{% if current_item_type == "index" and current_page > 1 %} · Page {{ current_page }}{% endif %}</title>
+  {% if current_item_type == "article" %}
+  {% if article.excerpt %}<meta name="description" content="{{ article.excerpt|escape }}">{% endif %}
+  {% if social_image_url %}<meta property="og:image" content="{{ social_image_url|escape }}">{% endif %}
+  {% else %}
+  {% if planet.about %}<meta name="description" content="{{ planet.about|escape }}">{% endif %}
+  {% if has_avatar and og_image_url %}<meta property="og:image" content="{{ og_image_url|escape }}">{% endif %}
+  {% endif %}
+  {% if has_avatar %}<link rel="icon" href="{{ assets_prefix }}favicon.ico">{% endif %}
+  <link rel="alternate" type="application/rss+xml" title="{{ planet.name|escape }}" href="{{ assets_prefix }}rss.xml">
+  {% if has_podcast %}<link rel="alternate" type="application/rss+xml" title="{{ planet.name|escape }} Podcast" href="{{ assets_prefix }}podcast.xml">{% endif %}
+  <link rel="stylesheet" href="{{ assets_prefix }}assets/base.css">
+  <link rel="stylesheet" href="{{ assets_prefix }}assets/style.css?sha256={{ style_css_sha256 }}">
+  {% if planet.plausibleEnabled %}<script defer data-domain="{{ planet.plausibleDomain|escape }}" src="https://{{ planet.plausibleAPIServer|escape }}/js/plausible.local.js"></script>{% endif %}
+  {{ custom_code_head }}
+</head>
+<body>
+  {{ custom_code_body_start }}
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="site-shell layout-{{ current_item_type }}">
+    {% include "modules/header.html" %}
+    <main id="main" tabindex="-1">{% block main %}{% endblock %}</main>
+    {% if social_links %}
+    <footer class="site-footer">
+      <nav class="link-row" aria-label="Social links">
+        {% for link in social_links %}<a href="{{ link.Href|escape }}" rel="noopener noreferrer">{{ link.Title|escape }}</a>{% endfor %}
+      </nav>
+    </footer>
+    {% endif %}
+  </div>
+  {{ custom_code_body_end }}
+</body>
+</html>

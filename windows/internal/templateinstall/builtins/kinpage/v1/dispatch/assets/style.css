@@ -1,0 +1,39 @@
+:root {
+  --paper: #fcf4e9;
+  --surface: #f4e6d6;
+  --ink: #332720;
+  --muted: #6c5549;
+  --rule: #d9bda9;
+  --accent: #9a3b28;
+  --heading: var(--serif);
+  --body: var(--serif);
+  --max-width: 43rem;
+}
+.layout-index .site-intro { text-align: center; }
+.site-intro > .site-avatar, .site-about { margin-inline: auto; }
+.layout-index .site-nav .link-row { justify-content: center; }
+.site-intro::before {
+  content: "";
+  display: block;
+  inline-size: 3rem;
+  block-size: 0.2rem;
+  margin: 0 auto 0.85rem;
+  background: var(--accent);
+}
+.issue { padding-block: 1.4rem; border-block-end: 1px solid var(--rule); }
+.issue:first-child { padding-block-start: 0; }
+.issue h2 { margin-block: 0.32rem 0.4rem; font-size: clamp(1.45rem, 4.5vw, 2rem); }
+.issue:first-child h2 { font-size: clamp(1.85rem, 7vw, 3.4rem); letter-spacing: -0.04em; }
+.issue .excerpt { max-inline-size: 59ch; font-size: 1.1rem; }
+.masthead { font-size: clamp(2.6rem, 8vw, 5rem); }
+.feed-link { letter-spacing: 0.06em; }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #2e211c;
+    --surface: #3d2b24;
+    --ink: #f8e8db;
+    --muted: #dfc1ac;
+    --rule: #714f40;
+    --accent: #ffae91;
+  }
+}

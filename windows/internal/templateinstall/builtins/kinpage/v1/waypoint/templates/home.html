@@ -1,0 +1,13 @@
+<div class="journey">
+  {% for article in articles %}
+  <article class="postcard{% if article.heroImage %} has-photo{% endif %}">
+    {% include "modules/entry_image.html" %}
+    <div class="postcard-copy">
+      {% include "modules/entry_meta.html" %}
+      <h2><a href=".{{ article.link|escape }}">{{ article.title|default:"Untitled post"|escape }}</a></h2>
+      {% if article.excerpt %}<p class="excerpt">{{ article.excerpt|escape }}</p>{% endif %}
+      {% include "modules/entry_tags.html" %}
+    </div>
+  </article>
+  {% endfor %}
+</div>

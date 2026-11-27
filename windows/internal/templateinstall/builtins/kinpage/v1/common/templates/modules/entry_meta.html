@@ -1,0 +1,4 @@
+<div class="entry-meta">
+  <time datetime="{{ article.created|formatDateC }}">{{ article.created|ymd }}</time>
+  {% if article.pinned %}<span class="pinned">Pinned</span>{% endif %}
+</div>

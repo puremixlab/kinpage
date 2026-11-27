@@ -1,0 +1,9 @@
+<div class="issues">
+  {% for article in articles %}
+  <article class="issue">
+    {% include "modules/entry_meta.html" %}
+    <h2><a href=".{{ article.link|escape }}">{{ article.title|default:"Untitled post"|escape }}</a></h2>
+    {% if article.excerpt %}<p class="excerpt">{{ article.excerpt|escape }}</p>{% endif %}
+  </article>
+  {% endfor %}
+</div>

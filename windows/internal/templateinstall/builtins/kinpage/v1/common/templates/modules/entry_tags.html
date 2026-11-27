@@ -1,0 +1,7 @@
+{% if article.tags %}
+<ul class="entry-tags" aria-label="Topics">
+  {% for key, label in article.tags sorted %}
+  <li><a href="{{ assets_prefix }}{{ key|escape }}.html">{{ label }}</a></li>
+  {% endfor %}
+</ul>
+{% endif %}
