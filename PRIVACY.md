@@ -30,7 +30,7 @@ Exported `.planet` backup archives contain unencrypted IPNS private keys. You ar
 
 Updates to this policy will be published in this repository. For privacy questions, please open an issue at:
 
-https://github.com/puremixlab/planet-windows/issues
+https://github.com/puremixlab/kinpage/issues
 
 ---
 
@@ -60,4 +60,4 @@ https://github.com/puremixlab/planet-windows/issues
 
 本隐私政策如随功能更新而调整，将在本仓库中同步更新。如有隐私相关问题，请通过 GitHub Issues 联系我们：
 
-https://github.com/puremixlab/planet-windows/issues
+https://github.com/puremixlab/kinpage/issues

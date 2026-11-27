@@ -10,8 +10,8 @@
 <h3>Decentralized blogging, IPFS publishing, and feed reading — built natively for Windows.</h3>
 
 <p>
-  <a href="https://github.com/puremixlab/planet-windows/releases"><img src="https://img.shields.io/github/v/release/puremixlab/planet-windows?include_prereleases&label=release&color=007aff" alt="Latest Release"></a>
-  <a href="https://github.com/puremixlab/planet-windows/actions/workflows/windows-ci.yml"><img src="https://github.com/puremixlab/planet-windows/actions/workflows/windows-ci.yml/badge.svg" alt="Windows Checks"></a>
+  <a href="https://github.com/puremixlab/kinpage/releases"><img src="https://img.shields.io/github/v/release/puremixlab/kinpage?include_prereleases&label=release&color=007aff" alt="Latest Release"></a>
+  <a href="https://github.com/puremixlab/kinpage/actions/workflows/windows-ci.yml"><img src="https://github.com/puremixlab/kinpage/actions/workflows/windows-ci.yml/badge.svg" alt="Windows Checks"></a>
   <img src="https://img.shields.io/badge/platform-Windows%20x64-0078d4" alt="Platform: Windows x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2ea043" alt="MIT License"></a>
   <a href="https://awesomemygo.dev/apps/planet-windows"><img src="https://awesomemygo.dev/badge.svg" alt="Listed on Awesome MyGo"></a>
@@ -90,7 +90,7 @@
 
 | Build | Platform | Requirements | Checksums & Notes |
 | --- | --- | --- | --- |
-| **[Kinpage v0.1.0](https://github.com/puremixlab/planet-windows/releases/tag/v0.1.0)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release page](https://github.com/puremixlab/planet-windows/releases) (MSIX / NSIS installer, SHA-256, source archive) |
+| **[Kinpage v0.1.0](https://github.com/puremixlab/kinpage/releases/tag/v0.1.0)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release page](https://github.com/puremixlab/kinpage/releases) (MSIX / NSIS installer, SHA-256, source archive) |
 
 Install via Microsoft Store (MSIX) or extract/install the Windows x64 setup into an empty directory, then launch **Kinpage** from the Start menu. See [MSIX Packaging Guide](windows/docs/msix-packaging.md) for Store and sideloading builds.
 
@@ -113,8 +113,8 @@ Install via Microsoft Store (MSIX) or extract/install the Windows x64 setup into
 **Prerequisites:** Windows x64, Git, [Go 1.27.4](https://go.dev/dl/) (or compatible toolchain), [Bun](https://bun.sh/), WebView2 Runtime, and [7-Zip](https://www.7-zip.org/) (only required for installer packaging).
 
 ```powershell
-git clone https://github.com/puremixlab/planet-windows.git
-cd planet-windows/windows
+git clone https://github.com/puremixlab/kinpage.git
+cd kinpage/windows
 bun install --frozen-lockfile
 powershell -NoProfile -File scripts/prepare-kubo.ps1
 bun run dev
@@ -145,7 +145,7 @@ Run all commands from `windows/`:
 - [Changelog](CHANGELOG.md) — version history and unreleased changes.
 - [Logo & Branding](docs/branding/README.md) — brand guidelines and SVG assets.
 - [Contributing](CONTRIBUTING.md) · [Git Workflow](docs/git-workflow.md) · [Releasing](docs/releasing.md) — development and release workflows.
-- [Security Policy](SECURITY.md) · [Privacy Policy](PRIVACY.md) · [Issues](https://github.com/puremixlab/planet-windows/issues) — vulnerability reporting, privacy details, bugs, and feature requests.
+- [Security Policy](SECURITY.md) · [Privacy Policy](PRIVACY.md) · [Issues](https://github.com/puremixlab/kinpage/issues) — vulnerability reporting, privacy details, bugs, and feature requests.
 
 ## Acknowledgements
 

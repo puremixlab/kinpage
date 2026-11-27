@@ -10,8 +10,8 @@
 <h3>面向 Windows 的去中心化博客写作、IPFS 发布与订阅阅读桌面应用。</h3>
 
 <p>
-  <a href="https://github.com/puremixlab/planet-windows/releases"><img src="https://img.shields.io/github/v/release/puremixlab/planet-windows?include_prereleases&label=release&color=007aff" alt="最新版本"></a>
-  <a href="https://github.com/puremixlab/planet-windows/actions/workflows/windows-ci.yml"><img src="https://github.com/puremixlab/planet-windows/actions/workflows/windows-ci.yml/badge.svg" alt="Windows Checks"></a>
+  <a href="https://github.com/puremixlab/kinpage/releases"><img src="https://img.shields.io/github/v/release/puremixlab/kinpage?include_prereleases&label=release&color=007aff" alt="最新版本"></a>
+  <a href="https://github.com/puremixlab/kinpage/actions/workflows/windows-ci.yml"><img src="https://github.com/puremixlab/kinpage/actions/workflows/windows-ci.yml/badge.svg" alt="Windows Checks"></a>
   <img src="https://img.shields.io/badge/platform-Windows%20x64-0078d4" alt="平台：Windows x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2ea043" alt="MIT 许可证"></a>
   <a href="https://awesomemygo.dev/apps/planet-windows"><img src="https://awesomemygo.dev/badge.svg" alt="Listed on Awesome MyGo"></a>
@@ -90,7 +90,7 @@
 
 | 版本 | 适用平台 | 运行环境 | 校验与说明 |
 | --- | --- | --- | --- |
-| **[邻页 · Kinpage v0.1.0](https://github.com/puremixlab/planet-windows/releases/tag/v0.1.0)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release 页面](https://github.com/puremixlab/planet-windows/releases)（支持 Microsoft Store MSIX / 独立 NSIS 安装包、SHA-256 与源码归档） |
+| **[邻页 · Kinpage v0.1.0](https://github.com/puremixlab/kinpage/releases/tag/v0.1.0)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release 页面](https://github.com/puremixlab/kinpage/releases)（支持 Microsoft Store MSIX / 独立 NSIS 安装包、SHA-256 与源码归档） |
 
 可通过 Microsoft Store（MSIX）安装，或将独立安装包安装到空目录后，从开始菜单打开 **Kinpage** 即可使用。商店打包与侧载说明见 [MSIX 打包文档](windows/docs/msix-packaging.md)。
 
@@ -113,8 +113,8 @@
 **环境准备**：Windows x64、Git、[Go 1.27.4](https://go.dev/dl/)（或兼容工具链）、[Bun](https://bun.sh/)、WebView2 Runtime；如需打包安装程序还需安装 [7-Zip](https://www.7-zip.org/)。
 
 ```powershell
-git clone https://github.com/puremixlab/planet-windows.git
-cd planet-windows/windows
+git clone https://github.com/puremixlab/kinpage.git
+cd kinpage/windows
 bun install --frozen-lockfile
 powershell -NoProfile -File scripts/prepare-kubo.ps1
 bun run dev
@@ -145,7 +145,7 @@ bun run dev
 - [更新日志](CHANGELOG.md) — 各版本变更与未发布改动记录。
 - [Logo 与品牌规范](docs/branding/README.md) — 品牌视觉说明与矢量素材。
 - [贡献指南](CONTRIBUTING.md) · [Git 协作指南](docs/git-workflow.md) · [发布流程](docs/releasing.md) — 开发协作与发版规范。
-- [安全政策](SECURITY.md) · [隐私政策](PRIVACY.md) · [GitHub Issues](https://github.com/puremixlab/planet-windows/issues) — 漏洞反馈、隐私说明、缺陷提交与功能建议。
+- [安全政策](SECURITY.md) · [隐私政策](PRIVACY.md) · [GitHub Issues](https://github.com/puremixlab/kinpage/issues) — 漏洞反馈、隐私说明、缺陷提交与功能建议。
 
 ## 致谢
 
