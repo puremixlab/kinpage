@@ -389,6 +389,10 @@ func (a *App) viewToolsGeneral(c *ui.Context) {
 		})
 	})
 
+	if a.applyAppIcon != nil {
+		a.viewAppIcons(c)
+	}
+
 	// System behavior card (immediate effect).
 	macHighlightCard(c, pal, m.highlightID == "global-sleep", func() {
 		ui.Row(c).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(16).AlignSelf(ui.Stretch).Children(func() {

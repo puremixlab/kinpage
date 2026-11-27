@@ -27,6 +27,12 @@ func globalSettingsSearchItems() []settingsSearchItem {
 			keywords: []string{"language", "locale", "lang", "语言", "中文", "英文", "english"},
 		},
 		{
+			tab: toolsTabGeneral, targetID: "global-app-icon",
+			groupKey: "settings.groupGeneral", tabKey: "settings.tabGeneral",
+			titleKey: "settings.appIconTitle", summaryKey: "settings.desktopShortcut",
+			keywords: []string{"desktop icon", "shortcut", "图标", "圖示", "快捷方式", "捷徑"},
+		},
+		{
 			tab: toolsTabGeneral, targetID: "global-sleep",
 			groupKey: "settings.groupGeneral", tabKey: "settings.tabGeneral",
 			titleKey: "menu.preventSleep", summaryKey: "settings.search.sleepSummary",

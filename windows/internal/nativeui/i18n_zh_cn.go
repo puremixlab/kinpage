@@ -640,6 +640,18 @@ var i18nZhCN = map[string]string{
 	"int.tpl.description.waypoint":  "图文并排的旅行手记",
 	"int.tpl.description.linkshelf": "带短评的链接收藏",
 
+	// App icon settings
+	"settings.appIconTitle":            "应用图标",
+	"settings.appIcon.classic":         "经典",
+	"settings.appIcon.dawn":            "晨光",
+	"settings.appIcon.tide":            "潮汐",
+	"settings.appIcon.orbit":           "星轨",
+	"settings.appIconFailed":           "无法切换应用图标（%s）",
+	"settings.desktopShortcut":         "创建或更新桌面快捷方式",
+	"settings.desktopShortcutReady":    "桌面快捷方式已就绪",
+	"settings.desktopShortcutFailed":   "无法更新桌面快捷方式（%s）",
+	"settings.desktopShortcutOccupied": "桌面上已有其他同名快捷方式，请将它改名后重试。",
+
 	// Dialogs: System Tools & Global Settings
 	"tools.sidebarTitle":                    "系统工具",
 	"settings.searchPlaceholder":            "搜索设置…",

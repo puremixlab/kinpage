@@ -640,6 +640,18 @@ var i18nEn = map[string]string{
 	"int.tpl.description.waypoint":  "A travel journal with photos and notes",
 	"int.tpl.description.linkshelf": "An annotated collection of links",
 
+	// App icon settings
+	"settings.appIconTitle":            "App Icon",
+	"settings.appIcon.classic":         "Classic",
+	"settings.appIcon.dawn":            "Dawn",
+	"settings.appIcon.tide":            "Tide",
+	"settings.appIcon.orbit":           "Orbit",
+	"settings.appIconFailed":           "Couldn't switch the app icon (%s)",
+	"settings.desktopShortcut":         "Create or Update Desktop Shortcut",
+	"settings.desktopShortcutReady":    "Desktop shortcut is ready",
+	"settings.desktopShortcutFailed":   "Couldn't update the desktop shortcut (%s)",
+	"settings.desktopShortcutOccupied": "A different Kinpage.lnk is on the desktop. Rename it and try again.",
+
 	// Dialogs: System Tools & Global Settings
 	"tools.sidebarTitle":                    "System Tools",
 	"settings.searchPlaceholder":            "Search settings…",

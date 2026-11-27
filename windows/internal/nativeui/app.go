@@ -11,6 +11,7 @@ import (
 	"github.com/egoist/mygo/ui/markdown"
 	"windows/internal/desktoppet"
 	"windows/internal/store"
+	"windows/resources"
 )
 
 type viewMode int
@@ -213,6 +214,10 @@ type App struct {
 	lastSavedPrefs   layoutPrefs
 	siteOrder        []string
 	subOrder         []string
+	appIcon          resources.AppIcon
+	appIconPreviews  map[resources.AppIcon]*ui.Bitmap
+	applyAppIcon     func(resources.AppIcon) error
+	applyShortcut    func(resources.AppIcon, bool) (bool, error)
 
 	desktopPetPrefs    desktopPetPrefs
 	desktopPet         *desktoppet.Window

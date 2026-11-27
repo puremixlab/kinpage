@@ -640,6 +640,18 @@ var i18nZhTW = map[string]string{
 	"int.tpl.description.waypoint":  "圖文並排的旅行手記",
 	"int.tpl.description.linkshelf": "附短評的連結收藏",
 
+	// App icon settings
+	"settings.appIconTitle":            "應用程式圖示",
+	"settings.appIcon.classic":         "經典",
+	"settings.appIcon.dawn":            "晨光",
+	"settings.appIcon.tide":            "潮汐",
+	"settings.appIcon.orbit":           "星軌",
+	"settings.appIconFailed":           "無法切換應用程式圖示（%s）",
+	"settings.desktopShortcut":         "建立或更新桌面捷徑",
+	"settings.desktopShortcutReady":    "桌面捷徑已就緒",
+	"settings.desktopShortcutFailed":   "無法更新桌面捷徑（%s）",
+	"settings.desktopShortcutOccupied": "桌面上已有其他同名捷徑，請將它重新命名後再試一次。",
+
 	// Dialogs: System Tools & Global Settings
 	"tools.sidebarTitle":                    "系統工具",
 	"settings.searchPlaceholder":            "搜尋設定…",
