@@ -229,6 +229,11 @@ var i18nZhTW = map[string]string{
 	"dashboard.badge.published.stat":   "已發布 %d 篇文章",
 	"dashboard.badge.planet.title":     "星球上線紀念",
 	"dashboard.badge.planet.stat":      "已發布 %d 個站點",
+	"dashboard.badge.trophy.bronze":    "青銅獎盃",
+	"dashboard.badge.trophy.silver":    "白銀獎盃",
+	"dashboard.badge.trophy.gold":      "黃金獎盃",
+	"dashboard.badge.trophy.platinum":  "鉑金獎盃",
+	"dashboard.badge.trophy.orbit":     "星環獎盃",
 
 	// Article & Subscription Lists
 	"list.articleCount":          "%d 篇文章",

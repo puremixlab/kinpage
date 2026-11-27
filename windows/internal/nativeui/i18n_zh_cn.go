@@ -229,6 +229,11 @@ var i18nZhCN = map[string]string{
 	"dashboard.badge.published.stat":   "已发布 %d 篇文章",
 	"dashboard.badge.planet.title":     "星球上线纪念",
 	"dashboard.badge.planet.stat":      "已发布 %d 个站点",
+	"dashboard.badge.trophy.bronze":    "青铜奖杯",
+	"dashboard.badge.trophy.silver":    "白银奖杯",
+	"dashboard.badge.trophy.gold":      "黄金奖杯",
+	"dashboard.badge.trophy.platinum":  "铂金奖杯",
+	"dashboard.badge.trophy.orbit":     "星环奖杯",
 
 	// Article & Subscription Lists
 	"list.articleCount":          "%d 篇文章",

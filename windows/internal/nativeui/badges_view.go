@@ -368,10 +368,18 @@ func (a *App) viewCompactBadgePill(c *ui.Context, unlockedCount, totalCount int)
 	}
 	pill.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
-			ui.Icon(c, lucide.Trophy()).Size(12.5, 12.5).TextColor(pal.prefsMuted)
+			tierKey, _, hasAny := writingTrophyRank(a.writingBadges())
+			if bmp := trophyBitmapFor(tierKey); bmp != nil {
+				img := ui.Image(c, bmp).Size(16, 16)
+				if !hasAny {
+					img.Grayscale().Opacity(0.55)
+				}
+			} else {
+				ui.Icon(c, lucide.Trophy()).Size(12.5, 12.5).TextColor(pal.prefsMuted)
+			}
 			ui.Text(c, fmt.Sprintf("%d/%d", unlockedCount, totalCount)).
 				Font(macPlanetFont).FontSize(11.5).FontWeight(500).
-				TextColor(pal.prefsSecondary).NoWrap()
+				FontFeatures("tnum").TextColor(pal.prefsSecondary).NoWrap()
 		})
 	})
 	if pill.Clicked() {
@@ -386,6 +394,37 @@ func (a *App) viewCompactBadgePill(c *ui.Context, unlockedCount, totalCount int)
 func (a *App) viewBadgeGraphic(c *ui.Context, b store.WritingBadge, spec badgeVisualSpec, size float32, forceLockedStyle bool) {
 	pal := a.pal
 	locked := !b.Unlocked || forceLockedStyle
+
+	if bmp := medalBitmapFor(b.Kind); bmp != nil {
+		ui.Box(c).Size(size, size).Children(func() {
+			img := ui.Image(c, bmp).Absolute().Fill()
+			if locked {
+				img.Grayscale().Opacity(0.30)
+				return
+			}
+			valText := fmt.Sprintf("%d", b.Value)
+			if b.Value > 999 {
+				valText = "999+"
+			}
+			pillH := float32(15)
+			pillPadX := float32(4.5)
+			fontSize := float32(9.5)
+			if size >= 76 {
+				pillH = 20
+				pillPadX = 7
+				fontSize = 11.5
+			}
+			ui.Box(c).Height(pillH).PaddingX(pillPadX).Radius(pillH/2).
+				Absolute().Right(0).Bottom(0).Center().
+				Background(pal.prefsCard).Border(0.5, pal.prefsCardBorder).
+				Shadow(0, 1, 3, 0, pal.prefsCardShadow).Children(func() {
+				ui.Text(c, valText).
+					Font(macPlanetFont).FontSize(fontSize).FontWeight(700).
+					FontFeatures("tnum").TextColor(pal.prefsInk).NoWrap()
+			})
+		})
+		return
+	}
 
 	var svg *ui.SVG
 	var ink ui.Color
@@ -481,25 +520,41 @@ func (a *App) viewBadgeWallModal(c *ui.Context) {
 		HideFooter:   true,
 		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
-		// Compact visual header: colored unlock pips + numeric fraction (all details in tooltip).
+		trophyTier, trophyTitleKey, hasAnyBadge := writingTrophyRank(badges)
+		// Compact visual header: 3D rank trophy + colored unlock pips + numeric fraction (all details in tooltip).
 		ui.Row(c).AlignSelf(ui.Stretch).AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(10).Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Gap(8).Tooltip(a.t("dashboard.badge.wallSubtitle")).Children(func() {
-				ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
-					for _, b := range badges {
-						spec := badgeVisualFor(b.Kind)
-						dotColor := pal.prefsMuted.Alpha(0.25)
-						if b.Unlocked {
-							dotColor = spec.lightAccent
-							if pal.dark {
-								dotColor = spec.darkAccent
-							}
-						}
-						ui.Box(c).Size(7, 7).Radius(3.5).Background(dotColor)
+			ui.Row(c).AlignItems(ui.Center).Gap(10).Tooltip(a.t("dashboard.badge.wallSubtitle")).Children(func() {
+				if bmp := trophyBitmapFor(trophyTier); bmp != nil {
+					img := ui.Image(c, bmp).Size(40, 40)
+					if !hasAnyBadge {
+						img.Grayscale().Opacity(0.42)
 					}
+				}
+				ui.Column(c).Gap(4).Children(func() {
+					ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+						ui.Text(c, a.t(trophyTitleKey)).
+							Font(macPlanetFont).FontSize(13).FontWeight(600).
+							TextColor(pal.prefsInk).NoWrap()
+						ui.Box(c).Padding(1, 6, 1, 6).Radius(4).Background(pal.hover).Children(func() {
+							ui.Text(c, fmt.Sprintf("%d / %d", unlockedCount, len(badges))).
+								Font(macPlanetFont).FontSize(11).FontWeight(600).
+								FontFeatures("tnum").TextColor(pal.prefsSecondary).NoWrap()
+						})
+					})
+					ui.Row(c).AlignItems(ui.Center).Gap(5).Children(func() {
+						for _, b := range badges {
+							spec := badgeVisualFor(b.Kind)
+							dotColor := pal.prefsMuted.Alpha(0.25)
+							if b.Unlocked {
+								dotColor = spec.lightAccent
+								if pal.dark {
+									dotColor = spec.darkAccent
+								}
+							}
+							ui.Box(c).Size(6.5, 6.5).Radius(3.25).Background(dotColor)
+						}
+					})
 				})
-				ui.Text(c, fmt.Sprintf("%d / %d", unlockedCount, len(badges))).
-					Font(macPlanetFont).FontSize(12.5).FontWeight(600).
-					FontFeatures("tnum").TextColor(pal.prefsSecondary).NoWrap()
 			})
 
 			ui.Row(c).AlignItems(ui.Center).Gap(6).Shrink(0).Children(func() {

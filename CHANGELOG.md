@@ -6,6 +6,8 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ### Added
 
+- Wired the 3D metallic enamel writing medal and 5-tier trophy artwork (`bronze` to `orbit`) into the Writing Desk draggable badges, masthead trophy trigger, and Writing Achievements showcase using 256×256 scaled embedded assets while keeping the original high-resolution master PNGs untouched.
+
 - Added Dawn, Tide, and Orbit app icons alongside the classic Kinpage icon. Choose an icon in General settings to update the window, notification area, and existing Kinpage desktop shortcut. General settings can also create the shortcut.
 - Added Amo, an optional desktop pet that blinks, looks toward the pointer, and taps its page when clicked. Show or hide it in General settings or from the system tray. Drag it to move it, and Kinpage remembers where you left it.
 - Added an apple tree to the Markdown editor. An apple lands on the page, reveals a local writing prompt, and lets the writer resume at the original cursor.
