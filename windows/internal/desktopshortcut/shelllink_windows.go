@@ -107,11 +107,37 @@ func (link *shellLink) matches(target shortcutTarget) bool {
 		equal, _, _ := ilIsEqual.Call(uintptr(actual), uintptr(expected))
 		return equal != 0
 	}
-	const slgpRawPath = 4
 	var path [32768]uint16
 	hr, _, _ := syscall.SyscallN(link.vt.getPath, uintptr(unsafe.Pointer(link)),
-		uintptr(unsafe.Pointer(&path[0])), uintptr(len(path)), 0, slgpRawPath)
-	return hr == 0 && strings.EqualFold(filepath.Clean(windows.UTF16ToString(path[:])), filepath.Clean(target.exe))
+		uintptr(unsafe.Pointer(&path[0])), uintptr(len(path)), 0, 0)
+	return hr == 0 && sameExecutablePath(windows.UTF16ToString(path[:]), target.exe)
+}
+
+func sameExecutablePath(actual, expected string) bool {
+	actual, expected = filepath.Clean(actual), filepath.Clean(expected)
+	if !filepath.IsAbs(actual) || !filepath.IsAbs(expected) || !strings.EqualFold(filepath.VolumeName(actual), filepath.VolumeName(expected)) {
+		return false
+	}
+	if strings.EqualFold(actual, expected) {
+		return true
+	}
+	// os.Executable and the shell can spell the same local path differently
+	// when Windows provides a short alias for one or more components.
+	actualLong, expectedLong := longPath(actual), longPath(expected)
+	return actualLong != "" && expectedLong != "" && strings.EqualFold(actualLong, expectedLong)
+}
+
+func longPath(path string) string {
+	value, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return ""
+	}
+	var buffer [32768]uint16
+	n, err := windows.GetLongPathName(value, &buffer[0], uint32(len(buffer)))
+	if err != nil || n == 0 || n >= uint32(len(buffer)) {
+		return ""
+	}
+	return filepath.Clean(windows.UTF16ToString(buffer[:n]))
 }
 
 func appsFolderItem(appID string) (unsafe.Pointer, error) {
