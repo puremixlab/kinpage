@@ -47,9 +47,7 @@ func TestMigrateDataDirPreservesAttachmentsAndLocalAPIConfig(t *testing.T) {
 	if err := store.ScheduleDataDirMigration(source, source, target); err != nil {
 		t.Fatal(err)
 	}
-	if active := store.ResolveDataDir(source); active != source {
-		t.Fatalf("scheduling switched the active repository to %q", active)
-	}
+	assertSameDataDir(t, store.ResolveDataDir(source), source)
 	if _, err := library.SaveDraft(site.ID, draft.ID, "", "Saved after scheduling", ""); err != nil {
 		t.Fatal(err)
 	}
@@ -58,22 +56,24 @@ func TestMigrateDataDirPreservesAttachmentsAndLocalAPIConfig(t *testing.T) {
 	if err := os.WriteFile(blocker, []byte("keep"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if active, err := store.ApplyScheduledDataDirMigration(source); err == nil || active != source {
-		t.Fatalf("failed migration did not keep the active repository: %q, %v", active, err)
+	active, err := store.ApplyScheduledDataDirMigration(source)
+	if err == nil {
+		t.Fatal("migration into a non-empty target succeeded")
 	}
+	assertSameDataDir(t, active, source)
 	if data, err := os.ReadFile(blocker); err != nil || string(data) != "keep" {
 		t.Fatalf("migration changed the unrelated file: %q, %v", data, err)
 	}
 	if err := os.Remove(blocker); err != nil {
 		t.Fatal(err)
 	}
-	if active, err := store.ApplyScheduledDataDirMigration(source); err != nil || active != target {
-		t.Fatalf("migration retry = %q, %v; want %q", active, err, target)
+	active, err = store.ApplyScheduledDataDirMigration(source)
+	if err != nil {
+		t.Fatalf("migration retry: %v", err)
 	}
+	assertSameDataDir(t, active, target)
 	migratedRoot := store.ResolveDataDir(source)
-	if migratedRoot != target {
-		t.Fatalf("repository path after migration = %q, want %q", migratedRoot, target)
-	}
+	assertSameDataDir(t, migratedRoot, target)
 	migrated, err := store.Open(migratedRoot)
 	if err != nil {
 		t.Fatal(err)
@@ -115,9 +115,11 @@ func TestMigrateDataDirPreservesAttachmentsAndLocalAPIConfig(t *testing.T) {
 			t.Fatalf("load migrated local API configuration = %+v, %v; want %+v", got, err, wantConfig)
 		}
 	})
-	if active, err := store.ApplyScheduledDataDirMigration(source); err != nil || active != target {
-		t.Fatalf("subsequent startup tried to migrate again: %q, %v", active, err)
+	active, err = store.ApplyScheduledDataDirMigration(source)
+	if err != nil {
+		t.Fatalf("subsequent startup tried to migrate again: %v", err)
 	}
+	assertSameDataDir(t, active, target)
 }
 
 func TestScheduledMigrationWaitsForUnavailableSource(t *testing.T) {
@@ -138,7 +140,9 @@ func TestScheduledMigrationWaitsForUnavailableSource(t *testing.T) {
 	if err := os.Rename(moved, source); err != nil {
 		t.Fatal(err)
 	}
-	if active, err := store.ApplyScheduledDataDirMigration(defaultDir); err != nil || active != target {
-		t.Fatalf("reconnected source: active=%q, err=%v", active, err)
+	active, err := store.ApplyScheduledDataDirMigration(defaultDir)
+	if err != nil {
+		t.Fatalf("reconnected source: %v", err)
 	}
+	assertSameDataDir(t, active, target)
 }
