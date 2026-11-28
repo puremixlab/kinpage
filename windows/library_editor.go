@@ -30,8 +30,6 @@ func (l *Library) Drafts(siteID string) ([]store.Draft, error) {
 }
 
 func (l *Library) SaveDraft(siteID, draftID, articleID, title, content string) (store.Draft, error) {
-	l.publicMu.Lock()
-	defer l.publicMu.Unlock()
 	s, err := l.open()
 	if err != nil {
 		return store.Draft{}, err
@@ -40,8 +38,6 @@ func (l *Library) SaveDraft(siteID, draftID, articleID, title, content string) (
 }
 
 func (l *Library) SaveDraftWithTags(siteID, draftID, articleID, title, content, tagsJSON string) (store.Draft, error) {
-	l.publicMu.Lock()
-	defer l.publicMu.Unlock()
 	s, err := l.open()
 	if err != nil {
 		return store.Draft{}, err
@@ -109,17 +105,25 @@ func (l *Library) SiteAvailableTags(siteID string) ([]store.TagUsage, error) {
 func (l *Library) PreviewDraft(siteID, draftID, content string) (string, error) {
 	l.publicMu.Lock()
 	defer l.publicMu.Unlock()
-	s, err := l.open()
+	resolve, err := l.draftPreviewImages(siteID, draftID)
 	if err != nil {
 		return "", err
+	}
+	return preview.MarkdownWithImages(content, resolve)
+}
+
+func (l *Library) draftPreviewImages(siteID, draftID string) (func(string) ([]byte, string, error), error) {
+	s, err := l.open()
+	if err != nil {
+		return nil, err
 	}
 	site, articles, _, err := s.PublicationSnapshot(siteID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	drafts, err := s.ListDrafts(siteID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	var draft *store.Draft
 	for i := range drafts {
@@ -129,13 +133,13 @@ func (l *Library) PreviewDraft(siteID, draftID, content string) (string, error) 
 		}
 	}
 	if draft == nil {
-		return "", errors.New("草稿不存在")
+		return nil, errors.New("草稿不存在")
 	}
 	root, err := mygo.App.Path(mygo.PathUserData)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return preview.MarkdownWithImages(content, func(name string) ([]byte, string, error) {
+	return func(name string) ([]byte, string, error) {
 		for _, item := range draft.Attachments {
 			if item == name {
 				return attachments.ReadDraftPreviewImage(root, *draft, name)
@@ -152,7 +156,7 @@ func (l *Library) PreviewDraft(siteID, draftID, content string) (string, error) 
 			}
 		}
 		return nil, "", errors.New("草稿附件不存在")
-	})
+	}, nil
 }
 
 func (l *Library) SaveArticle(siteID, articleID, title, content string) (store.Article, error) {
@@ -229,13 +233,21 @@ func (l *Library) Preview(content string) (string, error) {
 
 // PreviewArticle renders the draft with images registered to its saved article.
 func (l *Library) PreviewArticle(siteID, articleID, content string) (string, error) {
-	s, err := l.open()
+	resolve, err := l.articlePreviewImages(siteID, articleID)
 	if err != nil {
 		return "", err
 	}
+	return preview.MarkdownWithImages(content, resolve)
+}
+
+func (l *Library) articlePreviewImages(siteID, articleID string) (func(string) ([]byte, string, error), error) {
+	s, err := l.open()
+	if err != nil {
+		return nil, err
+	}
 	site, articles, _, err := s.PublicationSnapshot(siteID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	var article *store.Article
 	for i := range articles {
@@ -245,15 +257,29 @@ func (l *Library) PreviewArticle(siteID, articleID, content string) (string, err
 		}
 	}
 	if article == nil {
-		return "", errors.New("文章不存在")
+		return nil, errors.New("文章不存在")
 	}
 	root, err := mygo.App.Path(mygo.PathUserData)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return preview.MarkdownWithImages(content, func(name string) ([]byte, string, error) {
+	return func(name string) ([]byte, string, error) {
 		return attachments.ReadPreviewImage(root, site, *article, name)
-	})
+	}, nil
+}
+
+func (l *Library) ReadMarkdownAttachment(siteID, articleID, draftID, name string) ([]byte, string, error) {
+	var resolve func(string) ([]byte, string, error)
+	var err error
+	if draftID != "" {
+		resolve, err = l.draftPreviewImages(siteID, draftID)
+	} else {
+		resolve, err = l.articlePreviewImages(siteID, articleID)
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	return resolve(name)
 }
 
 func (l *Library) DeleteArticle(siteID, articleID string) error {

@@ -2,6 +2,7 @@
 package follow
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,13 +20,14 @@ import (
 )
 
 type Node interface {
-	Resolve(string) (string, error)
-	Read(string, string) ([]byte, error)
-	Pin(string) error
+	ResolveContext(context.Context, string) (string, error)
+	ReadContext(context.Context, string, string) ([]byte, error)
+	PinContext(context.Context, string) error
 }
 type Result struct {
-	Feed feeds.Feed
-	CID  string
+	Feed     feeds.Feed
+	CID      string
+	LoadIcon feeds.IconLoader
 }
 
 var ipnsName = regexp.MustCompile(`^(?:k51|bafz|Qm|12D3Koo)[A-Za-z0-9]{8,}$`)
@@ -50,11 +52,21 @@ func Normalize(address string) (string, error) {
 	return "", errors.New("请输入 Planet/IPNS 名称或 .eth / .bit / .sol / .fc 域名")
 }
 func Fetch(node Node, address string, pin bool) (Result, error) {
+	ctx := context.Background()
+	result, err := FetchContent(ctx, node, address, pin)
+	if err == nil {
+		result.Feed.IconPNG = result.LoadIcon(ctx)
+		result.LoadIcon = nil
+	}
+	return result, err
+}
+
+func FetchContent(ctx context.Context, node Node, address string, pin bool) (Result, error) {
 	name, err := Normalize(address)
 	if err != nil {
 		return Result{}, err
 	}
-	resolved, err := node.Resolve(name)
+	resolved, err := node.ResolveContext(ctx, name)
 	if err != nil {
 		return Result{}, fmt.Errorf("解析站点失败：%w", err)
 	}
@@ -76,7 +88,7 @@ func Fetch(node Node, address string, pin bool) (Result, error) {
 	if basePath != "" {
 		metadataPath = basePath + "/" + metadataPath
 	}
-	raw, err := node.Read(cid, metadataPath)
+	raw, err := node.ReadContext(ctx, cid, metadataPath)
 	if err != nil {
 		return Result{}, fmt.Errorf("读取站点失败：%w", err)
 	}
@@ -99,8 +111,10 @@ func Fetch(node Node, address string, pin bool) (Result, error) {
 	}
 	base := &url.URL{Scheme: "https", Host: "ipfs.io", Path: "/ipns/" + name + "/"}
 	feed := feeds.Feed{Title: planet.Name, Description: planet.About, Link: base.String(), Items: []feeds.Item{}}
-	feed.IconPNG = readPlanetIcon(node, cid, basePath)
 	for _, a := range planet.Articles {
+		if err := ctx.Err(); err != nil {
+			return Result{}, err
+		}
 		if !articleID.MatchString(a.ID) || len(a.ID) > 128 {
 			return Result{}, errors.New("文章标识无效")
 		}
@@ -149,20 +163,27 @@ func Fetch(node Node, address string, pin bool) (Result, error) {
 		feed.Items = append(feed.Items, feeds.Item{ID: a.ID, Title: a.Title, Link: ref.String(), Content: content, Published: date, ContentCID: cid, ContentPath: basePath, ArticleID: a.ID, Attachments: a.Attachments, AudioFilename: a.AudioFilename})
 	}
 	if pin {
-		if err = node.Pin(cid); err != nil {
+		if err = node.PinContext(ctx, cid); err != nil {
 			return Result{}, fmt.Errorf("固定站点失败：%w", err)
 		}
 	}
-	return Result{Feed: feed, CID: cid}, nil
+	return Result{Feed: feed, CID: cid, LoadIcon: func(ctx context.Context) string {
+		return readPlanetIcon(ctx, node, cid, basePath)
+	}}, ctx.Err()
 }
 
-func readPlanetIcon(node Node, cid, basePath string) string {
+func readPlanetIcon(ctx context.Context, node Node, cid, basePath string) string {
 	for _, filename := range []string{"avatar.png", "favicon.ico"} {
+		if ctx.Err() != nil {
+			return ""
+		}
 		iconPath := filename
 		if basePath != "" {
 			iconPath = basePath + "/" + filename
 		}
-		raw, err := node.Read(cid, iconPath)
+		candidateCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+		raw, err := node.ReadContext(candidateCtx, cid, iconPath)
+		cancel()
 		if err != nil || len(raw) == 0 {
 			continue
 		}

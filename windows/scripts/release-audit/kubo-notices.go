@@ -1,7 +1,7 @@
 //go:build ignore
 
 // Command kubo-notices collects root license files and narrowly reviewed
-// supplemental evidence for modules recorded in an official Kubo binary.
+// supplemental evidence for modules recorded in the bundled Kubo binary.
 // Collection is not legal clearance; other licensing obligations remain.
 package main
 
@@ -47,28 +47,28 @@ type supplement struct {
 	binarySHA256                  string
 }
 
-// client/LICENSE.md only covers the p2p-forge client used by this exact official
-// Windows/amd64 Kubo 0.38.2 binary. A different build needs a new package-scope
+// client/LICENSE.md only covers the p2p-forge client used by this exact
+// Windows/amd64 Kubo 0.43.2 source build. A different build needs a new package-scope
 // review even if it contains the same module version.
-const reviewedKuboSHA256 = "ac6056b906c4963293ba148e3592ac774e96073b54ba363a6f27d1faedd2bbe3"
+const reviewedKuboSHA256 = "ba75778d566239e1b0f068d6fdd8fd5490b5bba7306c507e33079881e5099e22"
 
 var supplements = map[string]supplement{
 	"github.com/ipfs/bbloom": {
-		version: "v0.0.4", sum: "h1:Gi+8EGJ2y5qiD5FbsbpX/TMNcJw8gSqr7eyjHa4Fhvs=",
-		revision: "627bb99eb0f4c49ab3e3276f5574b9b80f8aa3bc",
+		version: "v0.1.0", sum: "h1:nIWwfIE3AaG7RCDQIsrUonGCOTp7qSXzxH7ab/ss964=",
+		revision: "2453b061b619310f10a824ee50c69f8bd9bcf1f2",
 		scope:    "The runtime source files carry MIT and CC0 notices respectively; both are retained below.",
 		files: []sourceEvidence{
-			{"bbloom.go", "0ef29cd728f00587bff0c6cd828dd75aa81a23d1eceffe682e02c895ecd1d66c", 19},
-			{"sipHash.go", "f22636f6a995548dd2636f1fc3664df7467ba2286ae4c9bdfab573aa2426aaee", 6},
+			{"bbloom.go", "7b8ba15bcd8964838bbf1d4a44fc77e35abba83d06f54f7d0ae7e754f8ae42cb", 1},
+			{"sipHash.go", "208ec7662f50bfdb4f12a74ef70a87f789d3113a88b2974ad72fd85c930e4120", 8},
 		},
 	},
 	"github.com/ipshipyard/p2p-forge": {
-		version: "v0.6.1", sum: "h1:987/hUC1YxI56CcMX6iTB+9BLjFV0d2SJnig9Z1pf8A=",
-		revision: "bdc3d056572588eb4a7f1d379092cabfcaf1fb26", binarySHA256: reviewedKuboSHA256,
+		version: "v0.10.1", sum: "h1:P7n1zcxIscEmB0/pucJXBrLof+waNqozE2ehoEXiwN4=",
+		revision: "1743bb9549758e26bf22ddb2876f2e3d457780ea", binarySHA256: reviewedKuboSHA256,
 		scope: "Scope: p2p-forge/client only; not a license conclusion for the server packages. " +
-			"Reviewed Kubo Windows/amd64 CGO_ENABLED=0 dependency graph (go list -mod=readonly -deps ./cmd/ipfs) includes only this package from p2p-forge. " +
+			"Reviewed Kubo 0.43.2 build with the Kinpage dependency patch and Go 1.27.4 (Windows/amd64, CGO_ENABLED=0, go list -mod=readonly -deps ./cmd/ipfs) includes only the client package from p2p-forge. " +
 			"Kubo imports it in core/node/libp2p/{transport,addrs}.go and config/autotls.go: " +
-			"https://github.com/ipfs/kubo/tree/9fd105a1ba37d4b621b5d3384bad92fadac2e6c4 . " +
+			"https://github.com/ipfs/kubo/tree/6be1da369a4706377b06e39bbe698d03b5f3e0b5 . " +
 			"The client does not import other packages in this module. " +
 			"Reviewed binary SHA-256: " + reviewedKuboSHA256,
 		files: []sourceEvidence{{"client/LICENSE.md", "32788d5c7178ea2b02e9835cd852f2c923aa075aa41923e766a339442c0889da", 0}},

@@ -22,6 +22,7 @@ type Library struct {
 	store               *store.Store
 	err                 error
 	publicMu            sync.Mutex
+	publishMu           sync.Mutex
 	feedMu              sync.Mutex
 	nodeMu              sync.RWMutex
 	node                *ipfs.Client

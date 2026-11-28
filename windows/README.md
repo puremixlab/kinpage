@@ -132,9 +132,11 @@
 
 ### 节点状态与本地网关
 
-侧栏的“IPFS 节点状态”可查看本程序启动的 Kubo 版本、连接节点数和流量；面板打开期间每 5 秒记录采样，最多显示最近 5 分钟的接收和发送历史。可从面板开启或关闭节点，关闭状态会在重启后保留：自动发布、IPNS 续期和 IPFS 订阅更新会暂停，重新开启后重试待发布站点。
+侧栏的“IPFS 节点状态”可查看本程序启动的 Kubo 版本、连接节点数和流量。面板打开期间每 5 秒记录采样，最多显示最近 5 分钟的接收和发送历史。可从面板开启或关闭节点，关闭状态会在重启后保留，IPNS 续期和 IPFS 订阅刷新随之暂停。重新开启后可手动重新发布待发布的站点。
 
 节点运行时可打开当前站点，或输入 `ipfs://`、`ipns://`、`/ipfs/`、`/ipns/` 资源通过本地网关访问；网关端口可能随节点重启改变。发布或其他操作占用节点时可稍后刷新。
+
+默认主网节点并行通过 DHT 和 IPFS Foundation 的 `delegated-ipfs.dev` 查询 CID 提供者和 IPNS 记录。委托服务会收到所查询的 CID 和 IPNS 名称，内容公告和 IPNS 发布继续走 DHT。要自定义委托读取，可在节点停止时编辑 Kubo 仓库配置的 `Routing.DelegatedRouters`。设为 `[]` 可关闭全部委托读取，设为 `["https://cid.contact/routing/v1/providers"]` 可只通过 IPNI 查询提供者。 [IPFS 公共委托路由](https://docs.ipfs.tech/concepts/public-utilities/#delegated-routing)
 
 IPFS 面板还显示仓库大小，并可在确认后清理未固定的数据；已固定内容会保留，未固定的离线数据可能被删除。
 
@@ -148,7 +150,7 @@ Cloudflare Pages、SSH 和第三方固定服务的配置见[服务集成](#服�
 
 ### 订阅类型、刷新与阅读
 
-关注 RSS、Atom、JSON Feed，以及 Planet/IPNS 和经 ENSIP-15 规范化的 Unicode `.eth` ENS 名称；启动时及运行期间每 15 分钟自动刷新过期订阅，也可手动刷新。刷新失败时保留本机缓存并显示错误；文章可收藏、在收藏列表中查看和复制分享链接。
+关注 RSS、Atom、JSON Feed，以及 Planet/IPNS 和经 ENSIP-15 规范化的 Unicode `.eth` ENS 名称。启动时及运行期间每 15 分钟自动刷新过期订阅，也可手动刷新。刷新失败时保留本机缓存，延长自动重试间隔，并在订阅列表显示错误。「今天」按系统时区显示文章。文章可收藏、在收藏列表中查看和复制分享链接。
 
 可取消订阅，取消会删除该订阅及其收藏记录，不会自动取消共享的 IPFS 固定或直接删除缓存文件。
 
@@ -355,11 +357,11 @@ bun run build
 
 原 `build/windows-amd64/` 会移至 `build/.previous-<ID>/` 保存。终端会打印两个输出路径；目录同步失败时独立发行目录仍会保留。
 
-构建脚本从 Kubo 官方 GitHub release 下载固定版本 0.38.2 并核验 SHA-512，构建时将程序及许可证放入安装包。
+构建脚本下载 Kubo 0.43.2 的官方源码归档，核验 SHA-512 后应用固定的依赖安全补丁，再用 Go 1.27.4 重编译。安装包收录经 SHA-256 核验的 Windows x64 二进制和对应的许可材料。
 
 `bun run release:prepare -BundleDir <独立发行目录>` 只生成本地草稿材料，正式发布要求见 [发布流程](../docs/releasing.md) 与 [原生 Windows 验收模板](../docs/release-acceptance-template.md)。如需打包面向 Microsoft Store 的 `.msix`，可先完成 `bun run build`，再执行 `bun run build:msix`，详见 [MSIX 打包说明](docs/msix-packaging.md)。
 
-安装包包含 Planet、Go 与第三方依赖许可材料及 Kubo 构建清单。Kubo 的 241 个依赖模块均已收集许可材料，四项无根目录许可文件的模块已补充固定版本的源码或嵌套许可证据；材料收集本身不代表全面合规结论。go-ethereum 库的对应源码及重新构建步骤见[源码与重建说明](../docs/rebuilding-release.md)，收集范围见[发行检查记录](docs/release-audit.md)。
+安装包包含 Planet、Go 与第三方依赖许可材料及 Kubo 构建清单。Kubo 的 242 个依赖模块均已收集许可材料，四项无根目录许可文件的模块有固定版本的源码或嵌套许可证据。收集范围以及 go-ethereum 对应源码的重建步骤见相关文档。 [发行检查记录](docs/release-audit.md) · [源码与重建说明](../docs/rebuilding-release.md)
 
 ### 可选集成测试
 
@@ -399,7 +401,7 @@ bun run build
 
 ### 检查与下载更新
 
-可在“检查更新”配置可信 HTTPS 清单和 Ed25519 公钥，按需启用启动检查；下载前复验清单，并在磁盘写入后核验安装包 SHA-256。当前没有预置真实发布源；下载后需关闭 Planet 并手动运行安装包。发布者工具见 [签名清单说明](docs/update-publisher.md)。
+从「设置 → 更多设置 → 通用 → 检查更新」打开更新入口。配置可信 HTTPS 清单和 Ed25519 公钥后，可手动检查，也可启用启动检查。下载前会复验清单并核验安装包 SHA-256，下载完成后可在资源管理器中显示安装包。运行安装包前需退出邻页。更新源由用户配置。发布者工具见 [签名清单说明](docs/update-publisher.md)。
 
 预发布按数字次序比较，例如 `alpha.2 < alpha.10`，同基础版本的稳定版高于预发布版。预发布安装可获取更高版本的预发布或稳定版；已安装稳定版的更新检查跳过预发布。
 

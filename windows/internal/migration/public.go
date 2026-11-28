@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"windows/internal/attachments"
@@ -112,6 +113,18 @@ func stageImportedPublic(archive, destination string, raw json.RawMessage, site 
 			}
 			if e = backup.CheckSimplePublicArticle(fields); e != nil {
 				return e
+			}
+			if !a.HeroImageManual && len(fields["heroImage"]) != 0 {
+				var archivedHero, content string
+				_ = json.Unmarshal(fields["heroImage"], &archivedHero)
+				_ = json.Unmarshal(fields["content"], &content)
+				originalFiles := byID[strings.ToUpper(a.ID)]
+				// Regenerate automatic covers from the current article and carry
+				// forward an explicit cover only while its attachment exists.
+				if archivedHero != "" && archivedHero != store.DeriveHeroImage(content, originalFiles) &&
+					slices.Contains(originalFiles, archivedHero) && slices.Contains(a.Attachments, archivedHero) {
+					a.HeroImage = archivedHero
+				}
 			}
 			for _, item := range []struct{ key, expected string }{{"audioFilename", originalAudio[strings.ToUpper(a.ID)]}, {"videoFilename", originalVideo[strings.ToUpper(a.ID)]}} {
 				if value, ok := fields[item.key]; ok && string(value) != "null" {

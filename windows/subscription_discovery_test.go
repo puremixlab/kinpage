@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -10,10 +12,112 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo"
 	"windows/internal/siteimage"
 )
+
+func TestCancelFollowStopsHTTPRequestWithoutSavingSubscription(t *testing.T) {
+	mygo.App.SetPath(mygo.PathUserData, t.TempDir())
+	t.Cleanup(func() { mygo.App.SetPath(mygo.PathUserData, "") })
+	ctx, cancel := context.WithCancel(t.Context())
+	started, disconnected := make(chan struct{}), make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(started)
+		<-r.Context().Done()
+		close(disconnected)
+	}))
+	defer server.Close()
+	defer cancel()
+	lib := &Library{}
+	done := make(chan error, 1)
+	go func() {
+		_, err := lib.FollowContext(ctx, server.URL)
+		done <- err
+	}()
+	select {
+	case <-started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("subscription request never reached the server")
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("follow returned %v, want cancellation", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("follow kept waiting after cancellation")
+	}
+	select {
+	case <-disconnected:
+	case <-time.After(5 * time.Second):
+		t.Fatal("subscription request remained active after cancellation")
+	}
+	if subs, err := lib.Subscriptions(); err != nil || len(subs) != 0 {
+		t.Fatalf("cancelled follow changed saved subscriptions: %+v, %v", subs, err)
+	}
+}
+
+func TestFollowSavesArticlesBeforeIconAndDiscardsLateIconAfterUnfollow(t *testing.T) {
+	mygo.App.SetPath(mygo.PathUserData, t.TempDir())
+	t.Cleanup(func() { mygo.App.SetPath(mygo.PathUserData, "") })
+	var icon bytes.Buffer
+	if err := png.Encode(&icon, image.NewNRGBA(image.Rect(0, 0, 2, 2))); err != nil {
+		t.Fatal(err)
+	}
+	started, release := make(chan struct{}), make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/feed.xml":
+			fmt.Fprint(w, `<rss version="2.0"><channel><title>Site</title><item><guid>one</guid><title>Article one</title></item></channel></rss>`)
+		case "/avatar.png":
+			close(started)
+			select {
+			case <-release:
+				_, _ = w.Write(icon.Bytes())
+			case <-r.Context().Done():
+			}
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	lib := &Library{}
+	address := server.URL + "/feed.xml"
+	update, err := lib.FollowContext(ctx, address)
+	if err != nil || update.FinishIcon == nil {
+		t.Fatalf("could not fetch feed content: %v", err)
+	}
+	done := make(chan string, 1)
+	go func() { done <- update.FinishIcon(ctx) }()
+	select {
+	case <-started:
+	case <-ctx.Done():
+		t.Fatal("icon request did not start")
+	}
+	if subs, err := lib.Subscriptions(); err != nil || len(subs) != 1 || len(subs[0].Feed.Items) != 1 || subs[0].Feed.IconPNG != "" {
+		t.Fatalf("articles unavailable while icon was pending: %+v, %v", subs, err)
+	}
+	if err := lib.Unfollow(address); err != nil {
+		t.Fatal(err)
+	}
+	close(release)
+	select {
+	case saved := <-done:
+		if saved != "" {
+			t.Fatal("late icon was applied after unfollow")
+		}
+	case <-ctx.Done():
+		t.Fatal("icon update never returned")
+	}
+	if subs, err := lib.Subscriptions(); err != nil || len(subs) != 0 {
+		t.Fatalf("late icon restored a removed subscription: %+v, %v", subs, err)
+	}
+}
 
 func TestFollowHomepageRefreshPreservesReadingState(t *testing.T) {
 	mygo.App.SetPath(mygo.PathUserData, t.TempDir())

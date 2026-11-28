@@ -48,6 +48,17 @@ foreach ($line in [System.IO.File]::ReadLines($kuboEvidence)) {
     [void]$evidenceLines.Add($line)
     if ($line -like 'REQUIRES MANUAL REVIEW:*') { $manualCount++ }
 }
+$kuboStream = [System.IO.File]::OpenRead($kuboExecutable)
+$kuboHasher = [System.Security.Cryptography.SHA256]::Create()
+try {
+    $kuboHash = [System.BitConverter]::ToString($kuboHasher.ComputeHash($kuboStream)).Replace('-', '').ToLowerInvariant()
+} finally {
+    $kuboHasher.Dispose()
+    $kuboStream.Dispose()
+}
+if (-not $evidenceLines.Contains("Binary SHA-256: $kuboHash")) {
+    throw 'The Kubo license evidence belongs to a different binary.'
+}
 $dependencies = @($kuboInfo | Where-Object { $_ -match '^\s*dep\s+(\S+)\s+(\S+)\s+(\S+)\s*$' })
 if ($dependencies.Count -eq 0) { throw 'Kubo binary has no readable dependency metadata.' }
 foreach ($line in $dependencies) {

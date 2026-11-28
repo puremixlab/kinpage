@@ -112,10 +112,10 @@
 | --- | --- | --- | --- |
 | **[邻页 · Kinpage v0.1.0](https://github.com/puremixlab/kinpage/releases/tag/v0.1.0)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release 页面](https://github.com/puremixlab/kinpage/releases)（支持 Microsoft Store MSIX / 独立 NSIS 安装包、SHA-256 与源码归档） |
 
-可通过 Microsoft Store（MSIX）安装，或将独立安装包安装到空目录后，从开始菜单打开 **Kinpage** 即可使用。商店打包与侧载说明见 [MSIX 打包文档](windows/docs/msix-packaging.md)。
+可从 Release 页面下载 Windows x64 安装包。商店构建和侧载要求见 [MSIX 打包文档](windows/docs/msix-packaging.md)。
 
 > [!NOTE]
-> **未签名 RC 预发布版本。** 运行安装包时 Windows SmartScreen 可能会给出提示，安装前建议核对 Release 页面提供的 SHA-256 校验值。完整桌面界面、输入法、跨版本升级及真实 Mac `.planet` 备份双向兼容仍在持续验证中，详见[已知限制](windows/README.md#尚未完成与待验证)与 [rc.1 验收范围](docs/acceptance-0.0.1-rc.1.md)。
+> **已发布的 v0.1.0 NSIS 和 MSIX 安装包均未签名。** 可用发行页公布的 SHA-256 校验下载文件的完整性。签名稳定版仍需核验发布者并完成 Windows 原生验收。详见[稳定版发行规范](docs/releasing.md)。
 
 > [!WARNING]
 > 导出的 `.planet` 备份包含**未加密的 IPNS 私钥**，请妥善保管，切勿上传到公开仓库或网盘。

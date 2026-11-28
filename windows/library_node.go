@@ -46,6 +46,10 @@ func (l *Library) IPFSStatus() (ipfs.KuboStatus, error) {
 
 // SetIPFSEnabled persists the user's node preference and controls the owned daemon.
 func (l *Library) SetIPFSEnabled(enabled bool) error {
+	if !l.publishMu.TryLock() {
+		return errors.New("正在发布站点，请稍后重试")
+	}
+	defer l.publishMu.Unlock()
 	if !l.publicMu.TryLock() {
 		return errors.New("节点正忙，请稍后重试")
 	}
@@ -85,6 +89,10 @@ func (l *Library) IPFSRepoSize() (int64, error) {
 }
 
 func (l *Library) IPFSGarbageCollect() error {
+	if !l.publishMu.TryLock() {
+		return errors.New("正在发布站点，请稍后重试")
+	}
+	defer l.publishMu.Unlock()
 	if !l.publicMu.TryLock() {
 		return errors.New("节点正忙，请稍后重试")
 	}
@@ -119,6 +127,10 @@ func (l *Library) ExportIPNSKey(ctx context.Context, name string) (string, error
 		return "", err
 	}
 	target := filepath.Join(dir[0], name+".key")
+	if !l.publishMu.TryLock() {
+		return "", errors.New("正在发布站点，请稍后重试")
+	}
+	defer l.publishMu.Unlock()
 	l.publicMu.Lock()
 	defer l.publicMu.Unlock()
 	if _, _, err := l.ensureNode(false); err != nil {
@@ -136,6 +148,10 @@ func (l *Library) ImportIPNSKey(ctx context.Context, name string) (string, error
 	if err != nil || len(paths) == 0 {
 		return "", err
 	}
+	if !l.publishMu.TryLock() {
+		return "", errors.New("正在发布站点，请稍后重试")
+	}
+	defer l.publishMu.Unlock()
 	l.publicMu.Lock()
 	defer l.publicMu.Unlock()
 	if _, _, err := l.ensureNode(false); err != nil {

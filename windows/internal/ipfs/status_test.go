@@ -115,19 +115,24 @@ func TestStatusDoesNotStartNodeAndReadsOwnedDaemon(t *testing.T) {
 	if !strings.HasPrefix(status.Gateway, "http://127.0.0.1:") {
 		t.Fatalf("missing local gateway: %+v", status)
 	}
-	cid, err := c.Add(t.TempDir())
+	dir := t.TempDir()
+	const document = "<p>Kinpage window gateway fixture</p>"
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte(document), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cid, err := c.Add(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	client := &http.Client{Transport: &http.Transport{Proxy: nil}}
-	response, err := client.Get(status.Gateway + "/ipfs/" + cid + "/?format=dag-json")
+	response, err := client.Get(status.Gateway + "/ipfs/" + cid + "/index.html")
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _ = io.Copy(io.Discard, response.Body)
-	response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		t.Fatalf("gateway returned %s", response.Status)
+	defer response.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(response.Body, 4096))
+	if err != nil || response.StatusCode != http.StatusOK || string(body) != document {
+		t.Fatalf("gateway returned %s, body %q, err=%v", response.Status, body, err)
 	}
 }
 

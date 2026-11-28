@@ -9,7 +9,9 @@ import (
 	"image/png"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
+	"time"
 
 	"windows/internal/siteimage"
 )
@@ -39,6 +41,58 @@ func testICO(pngData []byte, side byte) []byte {
 	binary.LittleEndian.PutUint32(header[14:18], uint32(len(pngData)))
 	binary.LittleEndian.PutUint32(header[18:22], 22)
 	return append(header, pngData...)
+}
+
+func TestSiteIconTriesFaviconAfterAvatarTimesOut(t *testing.T) {
+	icon := testICO(testPNG(t, 16, color.NRGBA{B: 130, A: 255}), 16)
+	avatarStopped := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/avatar.png":
+			w.Header().Set("Content-Type", "image/png")
+			w.(http.Flusher).Flush()
+			<-r.Context().Done()
+			close(avatarStopped)
+		case "/favicon.ico":
+			_, _ = w.Write(icon)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	source, err := url.Parse(server.URL + "/feed.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded := fetchSiteIcon(t.Context(), source, source, "", nil, []*url.URL{}, 350*time.Millisecond)
+	if img, _, err := siteimage.DecodePNG(encoded); err != nil || img.Bounds().Dx() != 16 {
+		t.Fatalf("fallback did not load: %v", err)
+	}
+	select {
+	case <-avatarStopped:
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out avatar kept its connection open")
+	}
+}
+
+func TestIconTransportNegotiatesHTTP1WithHTTP2CapableServer(t *testing.T) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, r.Proto)
+	}))
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	defer server.Close()
+	transport := newIconHTTPTransport()
+	defer transport.CloseIdleConnections()
+	transport.TLSClientConfig.RootCAs = server.Client().Transport.(*http.Transport).TLSClientConfig.RootCAs
+	source, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := fetchBounded(t.Context(), &http.Client{Transport: transport}, source, 100)
+	if err != nil || string(data) != "HTTP/1.1" {
+		t.Fatalf("expected HTTP/1.1 response, got %q: %v", data, err)
+	}
 }
 
 func TestFetchExtractsIconFromFeedMetadata(t *testing.T) {

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"golang.org/x/sys/windows"
+	"windows/internal/desktopshortcut"
 )
 
 func TestRemoveMatchingFilePreservesChangedAndRemovesOriginal(t *testing.T) {
@@ -23,7 +24,7 @@ func TestRemoveMatchingFilePreservesChangedAndRemovesOriginal(t *testing.T) {
 	if err := os.WriteFile(path, []byte("changed"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := removeMatchingFile(path, expected); err != nil {
+	if err := desktopshortcut.RemoveIfHashMatches(path, expected); err != nil {
 		t.Fatal(err)
 	}
 	if data, err := os.ReadFile(path); err != nil || string(data) != "changed" {
@@ -32,7 +33,7 @@ func TestRemoveMatchingFilePreservesChangedAndRemovesOriginal(t *testing.T) {
 	if err := os.WriteFile(path, []byte("original"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := removeMatchingFile(path, expected); err != nil {
+	if err := desktopshortcut.RemoveIfHashMatches(path, expected); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {

@@ -29,8 +29,12 @@ func (a *App) sidebarSiteContextMenu(site store.Site) func(m *ui.Menu) {
 			a.openSiteSettings(site)
 		}
 		m.Separator()
-		if m.Item(a.t("menu.sitePublish")).Chosen() {
+		if m.Item(a.t("menu.sitePublish")).Disabled(a.publishInProgress(site.ID)).Chosen() {
 			a.triggerPublishSite(site)
+		}
+		if outcome, ok := a.publicationResults[site.ID]; ok && m.Item(a.t("menu.sitePublishResult")).Chosen() {
+			outcome.open = true
+			a.publishModal = outcome
 		}
 		if m.Item(a.t("menu.siteQuickRebuild")).Chosen() {
 			if a.backend != nil {
@@ -92,12 +96,7 @@ func (a *App) sidebarSiteContextMenu(site store.Site) func(m *ui.Menu) {
 func (a *App) sidebarSubContextMenu(sub store.Subscription) func(m *ui.Menu) {
 	return func(m *ui.Menu) {
 		if m.Item(a.t("menu.subRefresh")).Chosen() {
-			if _, err := a.backend.RefreshSubscription(sub.URL); err != nil {
-				a.setError(a.tf("status.refreshSubErr", err.Error()))
-			} else {
-				a.Reload()
-				a.setStatus(a.t("status.refreshedSub"))
-			}
+			a.refreshSubscription(sub.URL)
 		}
 		if m.Item(a.t("menu.subMarkAllRead")).Chosen() {
 			if err := a.backend.MarkSubscriptionRead(sub.URL); err != nil {

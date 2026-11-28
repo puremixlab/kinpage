@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"windows/internal/services"
@@ -323,8 +324,8 @@ func CheckSimplePlain(original json.RawMessage, site store.Site, articles []stor
 
 // CheckSimplePublicArticle rejects public metadata that the rebuilt page cannot represent.
 func CheckSimplePublicArticle(fields map[string]json.RawMessage) error {
-	allowed := map[string]bool{"id": true, "link": true, "slug": true, "tags": true, "title": true, "content": true, "contentRendered": true, "created": true, "modified": true, "articleNumber": true, "articleReference": true, "attachments": true, "hasVideo": true, "videoFilename": true, "hasAudio": true, "audioFilename": true, "audioDuration": true, "audioByteLength": true}
-	known := strings.Fields("articleType slug externalLink hasVideo videoFilename hasAudio audioFilename audioDuration audioByteLength attachments heroImage heroImageWidth heroImageHeight heroImageURL heroImageFilename cids tags originalSiteName originalSiteDomain originalPostID originalPostDate pinned")
+	allowed := map[string]bool{"id": true, "link": true, "slug": true, "tags": true, "title": true, "content": true, "contentRendered": true, "created": true, "modified": true, "articleNumber": true, "articleReference": true, "attachments": true, "hasVideo": true, "videoFilename": true, "hasAudio": true, "audioFilename": true, "audioDuration": true, "audioByteLength": true, "heroImage": true}
+	known := strings.Fields("articleType slug externalLink hasVideo videoFilename hasAudio audioFilename audioDuration audioByteLength attachments heroImageWidth heroImageHeight heroImageURL heroImageFilename cids tags originalSiteName originalSiteDomain originalPostID originalPostDate pinned")
 	knownSet := map[string]bool{}
 	for _, key := range known {
 		knownSet[key] = true
@@ -332,6 +333,13 @@ func CheckSimplePublicArticle(fields map[string]json.RawMessage) error {
 	var names []string
 	if raw, ok := fields["attachments"]; ok && json.Unmarshal(raw, &names) != nil {
 		return errors.New("公开附件列表无效")
+	}
+	if raw, ok := fields["heroImage"]; ok {
+		var name string
+		if json.Unmarshal(raw, &name) != nil || (name != "" &&
+			(!SafeName(name) || !slices.Contains(names, name) || store.DeriveHeroImage("", []string{name}) != name)) {
+			return errors.New("公开文章封面必须是已登记的图片附件")
+		}
 	}
 	for _, kind := range []string{"Audio", "Video"} {
 		var name string

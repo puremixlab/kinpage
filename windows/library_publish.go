@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"windows/internal/ipfs"
 	"windows/internal/migration"
 	"windows/internal/pinnable"
 	"windows/internal/publisher"
@@ -26,129 +28,165 @@ func (l *Library) ActivePublishCount() int {
 
 // PublishSite publishes the saved snapshot; Kubo is started only on request.
 func (l *Library) PublishSite(siteID string) (publisher.Result, error) {
-	l.activePublishes.Add(1)
-	defer l.activePublishes.Add(-1)
+	return l.PublishSiteContext(context.Background(), siteID)
+}
+
+type preparedPublication struct {
+	site     store.Site
+	articles []store.Article
+	raw      json.RawMessage
+	root     string
+	dir      string
+	node     *ipfs.Client
+}
+
+type publicationNode struct {
+	*ipfs.Client
+	ctx context.Context
+}
+
+func (n publicationNode) Add(dir string) (string, error) {
+	return n.AddContext(n.ctx, dir)
+}
+
+func (n publicationNode) LookupKey(name string) (string, error) {
+	return n.LookupKeyContext(n.ctx, name)
+}
+
+func (n publicationNode) PublishOnline(key, cid string) (string, error) {
+	return n.PublishOnlineContext(n.ctx, key, cid)
+}
+
+func (l *Library) prepareSitePublication(ctx context.Context, s *store.Store, siteID string) (preparedPublication, error) {
 	l.publicMu.Lock()
 	defer l.publicMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return preparedPublication{}, err
+	}
+	site, articles, raw, err := s.PublicationSnapshot(siteID)
+	if err != nil {
+		return preparedPublication{}, err
+	}
+	root, err := mygo.App.Path(mygo.PathUserData)
+	if err != nil {
+		return preparedPublication{}, err
+	}
+	p := preparedPublication{site: site, articles: articles, raw: raw, root: root}
+	if site.ShouldPublishIPNS() {
+		if _, _, err := l.ensureNode(true); err != nil {
+			return preparedPublication{}, err
+		}
+		p.node = l.node
+		if p.site.IPNS == "" {
+			key, err := p.node.EnsureKeyContext(ctx, siteID)
+			if err != nil {
+				return preparedPublication{}, err
+			}
+			if err := s.SetIdentity(siteID, key); err != nil {
+				return preparedPublication{}, err
+			}
+			p.site.IPNS = key
+		}
+	}
+
+	if len(raw) == 0 {
+		p.dir, err = l.stageRemote(root, p.site, articles)
+		return p, err
+	}
+	templateDir, err := l.templatePath(p.site)
+	if err != nil {
+		return preparedPublication{}, err
+	}
+	if templateDir == "" {
+		return preparedPublication{}, errors.New("发布导入站点前，请先选择已验证的模板")
+	}
+	p.dir, err = os.MkdirTemp("", "planet-import-publish-")
+	if err != nil {
+		return preparedPublication{}, err
+	}
+	err = migration.StageImportedPublic(filepath.Join(root, "imports", siteID), p.dir, raw, p.site, articles, templateDir)
+	if err != nil {
+		_ = os.RemoveAll(p.dir)
+		return preparedPublication{}, fmt.Errorf("无法发布原版备份：%w", err)
+	}
+	return p, nil
+}
+
+func (l *Library) PublishSiteContext(ctx context.Context, siteID string) (publisher.Result, error) {
+	l.activePublishes.Add(1)
+	defer l.activePublishes.Add(-1)
+	l.publishMu.Lock()
+	defer l.publishMu.Unlock()
 	s, err := l.open()
 	if err != nil {
 		return publisher.Result{}, err
 	}
-	snapshot, articles, raw, err := s.PublicationSnapshot(siteID)
+	p, err := l.prepareSitePublication(ctx, s, siteID)
 	if err != nil {
 		return publisher.Result{}, err
 	}
-	site := &snapshot
-	var importedPublic string
-	if len(raw) > 0 {
-		root, e := mygo.App.Path(mygo.PathUserData)
-		if e != nil {
-			return publisher.Result{}, e
-		}
-		importedPublic, e = os.MkdirTemp("", "planet-import-publish-")
-		if e != nil {
-			return publisher.Result{}, e
-		}
-		defer os.RemoveAll(importedPublic)
-		templateDir, e := l.templatePath(*site)
-		if e != nil {
-			return publisher.Result{}, e
-		}
-		if templateDir == "" {
-			return publisher.Result{}, errors.New("发布导入站点前，请先选择已验证的模板")
-		}
-		if e = migration.StageImportedPublic(filepath.Join(root, "imports", siteID), importedPublic, raw, *site, articles, templateDir); e != nil {
-			return publisher.Result{}, fmt.Errorf("无法发布原版备份：%w", e)
-		}
-	}
-	if !site.ShouldPublishIPNS() {
-		root, e := mygo.App.Path(mygo.PathUserData)
-		if e != nil {
-			return publisher.Result{}, e
-		}
-		result := publisher.Result{CID: site.LastPublishedCID, IPNS: site.IPNS, Revision: site.ContentRevision}
-		if warning := l.autoDeploy(root, *site, articles); warning != "" {
-			result.PinnableWarning = "外部发布未完成：" + warning
-		}
-		if warning := l.syncPublishedX(root, *site, articles); warning != "" {
-			if result.PinnableWarning != "" {
-				result.PinnableWarning += " "
-			}
-			result.PinnableWarning += "X 同步未完成：" + warning
-		}
-		result.TelegramWarning = l.syncPublishedTelegram(root, *site, articles, raw)
-		return result, nil
-	}
-	if _, _, err := l.ensureNode(true); err != nil {
+	defer os.RemoveAll(p.dir)
+	if err := ctx.Err(); err != nil {
 		return publisher.Result{}, err
 	}
-	if site.IPNS == "" {
-		key, e := l.node.EnsureKey(site.ID)
-		if e != nil {
-			return publisher.Result{}, e
+
+	site, root := p.site, p.root
+	result := publisher.Result{Revision: site.ContentRevision}
+	if p.node != nil {
+		// The directory owns all assets needed by Kubo and external targets.
+		// Let authoring operations proceed while the network request is in flight.
+		result, err = publisher.PublishDirectory(publicationNode{Client: p.node, ctx: ctx}, p.dir, site)
+		if err != nil {
+			return result, err
 		}
-		if e = s.SetIdentity(site.ID, key); e != nil {
-			return publisher.Result{}, e
+		result.Revision = site.ContentRevision
+		result.Pending, err = s.SetPublishedRevision(siteID, result.IPNS, result.CID, result.Revision)
+		if err != nil {
+			return result, fmt.Errorf("IPNS 已发布到 %s，但保存本地状态失败：%w", result.IPNS, err)
 		}
-		site.IPNS = key
-	}
-	var result publisher.Result
-	if importedPublic != "" {
-		result, err = publisher.PublishDirectory(l.node, importedPublic, *site)
-	} else {
-		templateDir, e := l.templatePath(*site)
-		if e != nil {
-			return publisher.Result{}, e
+		l.scheduleProvide(result.CID)
+		services.SendDesktopNotification("邻页发布完成", site.Name+" 已发布到 IPNS")
+		if site.ShouldPrewarmNewPost() {
+			l.schedulePrewarm(site, result.CID)
 		}
-		root, e := mygo.App.Path(mygo.PathUserData)
-		if e != nil {
-			return publisher.Result{}, e
-		}
-		result, err = publisher.PublishWithAssets(l.node, os.TempDir(), *site, articles, templateDir, root)
 	}
-	if err != nil {
-		return publisher.Result{}, err
+
+	// Keep the integration records serialized with their configuration and
+	// manual retry operations, including uncertain remote results.
+	l.publicMu.Lock()
+	defer l.publicMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return result, err
 	}
-	result.Revision = site.ContentRevision
-	result.Pending, err = s.SetPublishedRevision(siteID, result.IPNS, result.CID, result.Revision)
-	if err != nil {
-		return result, fmt.Errorf("IPNS 已发布到 %s，但保存本地状态失败：%w", result.IPNS, err)
-	}
-	l.scheduleProvide(result.CID)
-	services.SendDesktopNotification("邻页发布完成", site.Name+" 已发布到 IPNS")
-	if site.ShouldPrewarmNewPost() && result.CID != "" {
-		l.schedulePrewarm(*site, result.CID)
-	}
-	// This integration is opt-in. IPNS publication has already succeeded, so a
-	// separate warning must not turn it into a failed publication.
-	root, e := mygo.App.Path(mygo.PathUserData)
-	if e == nil {
-		endpoint, e := pinnable.Load(root, siteID)
-		if e != nil {
+	if p.node != nil {
+		endpoint, err := pinnable.Load(root, siteID)
+		if err != nil {
 			result.PinnableWarning = "站点已发布，但无法读取 Pinnable 配置。"
 		} else if endpoint != "" {
-			if e = pinnable.NewClient().PinForSite(endpoint, result.IPNS, true); e != nil {
-				result.PinnableWarning = "站点已发布，但 Pinnable 固定请求未完成：" + e.Error() + "。请在固定服务中检查。"
+			if err = pinnable.NewClient().PinForSite(endpoint, result.IPNS, true); err != nil {
+				result.PinnableWarning = "站点已发布，但 Pinnable 固定请求未完成：" + err.Error() + "。请在固定服务中检查。"
 			} else {
 				l.pushPinnableRecord(endpoint, result.IPNS)
 			}
 		}
-		if e = services.PinPublished(root, siteID, result.CID, services.NewClient()); e != nil {
-			result.PinnableWarning += " 站点已发布，但 Filebase 固定请求未完成：" + e.Error()
+		if err = services.PinPublished(root, siteID, result.CID, services.NewClient()); err != nil {
+			result.PinnableWarning += " 站点已发布，但 Filebase 固定请求未完成：" + err.Error()
 		}
-		if e = services.SyncDWebServices(root, siteID, result.CID, nil); e != nil {
-			result.PinnableWarning += " 站点已发布，但 dWebServices.xyz 同步未完成：" + e.Error()
+		if err = services.SyncDWebServices(root, siteID, result.CID, nil); err != nil {
+			result.PinnableWarning += " 站点已发布，但 dWebServices.xyz 同步未完成：" + err.Error()
 		}
-		if warning := l.autoDeploy(root, *site, articles); warning != "" {
-			result.PinnableWarning += " IPNS 已发布，但外部发布未完成：" + warning
-		}
-		if warning := l.syncPublishedX(root, *site, articles); warning != "" {
-			result.PinnableWarning += " 站点已发布，但 X 同步未完成：" + warning
-		}
-		result.TelegramWarning = l.syncPublishedTelegram(root, *site, articles, raw)
-	} else {
-		result.TelegramWarning = "站点已发布，但无法读取 Telegram 本机配置。"
 	}
+	result.Deployments = l.autoDeploy(root, siteID, p.dir)
+	if p.node == nil && len(result.Deployments) == 0 {
+		result.PinnableWarning = "尚未配置站点发布目标。"
+	}
+	if warning := l.syncPublishedX(root, site, p.articles); warning != "" {
+		if result.PinnableWarning != "" {
+			result.PinnableWarning += " "
+		}
+		result.PinnableWarning += "X 同步未完成：" + warning
+	}
+	result.TelegramWarning = l.syncPublishedTelegram(root, site, p.articles, p.raw)
 	return result, nil
 }
 
@@ -225,6 +263,10 @@ func (l *Library) maintainPublished(ctx context.Context) {
 		}
 	}
 	refresh := func() {
+		if !l.publishMu.TryLock() {
+			return
+		}
+		defer l.publishMu.Unlock()
 		l.publicMu.Lock()
 		defer l.publicMu.Unlock()
 		if ctx.Err() != nil || s.IPFSDisabled() {

@@ -12,7 +12,7 @@
 
 该次开发安装包 SHA-256 为 `1d4a8cb66be5e34b6c1dd7d18bb3c2d9fd89f479a5418cbf928251f71e9c683e`。这次升级不是正式发布；当时仍存在未签名、Kubo 许可材料缺项和完整原生安装/升级/卸载验收未完成的限制。当前 Kubo 材料范围见下文，alpha 的验收范围见上述独立记录。
 
-在 `windows/` 目录运行 `bun run build`，构建结束会打印唯一发行目录 `.mygo/releases/<GUID>/windows-amd64/`，检查通过后还会同步到固定的 `build/windows-amd64/`；两个目录均包含独立安装器和所需 payload。MyGo 默认生成的安装器因进程关闭和目录处理行为不能作为交付包。`prepare-kubo.ps1` 验证固定 Kubo 包的 SHA-512；MyGo 的构建前置命令会调用 `prepare-notices.ps1`，从 Windows/amd64 实际链接的 Go 构建依赖生成 `LICENSE-PLANET.txt`、`THIRD-PARTY-NOTICES.txt` 和 `KUBO-BUILDINFO.txt`，并校验及复制 `KUBO-DEPENDENCY-LICENSES.txt`。
+在 `windows/` 目录运行 `bun run build`，构建结束会打印唯一发行目录 `.mygo/releases/<GUID>/windows-amd64/`，检查通过后还会同步到固定的 `build/windows-amd64/`。两个目录均包含独立安装器和所需 payload。MyGo 默认生成的安装器因进程关闭和目录处理行为不能作为交付包。`prepare-kubo.ps1` 验证 Kubo 源码归档的 SHA-512，应用固定的 `go.mod` 与 `go.sum` 补丁，用 Go 1.27.4 构建 Windows x64 二进制并核对 SHA-256。MyGo 的构建前置命令调用 `prepare-notices.ps1`，生成 `LICENSE-PLANET.txt`、`THIRD-PARTY-NOTICES.txt` 和 `KUBO-BUILDINFO.txt`，并校验及复制 `KUBO-DEPENDENCY-LICENSES.txt`。 [Kubo 依赖补丁](../scripts/release-audit/kubo-dependencies.patch)
 
 ```powershell
 $releaseDir = Read-Host '粘贴构建结束时显示的发行目录'
@@ -44,9 +44,11 @@ powershell -NoProfile -File scripts/test-installer-isolated.ps1 -Installer $inst
 
 ## 许可和发布限制
 
-生成脚本收集主程序实际链接的 Go 模块根目录中名为 LICENSE、COPYING、NOTICE 的材料及 Go 标准库许可。`KUBO-BUILDINFO.txt` 列出 Kubo 二进制中的模块版本；`KUBO-DEPENDENCY-LICENSES.txt` 根据 Kubo 的编译元数据逐一下载模块、核对版本与 h1，收集许可材料。当前 241 个模块均有材料，未解决的收集缺项为零。
+生成脚本收集主程序实际链接的 Go 模块根目录中名为 LICENSE、COPYING、NOTICE 的材料及 Go 标准库许可。`KUBO-BUILDINFO.txt` 列出 Kubo 二进制中的模块版本。`KUBO-DEPENDENCY-LICENSES.txt` 根据编译元数据逐一下载模块、核对版本和 h1，并按 Kubo 二进制 SHA-256 绑定材料。带依赖补丁的 Kubo 0.43.2 共收集了 242 个模块的材料。
 
-其中四项没有根目录许可文件的模块使用严格限定的补充证据：`ipfs/bbloom` 的源码 MIT 与 CC0 声明、`p2p-forge/client` 的嵌套许可证，以及 `goissue34681`、`base32` 的 Go Authors 声明与对应上游 Go BSD 文本。补充规则固定模块版本、h1、源码修订及文件 SHA-256；`p2p-forge` 规则还绑定实际只链接 client 的官方 Kubo 0.38.2 二进制。版本或文件变化不能沿用该结论。重新收集可运行 `go run scripts/release-audit/kubo-notices.go -output docs/kubo-dependency-licenses.txt`，需要网络；存在缺项时返回非零并保留证据文件。
+其中四项没有根目录许可文件的模块使用限定的补充证据。证据包括 `ipfs/bbloom` 的源码 MIT 与 CC0 声明、`p2p-forge/client` 的嵌套许可证，以及 `goissue34681`、`base32` 的 Go Authors 声明与对应上游 Go BSD 文本。补充规则固定模块版本、h1、源码修订及文件 SHA-256。`p2p-forge` 规则绑定经过包依赖核对、仅链接 client 的 Windows x64 Kubo 0.43.2 源码重编译产物。重新收集可运行 `go run scripts/release-audit/kubo-notices.go -output docs/kubo-dependency-licenses.txt`，存在缺项时返回非零并保留证据文件。
+
+在 `windows/` 使用已生成的独立发行目录执行 `powershell -NoProfile -File scripts/audit-release.ps1 -BundleDir $bundle -KuboScanPath $evidencePath`，其中 `$evidencePath` 指向一个新 JSON 文件。验证 MSIX 时再传入 `-MsixPath $msix`。审计对比各包内外的十项共有文件，扫描确认相同的 Kubo 二进制，并记录各包和 Kubo 文件的 SHA-256 与 govulncheck 输出。Windows 原生安装验收工作流会为 NSIS 和 MSIX 保存这份证据。符号级匹配仍需结合默认配置逐条评估。
 
 五个内置模板保留原固定版本、来源、署名和已有许可文本；按维护者决定，本项目不再以模板待审状态阻止 alpha 发布，不因此替上游授予新的许可。go-ethereum 库使用 LGPL-3.0，对应源码与重建方法见[源码与重建说明](../../docs/rebuilding-release.md)。这些材料说明收集范围，不代表嵌套子目录、前端其他文件或各项许可证义务均已完成全面法律审查。
 

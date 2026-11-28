@@ -3,6 +3,7 @@ package nativeui
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"image"
 	"image/color"
 	"image/png"
@@ -98,6 +99,77 @@ func TestImageLoaderReferer403Fallback(t *testing.T) {
 	if hits.Load() != 2 {
 		t.Fatalf("expected 2 requests (with Referer -> 403, then without Referer -> 200), got %d", hits.Load())
 	}
+}
+
+func TestImageLoaderKeepsReadingWhileBytesArriveAndCancelsStalls(t *testing.T) {
+	pngBytes := tinyPNGBytes(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(pngBytes[:8])
+		w.(http.Flusher).Flush()
+		if r.URL.Path == "/stall.png" {
+			<-r.Context().Done()
+			return
+		}
+		for i := 8; i < len(pngBytes); i += 8 {
+			time.Sleep(80 * time.Millisecond)
+			_, _ = w.Write(pngBytes[i:min(i+8, len(pngBytes))])
+			w.(http.Flusher).Flush()
+		}
+	}))
+	defer server.Close()
+	loader := newImageLoader()
+	loader.readIdleTimeout = 400 * time.Millisecond
+	if src, err := loader.Load(server.URL + "/slow.png"); src == nil || err != nil {
+		t.Fatalf("slow image with steady progress did not load: %v", err)
+	}
+	if _, err := loader.Load(server.URL + "/stall.png"); !errors.Is(err, errImageReadStalled) {
+		t.Fatalf("stalled response returned %v", err)
+	}
+}
+
+type markdownAttachmentRead struct {
+	site, article, draft, name string
+}
+
+type markdownAttachmentBackend struct {
+	*fakeBackend
+	reads chan markdownAttachmentRead
+	png   []byte
+}
+
+func (b *markdownAttachmentBackend) ReadMarkdownAttachment(site, article, draft, name string) ([]byte, string, error) {
+	b.reads <- markdownAttachmentRead{site: site, article: article, draft: draft, name: name}
+	return b.png, "image/png", nil
+}
+
+func TestNativeUIReadsAttachmentsForOwnArticleAndDraft(t *testing.T) {
+	article := store.Article{ID: "article", SiteID: "site", Title: "Article", Content: "![photo](./%E5%9B%BE%20%E7%89%87.png)"}
+	draft := store.Draft{ID: "draft", SiteID: "site", ArticleID: article.ID, Title: "Draft", Content: article.Content}
+	backend := &markdownAttachmentBackend{
+		fakeBackend: &fakeBackend{sites: []store.Site{{ID: "site", Name: "Site"}}, articles: []store.Article{article}, drafts: []store.Draft{draft}},
+		reads:       make(chan markdownAttachmentRead, 4),
+		png:         tinyPNGBytes(t),
+	}
+	app := New(backend)
+	tt := ui.NewTester(app.View, 1280, 800)
+	check := func(want markdownAttachmentRead) {
+		t.Helper()
+		tt.Frame()
+		select {
+		case got := <-backend.reads:
+			if got != want {
+				t.Fatalf("read %+v, want %+v", got, want)
+			}
+		case <-time.After(3 * time.Second):
+			t.Fatalf("view did not try to load attachment %+v", want)
+		}
+	}
+	app.openArticleForRead(article.SiteID, article.ID)
+	check(markdownAttachmentRead{site: "site", article: "article", name: "图 片.png"})
+	app.openDraft(draft)
+	app.editorPaneMode = editorPaneView
+	check(markdownAttachmentRead{site: "site", article: "article", draft: "draft", name: "图 片.png"})
 }
 
 func TestSubscriptionReaderLoadsHTTPImageEndToEnd(t *testing.T) {

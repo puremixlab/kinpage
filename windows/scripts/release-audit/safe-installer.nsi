@@ -184,6 +184,14 @@ uninstall_allowed:
   SetErrorLevel 2
   Abort
 shortcut_checked:
+  nsExec::ExecToStack '"$PLUGINSDIR\planet-installer-guard.exe" desktop-shortcut-remove "$INSTDIR"'
+  Pop $0
+  Pop $1
+  StrCmp $0 "0" desktop_shortcut_checked
+  MessageBox MB_OK|MB_ICONSTOP "Uninstall refused: desktop shortcut could not be removed: $1" /SD IDOK
+  SetErrorLevel 2
+  Abort
+desktop_shortcut_checked:
   !insertmacro DeleteOwned "Kinpage.exe"
   !insertmacro DeleteOwned "ipfs.exe"
   !insertmacro DeleteOwned "icon.png"

@@ -23,6 +23,25 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 - Unified Global Settings and Site Settings window structure: added persistent current-site identity in Site Settings, moved Data Repository into Data & Storage and Publish Behavior (IPNS + Prewarm) into Publish & Pinning with per-page save isolation, upgraded both windows with field-level search, target highlighting, and "Back to Search Results", aligned Deployment targets to Cloudflare Pages and SSH (rsync) with persisted backend summaries and isolated modal drafts, separated Custom Code enable checkboxes from expand-to-edit controls, added per-action IPFS prerequisite notes, isolated AI Assistant and Local API modal drafts with distinct connection-test and save-vs-start feedback, and added in-page keyword filtering to App Logs.
 
+### Fixed
+
+- Preserve the Kinpage desktop shortcut when changing its icon on Windows installations that use short path aliases.
+- Keep the window responsive while following, editing, or refreshing subscriptions. Show the article list as soon as it is saved and load the site icon in the background, with WebP support and a separate timeout per icon candidate.
+- Allow slow article images to keep downloading while data arrives, and display registered relative images in the article reader and editor preview.
+- Move the data repository on the next startup so recent saves, article and draft attachments, and local integration settings move together.
+- Preserve registered cover images and regenerate recognized tag pages when exporting a previously imported `.planet` backup again.
+- Save editor articles with a pending-publication status. Queue site publication in the background and keep newer content pending when an earlier revision finishes.
+- Prompt to save or discard unsaved draft changes when quitting from the tray or closing a window without a tray.
+- Refresh stale subscriptions at startup and every 15 minutes while running. Keep cached articles during outages and use the local calendar day for Today.
+- Restore Check for Updates in General settings, with an optional startup check against a configured trusted source and verified installer downloads.
+- Remove the installation's own desktop shortcut during NSIS uninstall while preserving shortcuts to other programs or with custom icons.
+
+### Security
+
+- Build bundled Kubo 0.43.2 from pinned upstream source with Go 1.27.4. Match the Kubo binary and its license materials across NSIS and MSIX, and link the vulnerability scan to both package hashes.
+- Update the bundled Kubo build to gRPC 1.83.2, klauspost/compress 1.20.2, and OpenTelemetry 1.47.0 for four upstream advisory fixes.
+- Query the IPFS Foundation's delegated read endpoint alongside the DHT for CID providers and signed IPNS records on the default mainnet profile. Keep provider announcements and IPNS publishing on the DHT.
+
 ## [0.1.0] - 2026-11-26
 
 ### Added

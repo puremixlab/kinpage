@@ -18,6 +18,7 @@ func TestNativeUISiteSettingsAndPublishModal(t *testing.T) {
 	}
 	app := New(backend)
 	tt := ui.NewTester(app.View, 1280, 860)
+	complete := monitorSubscriptionTasks(t, app, tt)
 	tt.Frame()
 
 	if err := tt.Click("原站点"); err != nil {
@@ -28,6 +29,7 @@ func TestNativeUISiteSettingsAndPublishModal(t *testing.T) {
 	if err := tt.Click("发布站点"); err != nil {
 		t.Fatalf("failed to click publish site: %v", err)
 	}
+	complete()
 	if !app.publishModal.open || app.publishModal.result.CID != "bafy-test-cid" {
 		t.Fatalf("expected publish modal with CID, got %+v", app.publishModal)
 	}

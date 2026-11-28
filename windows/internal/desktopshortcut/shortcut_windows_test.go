@@ -65,6 +65,30 @@ func TestDesktopShortcutSwitchesIconForPackagedApp(t *testing.T) {
 	}
 }
 
+func TestDesktopShortcutMatchesShortExecutablePath(t *testing.T) {
+	root := t.TempDir()
+	name := filepath.Join(root, "Application with a long name.exe")
+	if err := os.WriteFile(name, []byte("test executable"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	value, err := windows.UTF16PtrFromString(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buffer [32768]uint16
+	n, err := windows.GetShortPathName(value, &buffer[0], uint32(len(buffer)))
+	if err != nil || n == 0 || n >= uint32(len(buffer)) {
+		t.Fatalf("resolve short alias: %v", err)
+	}
+	short := windows.UTF16ToString(buffer[:n])
+	if filepath.Base(short) == filepath.Base(name) {
+		t.Skip("the test volume does not create 8.3 aliases")
+	}
+	if !sameExecutablePath(short, name) || !sameExecutablePath(name, short) {
+		t.Fatalf("%q and %q resolve to the same executable", short, name)
+	}
+}
+
 func initShortcutTests(t *testing.T) {
 	t.Helper()
 	cleanup, err := initCOM()

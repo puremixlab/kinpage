@@ -4,11 +4,18 @@ package publisher
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"windows/internal/attachments"
 	"windows/internal/sitegen"
 	"windows/internal/store"
 )
+
+type DeploymentResult struct {
+	Target string `json:"target"`
+	URL    string `json:"url,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
 
 type Node interface {
 	EnsureKey(string) (string, error)
@@ -18,14 +25,19 @@ type Node interface {
 }
 
 type Result struct {
-	CID             string `json:"cid"`
-	IPNS            string `json:"ipns"`
-	Revision        uint64 `json:"revision"`
-	Pending         bool   `json:"pending"`
-	PinnableWarning string `json:"pinnableWarning,omitempty"`
-	TelegramWarning string `json:"telegramWarning,omitempty"`
+	CID             string             `json:"cid"`
+	IPNS            string             `json:"ipns"`
+	Revision        uint64             `json:"revision"`
+	Pending         bool               `json:"pending"`
+	PinnableWarning string             `json:"pinnableWarning,omitempty"`
+	TelegramWarning string             `json:"telegramWarning,omitempty"`
+	Deployments     []DeploymentResult `json:"deployments,omitempty"`
 }
 
+func (r Result) HasWarnings() bool {
+	return r.PinnableWarning != "" || r.TelegramWarning != "" ||
+		slices.ContainsFunc(r.Deployments, func(item DeploymentResult) bool { return item.Error != "" })
+}
 func Publish(node Node, tempParent string, site store.Site, articles []store.Article) (Result, error) {
 	return PublishWithTemplate(node, tempParent, site, articles, "")
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 
@@ -169,31 +168,27 @@ func (l *Library) DeploySite(siteID, kind string) (string, error) {
 	return services.DeployConfigured(root, siteID, kind, dir, true, services.NetworkDeploymentRunner{})
 }
 
-func (l *Library) autoDeploy(root string, site store.Site, articles []store.Article) string {
-	enabled := []string{}
-	var warnings []string
+func (l *Library) autoDeploy(root, siteID, dir string) []publisher.DeploymentResult {
+	var results []publisher.DeploymentResult
 	for _, kind := range []string{"ssh", "cloudflare"} {
-		cfg, err := services.LoadConfig(root, site.ID, kind)
+		target := "Cloudflare Pages"
+		if kind == "ssh" {
+			target = "SSH / rsync"
+		}
+		cfg, err := services.LoadConfig(root, siteID, kind)
 		if err != nil {
-			warnings = append(warnings, fmt.Sprintf("读取 %s 配置失败：%v", kind, err))
+			results = append(results, publisher.DeploymentResult{Target: target, Error: "读取发布配置失败：" + err.Error()})
 			continue
 		}
-		if cfg.Token != "" && cfg.AutoDeploy {
-			enabled = append(enabled, kind)
+		if cfg.Token == "" || !cfg.AutoDeploy {
+			continue
 		}
-	}
-	if len(enabled) == 0 {
-		return strings.Join(warnings, "；")
-	}
-	dir, err := l.stageRemote(root, site, articles)
-	if err != nil {
-		return strings.Join(append(warnings, "生成外部发布文件失败："+err.Error()), "；")
-	}
-	defer os.RemoveAll(dir)
-	for _, kind := range enabled {
-		if _, err = services.DeployConfigured(root, site.ID, kind, dir, false, services.NetworkDeploymentRunner{}); err != nil {
-			warnings = append(warnings, fmt.Sprintf("%s 发布未完成：%v", kind, err))
+		address, err := services.DeployConfigured(root, siteID, kind, dir, false, services.NetworkDeploymentRunner{})
+		result := publisher.DeploymentResult{Target: target, URL: address}
+		if err != nil {
+			result.Error = err.Error()
 		}
+		results = append(results, result)
 	}
-	return strings.Join(warnings, "；")
+	return results
 }

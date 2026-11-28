@@ -1,6 +1,7 @@
 package nativeui
 
 import (
+	"context"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -147,6 +148,17 @@ type App struct {
 	badgeDragOffsets    map[string]*ui.Point
 	badgeZOrder         []string
 	badgeDraggingID     string
+
+	// Background operations.
+	backgroundContext context.Context
+	invalidateWindow  func()
+
+	subscriptionsDirty atomic.Bool
+	subscriptionTask   *subscriptionTask
+	publicationQueue   []sitePublishRequest
+	publication        *sitePublishTask
+	publicationResults map[string]publishModalState
+	updateSettings     updateSettingsState
 
 	// Subscriptions & global search state.
 	selectedSubURL        string
@@ -330,9 +342,7 @@ func (a *App) Reload() {
 	} else {
 		a.sites = sites
 	}
-	if subs, err := a.backend.Subscriptions(); err == nil {
-		a.subscriptions = subs
-	}
+	a.reloadSubscriptions()
 	if st, err := a.backend.IPFSStatus(); err == nil {
 		a.ipfsModal.status = st
 	}
@@ -605,7 +615,7 @@ func (a *App) publishCurrentDraft() {
 	a.editorTagsDirty = false
 	a.editorBuffer.MarkSaved()
 	a.Reload()
-	a.setStatus(a.tf("status.published", a.fallbackTitle(art.Title)))
+	a.setStatus(a.tf("status.articleSavedPending", a.fallbackTitle(art.Title)))
 }
 
 func (a *App) deleteCurrentDraft() {

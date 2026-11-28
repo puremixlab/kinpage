@@ -10,6 +10,12 @@ import (
 	"windows/internal/store"
 )
 
+// RequestExit uses the same dirty-editor guard as opening another document.
+// Window callbacks invoke it on the UI thread.
+func (a *App) RequestExit(leave func()) {
+	a.guardUnsaved(leave)
+}
+
 func (a *App) guardUnsaved(action func()) {
 	if !a.isEditorDirty() {
 		action()

@@ -205,7 +205,7 @@ func (c *Client) Init() error {
 	if err != nil {
 		return err
 	}
-	if err = applyLowPowerDefaults(config); err != nil {
+	if err = applyKuboDefaults(config, c.repo); err != nil {
 		return err
 	}
 	if err = applyWebUICORS(config); err != nil {
@@ -236,9 +236,9 @@ func (c *Client) Init() error {
 	return os.Rename(name, path)
 }
 
-// applyLowPowerDefaults applies Kubo's desktop-friendly lowpower profile
-// settings while preserving explicit user overrides and unknown fields.
-func applyLowPowerDefaults(config map[string]json.RawMessage) error {
+// applyKuboDefaults sets desktop defaults while preserving explicit overrides
+// and unknown configuration fields.
+func applyKuboDefaults(config map[string]json.RawMessage, repo string) error {
 	unmarshalObject := func(raw json.RawMessage, label string) (map[string]json.RawMessage, error) {
 		var obj map[string]json.RawMessage
 		if len(raw) > 0 && string(bytes.TrimSpace(raw)) != "null" {
@@ -272,7 +272,17 @@ func applyLowPowerDefaults(config map[string]json.RawMessage) error {
 		_ = json.Unmarshal(raw, &routingType)
 	}
 	if routingType == "" || routingType == "auto" {
+		routingType = "autoclient"
 		routing["Type"] = json.RawMessage(`"autoclient"`)
+	}
+	if routingType == "autoclient" && hasOnlyAuto(routing["DelegatedRouters"]) && usesMainnetAutoConf(config, repo) {
+		// Kubo's "auto" excludes delegated endpoints that also use Amino DHT.
+		// Add its mainnet service as a second viewpoint for provider and IPNS reads.
+		routing["DelegatedRouters"] = json.RawMessage(`[
+			"auto",
+			"https://delegated-ipfs.dev/routing/v1/providers",
+			"https://delegated-ipfs.dev/routing/v1/ipns"
+		]`)
 	}
 	if config["Routing"], err = json.Marshal(routing); err != nil {
 		return err
@@ -315,6 +325,32 @@ func applyLowPowerDefaults(config map[string]json.RawMessage) error {
 
 	config["Swarm"], err = json.Marshal(swarm)
 	return err
+}
+
+func hasOnlyAuto(raw json.RawMessage) bool {
+	var values []string
+	return json.Unmarshal(raw, &values) == nil && len(values) == 1 && values[0] == "auto"
+}
+
+func usesMainnetAutoConf(config map[string]json.RawMessage, repo string) bool {
+	if !hasOnlyAuto(config["Bootstrap"]) || os.Getenv("LIBP2P_FORCE_PNET") == "1" {
+		return false
+	}
+	var autoConf struct {
+		Enabled *bool
+		URL     string
+	}
+	if raw, exists := config["AutoConf"]; exists && json.Unmarshal(raw, &autoConf) != nil {
+		return false
+	}
+	if autoConf.Enabled != nil && !*autoConf.Enabled {
+		return false
+	}
+	if autoConf.URL != "" && autoConf.URL != "https://conf.ipfs-mainnet.org/autoconf.json" {
+		return false
+	}
+	_, err := os.Lstat(filepath.Join(repo, "swarm.key"))
+	return errors.Is(err, os.ErrNotExist)
 }
 
 // Start owns the daemon process it creates. Offline mode is intended for tests.

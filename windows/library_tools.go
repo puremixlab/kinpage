@@ -61,7 +61,7 @@ func (l *Library) MoveDataDir(ctx context.Context) (string, error) {
 	if defaultDir == "" {
 		defaultDir = currentDir
 	}
-	if err := store.MigrateDataDir(defaultDir, currentDir, dirs[0]); err != nil {
+	if err := store.ScheduleDataDirMigration(defaultDir, currentDir, dirs[0]); err != nil {
 		return "", err
 	}
 	return dirs[0], nil

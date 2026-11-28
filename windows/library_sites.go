@@ -290,6 +290,10 @@ func (l *Library) RemovedSites() ([]store.Site, error) {
 }
 
 func (l *Library) RemoveSite(siteID string) error {
+	if !l.publishMu.TryLock() {
+		return errors.New("正在发布站点，请稍后移除")
+	}
+	defer l.publishMu.Unlock()
 	l.publicMu.Lock()
 	defer l.publicMu.Unlock()
 	s, err := l.open()
@@ -311,6 +315,10 @@ func (l *Library) RestoreSite(siteID string) (store.Site, error) {
 
 // PermanentlyDeleteSite starts or resumes deletion of a previously removed site.
 func (l *Library) PermanentlyDeleteSite(siteID string) error {
+	if !l.publishMu.TryLock() {
+		return errors.New("正在发布站点，请稍后删除")
+	}
+	defer l.publishMu.Unlock()
 	l.publicMu.Lock()
 	defer l.publicMu.Unlock()
 	return l.permanentlyDeleteSiteLocked(siteID)

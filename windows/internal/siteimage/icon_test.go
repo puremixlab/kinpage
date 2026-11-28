@@ -2,6 +2,7 @@ package siteimage
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"image"
 	"image/color"
@@ -9,6 +10,22 @@ import (
 	"image/png"
 	"testing"
 )
+
+func TestNormalizeWebPIcon(t *testing.T) {
+	const webp = "UklGRh4AAABXRUJQVlA4TBEAAAAvAQAAAAdQyHr0v/+BiOh/AAA="
+	data, err := base64.StdEncoding.DecodeString(webp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	icon, err := NormalizeIcon(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	img, _, err := DecodePNG(icon)
+	if err != nil || img.Bounds().Dx() != 2 || img.Bounds().Dy() != 1 {
+		t.Fatalf("WebP did not normalize to a 2×1 PNG: %v", err)
+	}
+}
 
 func encodeTestPNG(t *testing.T, w, h int, c color.NRGBA) []byte {
 	t.Helper()

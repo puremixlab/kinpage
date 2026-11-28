@@ -3,6 +3,7 @@ package feeds
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"io"
 	"mime"
@@ -28,7 +29,9 @@ const (
 	maxPageFetchBytes = 1 << 20
 	maxIconAttempts   = 8
 	maxIconCandidates = 6
-	iconFetchTimeout  = 6 * time.Second
+	iconFetchTimeout  = 90 * time.Second
+	iconCandidateTime = 55 * time.Second
+	iconPageTimeout   = 6 * time.Second
 	iconHostDNSBudget = 3 * time.Second
 )
 
@@ -209,8 +212,28 @@ func isSVGURL(u *url.URL, rawType string) bool {
 	return strings.EqualFold(path.Ext(u.Path), ".svg")
 }
 
-func fetchSiteIcon(sourceURL, feedURL *url.URL, siteLink string, feedIcons, pageIcons []*url.URL) string {
-	ctx, cancel := context.WithTimeout(context.Background(), iconFetchTimeout)
+func siteIconLoader(sourceURL, feedURL *url.URL, siteLink string, feedIcons, pageIcons []*url.URL) IconLoader {
+	return func(ctx context.Context) string {
+		return fetchSiteIcon(ctx, sourceURL, feedURL, siteLink, feedIcons, pageIcons, iconCandidateTime)
+	}
+}
+
+func newIconHTTPTransport() *http.Transport {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	protocols := &http.Protocols{}
+	protocols.SetHTTP1(true)
+	transport.Protocols = protocols
+	transport.ResponseHeaderTimeout = 12 * time.Second
+	if transport.TLSClientConfig == nil {
+		transport.TLSClientConfig = &tls.Config{}
+	}
+	// Clone can inherit the default transport's HTTP/2 ALPN list.
+	transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
+	return transport
+}
+
+func fetchSiteIcon(parent context.Context, sourceURL, feedURL *url.URL, siteLink string, feedIcons, pageIcons []*url.URL, candidateTime time.Duration) string {
+	ctx, cancel := context.WithTimeout(parent, iconFetchTimeout)
 	defer cancel()
 	allowedHosts := map[string]bool{}
 	if sourceURL != nil {
@@ -219,15 +242,17 @@ func fetchSiteIcon(sourceURL, feedURL *url.URL, siteLink string, feedIcons, page
 	if feedURL != nil {
 		allowedHosts[strings.ToLower(feedURL.Hostname())] = true
 	}
+	transport := newIconHTTPTransport()
 	client := &http.Client{
-		Timeout: iconFetchTimeout,
+		Transport: transport,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {
 				return errors.New("too many icon redirects")
 			}
-			return allowedIconURL(ctx, allowedHosts, req.URL)
+			return allowedIconURL(req.Context(), allowedHosts, req.URL)
 		},
 	}
+	defer transport.CloseIdleConnections()
 
 	seen := map[string]bool{}
 	attempts := 0
@@ -245,7 +270,9 @@ func fetchSiteIcon(sourceURL, feedURL *url.URL, siteLink string, feedIcons, page
 				continue
 			}
 			attempts++
-			data, err := fetchBounded(ctx, client, target, maxIconFetchBytes)
+			candidateCtx, cancel := context.WithTimeout(ctx, candidateTime)
+			data, err := fetchBounded(candidateCtx, client, target, maxIconFetchBytes)
+			cancel()
 			if err != nil {
 				continue
 			}
@@ -289,7 +316,10 @@ func fetchSiteIcon(sourceURL, feedURL *url.URL, siteLink string, feedIcons, page
 			if err := allowedIconURL(ctx, allowedHosts, candidate); err != nil {
 				continue
 			}
-			if doc, err := fetchHTMLPage(ctx, client, candidate); err == nil && doc.isHTML {
+			pageCtx, cancel := context.WithTimeout(ctx, iconPageTimeout)
+			doc, err := fetchHTMLPage(pageCtx, client, candidate)
+			cancel()
+			if err == nil && doc.isHTML {
 				if !htmlMatched {
 					homepage = doc.url
 					htmlMatched = true
@@ -393,7 +423,10 @@ func fetchBounded(ctx context.Context, client *http.Client, u *url.URL, limit in
 		return nil, errors.New("icon request failed")
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
-	if err != nil || int64(len(body)) > limit {
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(body)) > limit {
 		return nil, errors.New("icon response too large")
 	}
 	return body, nil

@@ -69,9 +69,21 @@ type Item struct {
 }
 
 func Fetch(address string) (Feed, error) {
+	ctx := context.Background()
+	feed, icon, err := FetchContent(ctx, address)
+	if err == nil {
+		feed.IconPNG = icon(ctx)
+	}
+	return feed, err
+}
+
+// IconLoader fetches an optional icon independently of the article list.
+type IconLoader func(context.Context) string
+
+func FetchContent(parent context.Context, address string) (Feed, IconLoader, error) {
 	u, err := url.Parse(address)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil {
-		return Feed{}, errors.New("订阅地址必须是 HTTP 或 HTTPS 地址")
+		return Feed{}, nil, errors.New("订阅地址必须是 HTTP 或 HTTPS 地址")
 	}
 	client := &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 5 || (req.URL.Scheme != "http" && req.URL.Scheme != "https") || req.URL.User != nil {
@@ -81,23 +93,22 @@ func Fetch(address string) (Feed, error) {
 	}}
 	// Discovery and all candidate requests share a deadline, so a page with
 	// many broken feed links cannot multiply the subscription wait time.
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(parent, 15*time.Second)
 	defer cancel()
 	doc, err := fetchDocument(ctx, client, u)
 	if err != nil {
-		return Feed{}, err
+		return Feed{}, nil, err
 	}
 	feed, feedIcons, err := parseFeed(doc.body, doc.url)
 	if err == nil {
-		feed.IconPNG = fetchSiteIcon(doc.url, doc.url, feed.Link, feedIcons, nil)
-		return feed, nil
+		return feed, siteIconLoader(doc.url, doc.url, feed.Link, feedIcons, nil), parent.Err()
 	}
 	if !doc.isHTML {
-		return Feed{}, err
+		return Feed{}, nil, err
 	}
 	candidates := discoverFeeds(doc.body, doc.url)
 	if len(candidates) == 0 {
-		return Feed{}, errors.New("此网页没有提供可识别的 RSS、Atom 或 JSON Feed 地址，请填写订阅源地址")
+		return Feed{}, nil, errors.New("此网页没有提供可识别的 RSS、Atom 或 JSON Feed 地址，请填写订阅源地址")
 	}
 	pageIcons := discoverIcons(doc.body, doc.url)
 	if pageIcons == nil {
@@ -109,15 +120,14 @@ func Fetch(address string) (Feed, error) {
 		if err == nil {
 			feed, feedIcons, err = parseFeed(next.body, next.url)
 			if err == nil {
-				feed.IconPNG = fetchSiteIcon(doc.url, next.url, feed.Link, feedIcons, pageIcons)
-				return feed, nil
+				return feed, siteIconLoader(doc.url, next.url, feed.Link, feedIcons, pageIcons), parent.Err()
 			}
 		}
 		if ctx.Err() != nil {
 			break
 		}
 	}
-	return Feed{}, fmt.Errorf("网页提供的订阅源均无法读取：%w", err)
+	return Feed{}, nil, fmt.Errorf("网页提供的订阅源均无法读取：%w", err)
 }
 
 type feedDocument struct {

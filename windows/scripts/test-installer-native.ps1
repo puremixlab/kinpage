@@ -60,11 +60,14 @@ $taskUserData = Join-Path ([Environment]::GetFolderPath('ApplicationData')) 'Kin
 $taskLocalData = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Kinpage'
 $taskDefaultInstall = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs/Kinpage'
 $taskShortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'Kinpage.lnk'
-foreach ($taskPath in @($taskStateKey, $taskUninstallKey, $taskTransactionKey, $taskUserData, $taskLocalData, $taskDefaultInstall, $taskShortcut)) {
+$taskDesktop = [Environment]::GetFolderPath([Environment+SpecialFolder]::DesktopDirectory, [Environment+SpecialFolderOption]::DoNotVerify)
+Assert-Native (-not [string]::IsNullOrWhiteSpace($taskDesktop)) 'Current user has no Desktop directory.'
+$taskDesktopShortcut = Join-Path $taskDesktop 'Kinpage.lnk'
+foreach ($taskPath in @($taskStateKey, $taskUninstallKey, $taskTransactionKey, $taskUserData, $taskLocalData, $taskDefaultInstall, $taskShortcut, $taskDesktopShortcut)) {
     Assert-Native (-not (Test-Path -LiteralPath $taskPath)) "Test requires a clean disposable profile; existing product path: $taskPath"
 }
 Assert-Native (@(Get-Process -Name 'Kinpage' -ErrorAction SilentlyContinue).Count -eq 0) 'A Kinpage process already exists.'
-foreach ($taskPath in @($taskUserData, $taskLocalData, $taskShortcut, $EvidenceDir)) { Assert-NormalPath $taskPath }
+foreach ($taskPath in @($taskUserData, $taskLocalData, $taskShortcut, $taskDesktopShortcut, $EvidenceDir)) { Assert-NormalPath $taskPath }
 
 $taskTempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $taskRoot = Join-Path $taskTempBase ('planet-native-installer-' + [guid]::NewGuid().ToString('N'))
@@ -164,6 +167,16 @@ function Get-InstalledSnapshot {
     return ($taskSnapshot | ConvertTo-Json -Compress)
 }
 
+function New-TestDesktopShortcut([string]$Target, [string]$Icon) {
+    Assert-Native (-not (Test-Path -LiteralPath $taskDesktopShortcut)) 'Test desktop shortcut already exists.'
+    [IO.Directory]::CreateDirectory($taskDesktop) | Out-Null
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($taskDesktopShortcut)
+    $shortcut.TargetPath = $Target
+    $shortcut.IconLocation = "$Icon,0"
+    $shortcut.Save()
+}
+
 try {
     $taskOS = Get-CimInstance Win32_OperatingSystem
     $taskEvidence.windows = "$($taskOS.Caption) $($taskOS.Version) build $($taskOS.BuildNumber)"
@@ -236,16 +249,34 @@ try {
     Assert-Installed
     Add-NativeResult 'tampered-file-reinstall-and-uninstall-refused'
 
+    $taskIconSource = Join-Path $PSScriptRoot '../resources/icon.ico'
+    $taskIconDir = Join-Path $taskLocalData 'DesktopIcons'
+    [IO.Directory]::CreateDirectory($taskIconDir) | Out-Null
+    $taskIconDigest = (Get-NativeHash $taskIconSource).Substring(0, 16)
+    $taskManagedIcon = Join-Path $taskIconDir "classic-$taskIconDigest.ico"
+    Copy-Item -LiteralPath $taskIconSource -Destination $taskManagedIcon
+    New-TestDesktopShortcut (Join-Path $taskInstall 'Kinpage.exe') $taskManagedIcon
     $taskUnknownHash = Get-NativeHash $taskUnknown
     Invoke-NativeUninstall
     foreach ($taskName in ($taskPayloadNames + @('Uninstall.exe'))) {
         Assert-Native (-not (Test-Path -LiteralPath (Join-Path $taskInstall $taskName))) "Uninstall retained owned file: $taskName"
     }
-    foreach ($taskPath in @($taskStateKey, $taskUninstallKey, $taskTransactionKey, $taskShortcut)) {
+    foreach ($taskPath in @($taskStateKey, $taskUninstallKey, $taskTransactionKey, $taskShortcut, $taskDesktopShortcut)) {
         Assert-Native (-not (Test-Path -LiteralPath $taskPath)) "Uninstall retained ownership or shortcut: $taskPath"
     }
     Assert-Native ((Get-NativeHash $taskUnknown) -ceq $taskUnknownHash) 'Uninstall removed or changed unknown data.'
     Assert-Native ((Get-NativeHash $taskUserSentinel) -ceq $taskUserHash) 'Uninstall changed synthetic user data.'
+
+    $taskInstall = Join-Path $taskRoot 'installed-foreign-shortcut'
+    Invoke-NativeSetup $taskInstall $true
+    Assert-Installed
+    New-TestDesktopShortcut $taskForeignFile $taskManagedIcon
+    $taskForeignShortcutHash = Get-NativeHash $taskDesktopShortcut
+    Invoke-NativeUninstall
+    Assert-Native (-not (Test-Path -LiteralPath $taskUninstallKey)) 'Second uninstall did not complete.'
+    Assert-Native ((Get-NativeHash $taskDesktopShortcut) -ceq $taskForeignShortcutHash) 'Uninstall changed the foreign desktop shortcut.'
+    Assert-Native ((Get-NativeHash $taskUserSentinel) -ceq $taskUserHash) 'Second uninstall changed synthetic user data.'
+    $taskEvidence.desktopShortcuts = [ordered]@{ ownedRemoved = $true; foreignPreserved = $true }
     Add-NativeResult 'uninstall-descendants-complete-owned-files-removed-user-data-preserved'
     $taskEvidence.status = 'passed'
 } catch {

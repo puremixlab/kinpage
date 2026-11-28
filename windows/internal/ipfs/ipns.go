@@ -148,6 +148,10 @@ func (c *Client) ResolveOffline(name string) (string, error) {
 
 // Resolve resolves an IPNS peer ID or DNSLink/ENS name to its root CID.
 func (c *Client) Resolve(name string) (string, error) {
+	return c.ResolveContext(context.Background(), name)
+}
+
+func (c *Client) ResolveContext(ctx context.Context, name string) (string, error) {
 	if name == "" || len(name) > 255 || strings.ContainsAny(name, `/\: `) {
 		return "", errors.New("IPNS 名称无效")
 	}
@@ -155,7 +159,7 @@ func (c *Client) Resolve(name string) (string, error) {
 	var err error
 	target := "/ipns/" + name
 	if strings.HasSuffix(strings.ToLower(name), ".eth") {
-		value, err = resolveENS(context.Background(), ensRPC(), name)
+		value, err = resolveENS(ctx, ensRPC(), name)
 		if err != nil {
 			return "", err
 		}
@@ -166,7 +170,7 @@ func (c *Client) Resolve(name string) (string, error) {
 	}
 	if value == "" {
 		c.mu.Lock()
-		value, err = c.runTimeout(90*time.Second, "name", "resolve", "--nocache", target)
+		value, err = c.runContext(ctx, 90*time.Second, "name", "resolve", "--nocache", target)
 		c.mu.Unlock()
 	}
 	if err != nil {

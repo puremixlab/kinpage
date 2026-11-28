@@ -20,7 +20,7 @@ const (
 
 var pngSignature = []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}
 
-// NormalizeIcon validates a remote or IPFS site icon (PNG, JPEG, GIF or ICO),
+// NormalizeIcon validates a remote or IPFS site icon (PNG, JPEG, GIF, WebP or ICO),
 // downscales oversized images cleanly, and returns a base64-encoded PNG.
 func NormalizeIcon(data []byte) (string, error) {
 	if len(data) == 0 || len(data) > maxIconInputBytes {

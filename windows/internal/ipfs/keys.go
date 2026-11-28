@@ -42,16 +42,20 @@ func (c *Client) ListKeys() ([]KeyInfo, error) {
 }
 
 func (c *Client) EnsureKey(name string) (string, error) {
+	return c.EnsureKeyContext(context.Background(), name)
+}
+
+func (c *Client) EnsureKeyContext(ctx context.Context, name string) (string, error) {
 	if !safeName.MatchString(name) || name == "self" {
 		return "", errors.New("invalid key name")
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	key, err := c.lookupKey(context.Background(), name)
+	key, err := c.lookupKey(ctx, name)
 	if err != nil || key != "" {
 		return key, err
 	}
-	return c.run("key", "gen", "--type=ed25519", name)
+	return c.runContext(ctx, 3*time.Minute, "key", "gen", "--type=ed25519", name)
 }
 
 func (c *Client) LookupKey(name string) (string, error) {

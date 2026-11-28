@@ -19,6 +19,7 @@ import (
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
+	"windows/internal/desktopshortcut"
 )
 
 var manifestBase64 string // set by -ldflags from the actual build payload
@@ -489,44 +490,6 @@ func createShortcut(installDir, source, destination string) error {
 	return k.SetStringValue("ShortcutPath", destination)
 }
 
-// removeMatchingFile holds an exclusive handle through hashing and deletion,
-// so a different file cannot replace the one being deleted in between.
-func removeMatchingFile(path, want string) error {
-	p, err := windows.UTF16PtrFromString(path)
-	if err != nil {
-		return err
-	}
-	h, err := windows.CreateFile(p, windows.GENERIC_READ|0x00010000, 0, nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL|windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
-	if errors.Is(err, windows.ERROR_FILE_NOT_FOUND) || errors.Is(err, windows.ERROR_PATH_NOT_FOUND) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	f := os.NewFile(uintptr(h), path)
-	if f == nil {
-		windows.CloseHandle(h)
-		return errors.New("cannot wrap shortcut handle")
-	}
-	defer f.Close()
-	var info windows.ByHandleFileInformation
-	if err := windows.GetFileInformationByHandle(h, &info); err != nil {
-		return err
-	}
-	if info.FileAttributes&(windows.FILE_ATTRIBUTE_REPARSE_POINT|windows.FILE_ATTRIBUTE_DIRECTORY) != 0 {
-		return nil
-	}
-	digest := sha256.New()
-	if _, err := io.Copy(digest, f); err != nil {
-		return err
-	}
-	if !strings.EqualFold(hex.EncodeToString(digest.Sum(nil)), want) {
-		return nil
-	}
-	flag := byte(1)
-	return windows.SetFileInformationByHandle(h, windows.FileDispositionInfo, &flag, 1)
-}
-
 func removeShortcut(installDir, destination string) error {
 	installDir, err := safeDirectory(installDir)
 	if err != nil {
@@ -563,7 +526,7 @@ func removeShortcut(installDir, destination string) error {
 	if !strings.EqualFold(filepath.Clean(registered), destination) || len(want) != 64 {
 		return nil
 	}
-	return removeMatchingFile(destination, want)
+	return desktopshortcut.RemoveIfHashMatches(destination, want)
 }
 
 func run() error {
@@ -618,6 +581,14 @@ func run() error {
 			return errors.New("expected shortcut destination")
 		}
 		return removeShortcut(os.Args[2], os.Args[3])
+	case "desktop-shortcut-remove":
+		if len(os.Args) != 3 {
+			return errors.New("expected installation directory")
+		}
+		if err := checkUninstall(os.Args[2], files); err != nil {
+			return err
+		}
+		return desktopshortcut.RemoveInstalled(filepath.Join(os.Args[2], "Kinpage.exe"))
 	default:
 		return errors.New("unknown installer guard operation")
 	}

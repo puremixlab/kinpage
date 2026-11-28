@@ -13,18 +13,29 @@ import (
 )
 
 func (c *Client) Add(dir string) (string, error) {
+	return c.AddContext(context.Background(), dir)
+}
+
+func (c *Client) AddContext(ctx context.Context, dir string) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.run("add", "-Qr", dir)
+	return c.runContext(ctx, 3*time.Minute, "add", "-Qr", dir)
 }
 
 // Read fetches a bounded public file without using an HTTP gateway.
 func (c *Client) Read(cid, path string) ([]byte, error) {
+	return c.ReadContext(context.Background(), cid, path)
+}
+
+func (c *Client) ReadContext(parent context.Context, cid, path string) ([]byte, error) {
 	if !validContentPath(cid, path) {
 		return nil, errors.New("IPFS 内容路径无效")
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if err := parent.Err(); err != nil {
+		return nil, err
+	}
 	temporary, err := c.ensureCommandDaemon()
 	if err != nil {
 		return nil, err
@@ -32,7 +43,7 @@ func (c *Client) Read(cid, path string) ([]byte, error) {
 	if temporary {
 		defer func() { _ = c.closeLocked() }()
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(parent, 90*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, c.executable, "--api="+c.ownedAPI, "cat", "/ipfs/"+cid+"/"+path)
 	c.configure(cmd)
@@ -51,6 +62,9 @@ func (c *Client) Read(cid, path string) ([]byte, error) {
 		_ = cmd.Process.Kill()
 	}
 	waitErr := cmd.Wait()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if len(data) > limit {
 		return nil, errors.New("站点元数据超过 16 MB")
 	}
@@ -65,12 +79,16 @@ func (c *Client) Read(cid, path string) ([]byte, error) {
 
 // Pin stores a full immutable site in the local repository for offline use.
 func (c *Client) Pin(cid string) error {
+	return c.PinContext(context.Background(), cid)
+}
+
+func (c *Client) PinContext(ctx context.Context, cid string) error {
 	if !safeName.MatchString(cid) {
 		return errors.New("CID 无效")
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	_, err := c.run("pin", "add", "--progress=false", "/ipfs/"+cid)
+	_, err := c.runContext(ctx, 3*time.Minute, "pin", "add", "--progress=false", "/ipfs/"+cid)
 	return err
 }
 

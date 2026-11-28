@@ -357,6 +357,7 @@ func (a *App) viewToolsModal(c *ui.Context) {
 	a.viewToolsAPIConfigSheet(c)
 	a.viewToolsKeyImportSheet(c)
 	a.viewToolsFolderAddSheet(c)
+	a.viewUpdateConfigSheet(c)
 }
 
 func (a *App) viewToolsGeneral(c *ui.Context) {
@@ -392,6 +393,8 @@ func (a *App) viewToolsGeneral(c *ui.Context) {
 	if a.applyAppIcon != nil {
 		a.viewAppIcons(c)
 	}
+
+	a.viewUpdateSettingsCard(c)
 
 	// System behavior card (immediate effect).
 	macHighlightCard(c, pal, m.highlightID == "global-sleep", func() {

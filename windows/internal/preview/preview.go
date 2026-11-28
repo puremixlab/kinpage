@@ -35,16 +35,25 @@ func MarkdownWithImages(source string, resolve func(string) ([]byte, string, err
 // HTMLWithImages restricts image sources in externally supplied HTML to resolved local files.
 func HTMLWithImages(rendered string, resolve func(string) ([]byte, string, error)) (string, error) {
 	return HTMLWithSources(rendered, func(raw string) ([]byte, string, error) {
-		u, err := url.Parse(raw)
+		name, err := RelativeImageName(raw)
 		if err != nil {
 			return nil, "", err
 		}
-		u.Path = strings.TrimPrefix(u.Path, "./")
-		if u.IsAbs() || u.Host != "" || u.RawQuery != "" || u.Fragment != "" || strings.ContainsAny(u.Path, `/\`) || u.Path == "" {
-			return nil, "", fmt.Errorf("image path invalid")
-		}
-		return resolve(u.Path)
+		return resolve(name)
 	})
+}
+
+// RelativeImageName accepts a single attachment name with an optional ./ prefix.
+func RelativeImageName(raw string) (string, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", err
+	}
+	name := strings.TrimPrefix(u.Path, "./")
+	if u.IsAbs() || u.Host != "" || u.RawQuery != "" || u.Fragment != "" || name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\:`) {
+		return "", fmt.Errorf("image path invalid")
+	}
+	return name, nil
 }
 
 // HTMLWithSources replaces every image source using the supplied offline resolver.

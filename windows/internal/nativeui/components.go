@@ -231,23 +231,10 @@ func formatReaderDate(t time.Time) string {
 
 // formatFeedDate converts a feed Published string to a short date when possible.
 func formatFeedDate(raw string) string {
-	s := strings.TrimSpace(raw)
-	if s == "" {
-		return ""
+	if date, ok := parseFeedDate(raw, time.Local); ok {
+		return formatRelativeDate(date)
 	}
-	for _, layout := range []string{
-		time.RFC3339,
-		time.RFC1123Z,
-		time.RFC1123,
-		"2006-01-02 15:04:05",
-		"2006-01-02",
-		"2006/01/02",
-	} {
-		if t, err := time.Parse(layout, s); err == nil {
-			return formatRelativeDate(t)
-		}
-	}
-	return s
+	return strings.TrimSpace(raw)
 }
 
 type macSheetProps struct {

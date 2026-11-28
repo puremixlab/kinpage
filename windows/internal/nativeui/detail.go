@@ -125,13 +125,14 @@ func (a *App) viewArticleReader(c *ui.Context) {
 							}
 						})
 					}
-					lobemd.Markdown(c, art.Content, lobemd.MarkdownProps{
+					key := fmt.Sprintf("article-markdown-%s-%s-%d", art.SiteID, art.ID, art.Modified.UnixNano())
+					lobemd.Markdown(c.Key(key), art.Content, lobemd.MarkdownProps{
 						FontSize:              15,
 						LineHeight:            1.8,
 						HeaderMultiple:        0.65,
 						MarginMultiple:        1.2,
 						FullFeaturedCodeBlock: true,
-						LoadImage:             a.markdownImageLoader("", ""),
+						LoadImage:             a.markdownAttachmentLoader(art.SiteID, art.ID, ""),
 					})
 				})
 			})

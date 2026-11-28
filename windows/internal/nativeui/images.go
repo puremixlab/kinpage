@@ -2,6 +2,7 @@ package nativeui
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
@@ -13,21 +14,23 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 	_ "golang.org/x/image/webp"
+	"windows/internal/preview"
 )
 
 const (
 	maxMarkdownImageBytes = 10 << 20 // 10 MiB safety cap per remote image
 	maxMarkdownImageDim   = 1600     // cap decoded bitmap longest edge
 	imageErrorCacheTTL    = 30 * time.Second
+	imageDownloadLimit    = 90 * time.Second
 )
+
+var errImageReadStalled = errors.New("image download stopped receiving data")
 
 type cachedImage struct {
 	src ui.ImageSource
@@ -38,7 +41,8 @@ type cachedImage struct {
 // imageLoader safely fetches, decodes, and caches Markdown images off the UI
 // goroutine for remote HTTP(S) URLs, data: URLs, and optional local files.
 type imageLoader struct {
-	client *http.Client
+	client          *http.Client
+	readIdleTimeout time.Duration
 
 	mu    sync.Mutex
 	cache map[string]cachedImage
@@ -58,17 +62,16 @@ func newImageHTTPTransport() *http.Transport {
 		MaxIdleConns:          32,
 		IdleConnTimeout:       60 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 15 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 }
 
 func newImageLoader() *imageLoader {
 	return &imageLoader{
-		client: &http.Client{
-			Timeout:   20 * time.Second,
-			Transport: newImageHTTPTransport(),
-		},
-		cache: map[string]cachedImage{},
+		client:          &http.Client{Transport: newImageHTTPTransport()},
+		readIdleTimeout: 15 * time.Second,
+		cache:           map[string]cachedImage{},
 	}
 }
 
@@ -169,8 +172,24 @@ func (l *imageLoader) fetchAndDecode(rawURL, referer string) (ui.ImageSource, er
 	}
 }
 
-func (l *imageLoader) doImageGet(rawURL, referer string) ([]byte, string, int, error) {
-	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+type imageProgressReader struct {
+	io.Reader
+	timer *time.Timer
+	idle  time.Duration
+}
+
+func (r imageProgressReader) Read(buf []byte) (int, error) {
+	n, err := r.Reader.Read(buf)
+	if n > 0 {
+		r.timer.Reset(r.idle)
+	}
+	return n, err
+}
+
+func (l *imageLoader) doImageGet(parent context.Context, rawURL, referer string) ([]byte, string, int, error) {
+	ctx, cancel := context.WithCancelCause(parent)
+	defer cancel(nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return nil, "", 0, err
 	}
@@ -187,8 +206,17 @@ func (l *imageLoader) doImageGet(rawURL, referer string) ([]byte, string, int, e
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, "", resp.StatusCode, fmt.Errorf("image http %d", resp.StatusCode)
 	}
-	data, err := io.ReadAll(io.LimitReader(resp.Body, maxMarkdownImageBytes+1))
+	if resp.ContentLength > maxMarkdownImageBytes {
+		return nil, "", resp.StatusCode, errors.New("remote image exceeds size limit")
+	}
+	idle := time.AfterFunc(l.readIdleTimeout, func() { cancel(errImageReadStalled) })
+	defer idle.Stop()
+	reader := imageProgressReader{Reader: resp.Body, timer: idle, idle: l.readIdleTimeout}
+	data, err := io.ReadAll(io.LimitReader(reader, maxMarkdownImageBytes+1))
 	if err != nil {
+		if cause := context.Cause(ctx); cause != nil {
+			err = cause
+		}
 		return nil, "", resp.StatusCode, err
 	}
 	if len(data) > maxMarkdownImageBytes {
@@ -198,6 +226,8 @@ func (l *imageLoader) doImageGet(rawURL, referer string) ([]byte, string, int, e
 }
 
 func (l *imageLoader) fetchHTTPImage(rawURL string, parsed *url.URL, referer string) (ui.ImageSource, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), imageDownloadLimit)
+	defer cancel()
 	// Build a small ordered list of Referer strategies so both anti-hotlink CDNs
 	// (requiring article/origin Referer) and strict CDNs (rejecting foreign Referer,
 	// e.g. WeChat/Bilibili/Imgur) succeed on the first load.
@@ -221,7 +251,7 @@ func (l *imageLoader) fetchHTTPImage(rawURL string, parsed *url.URL, referer str
 
 	var lastErr error
 	for i, tryRef := range attempts {
-		data, ct, status, err := l.doImageGet(rawURL, tryRef)
+		data, ct, status, err := l.doImageGet(ctx, rawURL, tryRef)
 		if err == nil {
 			return decodeImageBytes(data, ct, parsed.Path)
 		}
@@ -259,9 +289,18 @@ func resolveRelativeURL(raw, baseURL string) string {
 	return base.ResolveReference(ref).String()
 }
 
-// markdownImageLoader returns a LoadImage callback for lobe-mygo Markdown views,
-// resolving relative paths against baseURL (or localDir if provided).
-func (a *App) markdownImageLoader(baseURL, localDir string) func(string) (ui.ImageSource, error) {
+func (a *App) markdownAttachmentLoader(siteID, articleID, draftID string) func(string) (ui.ImageSource, error) {
+	backend := a.backend
+	if backend == nil || (articleID == "" && draftID == "") {
+		return a.markdownImageLoader("", nil)
+	}
+	return a.markdownImageLoader("", func(name string) ([]byte, string, error) {
+		return backend.ReadMarkdownAttachment(siteID, articleID, draftID, name)
+	})
+}
+
+// markdownImageLoader resolves images against a subscription URL or a registered attachment.
+func (a *App) markdownImageLoader(baseURL string, attachment func(string) ([]byte, string, error)) func(string) (ui.ImageSource, error) {
 	if a.imgLoader == nil {
 		a.imgLoader = newImageLoader()
 	}
@@ -276,16 +315,16 @@ func (a *App) markdownImageLoader(baseURL, localDir string) func(string) (ui.Ima
 		if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") || strings.HasPrefix(lower, "data:") {
 			return loader.LoadWithReferer(resolved, baseURL)
 		}
-		if localDir != "" && !filepath.IsAbs(trimmed) && !strings.Contains(trimmed, "..") {
-			candidate := filepath.Join(localDir, filepath.FromSlash(trimmed))
-			data, err := os.ReadFile(candidate)
+		if attachment != nil {
+			name, err := preview.RelativeImageName(trimmed)
 			if err != nil {
 				return nil, err
 			}
-			if len(data) > maxMarkdownImageBytes {
-				return nil, errors.New("local image exceeds size limit")
+			data, mime, err := attachment(name)
+			if err != nil {
+				return nil, err
 			}
-			return decodeImageBytes(data, "", candidate)
+			return decodeImageBytes(data, mime, name)
 		}
 		return nil, fmt.Errorf("unsupported image source %q", trimmed)
 	}
