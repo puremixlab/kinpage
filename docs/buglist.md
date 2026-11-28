@@ -6,15 +6,15 @@
 
 | 编号 | 优先级 | 状态 | 摘要 |
 | --- | --- | --- | --- |
-| BUG-001 | P1 | 待修复 | 慢速网关（如 `eth.limo` / `eth.sucks`）订阅网站头像抓取超时回退为默认地球图标 |
-| BUG-002 | P1 | 待修复 | 慢速网关下订阅文章配图触发 20 秒总超时导致页面图片不显示 |
-| BUG-003 | P2 | 待修复 | 自己文章阅读页与编辑器预览页无法渲染相对路径本地附件图 |
-| BUG-004 | P1 | 待修复 | 新关注和手动刷新在界面线程等待网络，窗口卡住 |
-| BUG-005 | P1 | 待修复 | 迁移数据仓库遗漏文章和草稿附件 |
-| BUG-006 | P1 | 待修复 | 随包分发的 Kubo 命中已知安全通告 |
-| BUG-007 | P1 | 待修复 | GitHub 的 Windows 质量检查和 main 合并门禁失效 |
+| BUG-001 | P1 | 已修复 | 慢速网关（如 `eth.limo` / `eth.sucks`）订阅网站头像抓取超时回退为默认地球图标 |
+| BUG-002 | P1 | 已修复 | 慢速网关下订阅文章配图触发 20 秒总超时导致页面图片不显示 |
+| BUG-003 | P2 | 已修复 | 自己文章阅读页与编辑器预览页无法渲染相对路径本地附件图 |
+| BUG-004 | P1 | 已修复，待实机复核 | 新关注和手动刷新在界面线程等待网络，窗口卡住 |
+| BUG-005 | P1 | 已修复，已验证跨盘复制 | 迁移数据仓库遗漏文章和草稿附件 |
+| BUG-006 | P1 | 已验证候选，待修复 | 随包分发的 Kubo 命中已知安全通告 |
+| BUG-007 | P1 | 已恢复，待合并验证 | GitHub 的 Windows 质量检查和 main 合并门禁失效 |
 | BUG-008 | P1 | 待修复 | 正式发布的 v0.1.0 安装包未签名 |
-| BUG-009 | P2 | 待修复 | .planet 备份重新导入后可能无法再次导出 |
+| BUG-009 | P2 | 已修复 | .planet 备份重新导入后可能无法再次导出 |
 | BUG-010 | P2 | 待修复 | 编辑器显示已发布，站点仍待手动发布 |
 | BUG-011 | P2 | 待修复 | 手动发布站点时窗口阻塞 |
 | BUG-012 | P2 | 待修复 | 托盘退出会丢弃未保存编辑 |
@@ -26,10 +26,10 @@
 
 ## 详情
 
-### BUG-001：慢速网关订阅网站头像抓取超时回退为默认地球图标
+### BUG-001 · 慢速网关订阅网站头像抓取超时回退为默认地球图标
 
 - **优先级**：P1
-- **状态**：待修复
+- **状态** 已修复。
 - **现象**：订阅的网站原本有正常头像，但在侧边栏中回退显示为默认地球图标。
 - **复现方式**：订阅 `https://planetable.eth.limo`。
 - **实测数据**：`https://planetable.eth.limo/avatar.png` 返回 HTTP `200`（776,520 字节），但在网关限速下 15 秒仅收到 196,608 字节，完整下载约需 35–50 秒。
@@ -43,13 +43,14 @@
 - **建议修复方向**：
   - 为单个候选图标设置独立超时预算，避免首个大图饿死后续 `favicon.ico` 回退。
   - 放宽头像下载读取超时，补充 HTTP/1.1 传输配置，并为 `NormalizeIcon` 增加 WebP 解码支持。
+- **本轮修复与验证** HTTP 头像在文章列表保存后读取，使用 HTTP/1.1、单候选 55 秒和全流程 90 秒上限。回归用例覆盖 TLS 的 HTTP/1.1 协商、头像停滞后回退到 `favicon.ico` 和 WebP 转 PNG。使用 `https://planetable.eth.limo` 实测，35 篇文章约 1.83 秒就绪，随后约 4.63 秒得到 128 × 128 的头像。 [头像回归](../windows/internal/feeds/icon_test.go) · [WebP 回归](../windows/internal/siteimage/icon_test.go)
 
 ---
 
-### BUG-002：慢速网关下订阅文章配图触发 20 秒总超时导致页面图片不显示
+### BUG-002 · 慢速网关下订阅文章配图触发 20 秒总超时导致页面图片不显示
 
 - **优先级**：P1
-- **状态**：待修复
+- **状态** 已修复。
 - **现象**：订阅文章阅读页中的远程截图或配图无法正常显示。
 - **复现方式**：打开订阅源 `https://planetable.eth.limo` 下的文章（其 `rss.xml` 正文图片指向 `https://planetable.eth.sucks/...`）。
 - **实测数据**：`cf-pages.png` 在 `eth.sucks` 上下载 288,792 字节耗时 12.64 秒；在 `eth.limo` 上下载 437,668 字节时 15 秒仅传完 248,694 字节即超时。
@@ -59,13 +60,14 @@
   - `windows/internal/nativeui/subscriptions_view.go`
 - **建议修复方向**：
   - 移除 20 秒整请求硬超时，改用 `ResponseHeaderTimeout`（如 15 秒）配合读取停滞超时（stall timeout，只要持续收到数据就不中断），并将单图总下载上限放宽至 90 秒。
+- **本轮修复与验证** 等待响应头和连续无数据各限 15 秒，单图下载总上限为 90 秒。保留原有体积校验和 `Referer` 回退。本地分块响应测试验证慢速传输可解码，停止传输时请求会被取消。原生阅读器使用的图片加载器也成功解码了 `eth.sucks` 和 `eth.limo` 上的 `cf-pages.png`，当次耗时分别约 2.04 秒和 2.46 秒。 [图片回归](../windows/internal/nativeui/webview_images_test.go)
 
 ---
 
-### BUG-003：自己文章阅读页与编辑器预览页无法渲染相对路径本地附件图
+### BUG-003 · 自己文章阅读页与编辑器预览页无法渲染相对路径本地附件图
 
 - **优先级**：P2
-- **状态**：待修复
+- **状态** 已修复。
 - **现象**：自己文章或草稿的 Markdown 正文中引用相对路径本地图片（非 `http(s)://` 或 `data:`）时，阅读页与编辑器预览页均不显示图片。
 - **复现方式**：在文章或草稿正文中使用相对路径引用本地图片，随后打开文章阅读页或编辑器预览视图。
 - **根因**：`windows/internal/nativeui/detail.go`（L134）和 `windows/internal/nativeui/editor.go`（L124）调用 `a.markdownImageLoader("", "")` 时 `localDir` 参数均传为空字符串，导致相对路径直接落入 `unsupported image source` 错误分支。
@@ -75,13 +77,14 @@
   - `windows/internal/nativeui/images.go`
 - **建议修复方向**：
   - 为文章阅读页与编辑器预览页的 `markdownImageLoader` 传入对应文章或草稿的本地资源目录作为 `localDir`（保留防路径穿越校验）。
+- **本轮修复与验证** 阅读页及编辑器预览通过既有附件校验读取当前文章或草稿的已登记图片。草稿可预览暂存附件和原文章中仍保留的附件。离屏测试覆盖带空格的中文文件名，库端用例覆盖未登记和已移除附件。 [视图回归](../windows/internal/nativeui/webview_images_test.go) · [注册附件回归](../windows/main_test.go)
 
 ---
 
 ### BUG-004 · 新关注和刷新时窗口卡住
 
 - **优先级** P1
-- **状态** 待修复。源码和离屏 UI 复现基线为 `0fac18c`。
+- **状态** 已修复，待 Windows 实机慢网关复核。原始源码和离屏 UI 复现基线为 `0fac18c`。
 - **现象** 从「设置 → 关注站点」提交一个响应慢的站点后，窗口在读取站点信息和文章时停顿。「刷新订阅」和工作台的「关注精选站点」也会等待网络。
 - **调用链** MyGo 的 `App.View` 渲染关注弹窗。提交按钮和回车都在当前界面帧调用 `submitFollow()`，它同步等待 `Library.Follow()` 完成抓取、解析和保存。成功后再调用 `Reload()`、打开订阅和显示结果。在 `Follow()` 返回前，当前帧无法结束，窗口也无法重绘或处理新的输入。 [弹窗与提交处理](../windows/internal/nativeui/subscriptions_view.go) · [库端订阅入口](../windows/library_subscriptions.go)
 - **HTTP(S) 订阅** 打开首页、按顺序尝试发现的订阅源、解析 Feed 后才寻找头像。首页和订阅源的网络请求共用 15 秒预算，头像发现另有独立的 6 秒预算，两个阶段都在同一次 `Follow()` 内。普通 RSS、Atom 和 JSON Feed 由订阅源文档提供文章清单和已附带的正文。 [Feed 读取](../windows/internal/feeds/feeds.go) · [头像候选](../windows/internal/feeds/icon.go)
@@ -90,36 +93,41 @@
 - **复现证据** 在隔离副本用 MyGo 离屏测试点击「关注」，让模拟后端等待 300 毫秒。点击和当前帧一直未返回。释放后端后，界面完成提交并显示订阅。现有首页发现订阅源、保存头像及刷新保留已读状态的本地测试通过。真实慢站点的卡顿时长尚未测量。
 - **建议修复方向** 用可取消的后台任务完成关注、刷新和更改订阅地址，通过 `Window.Update` 回到界面线程提交状态。立即显示进度，Feed 就绪即显示列表，头像稍后补齐。缩短持锁范围，提交时按操作复核目标和请求是否仍有效，防止取消关注后迟到的刷新把它创建回来。优先刷新订阅相关视图，避免连续全量重载。
 - **验收** 用本地延迟 HTTP 响应和模拟慢 Kubo 验证等待期间窗口可重绘、输入和取消。头像超时时文章列表仍可用。重复点击仅产生一次有效提交，取消或切换后过期结果不会覆盖当前界面，刷新失败保留已有文章和阅读状态。
+- **本轮修复与验证** 新关注、手动刷新、编辑订阅和关注精选在后台执行。关闭关注或编辑弹窗会取消请求。保存文章后界面只刷新订阅，头像独立加载并核对内容版本。离屏测试覆盖待处理期间重绘、重复提交和取消，本地 HTTP 测试验证取消后不会写入或恢复已移除的订阅。既有 Planet 订阅及固定内容用例也已用 Kubo 跑通。订阅提交沿用既有并发保护。 [后台任务](../windows/internal/nativeui/subscription_tasks.go) · [取消与延迟头像回归](../windows/subscription_discovery_test.go)
 
 ---
 
 ### BUG-005 · 数据仓库迁移漏掉附件
 
 - **优先级** P1
-- **状态** 待修复
+- **状态** 已修复，已验证跨盘复制。
 - **现象与根因** 迁移白名单遗漏 `attachments`、`draft-attachments` 和本地 API 配置所在的 `integrations`。迁移后的 `library.json` 仍有附件引用，重启后新库找不到对应文件。迁移完成到重启之间的保存仍写入旧库。 [仓库迁移](../windows/internal/store/repo_location.go) · [文章附件](../windows/internal/attachments/attachments.go) · [草稿附件](../windows/internal/attachments/draft_lifecycle.go)
 - **建议修复方向** 在下次启动、业务模块打开仓库前执行迁移。用统一清单复制持久数据，在目标卷暂存和校验，最后切换仓库指针。
 - **验收** 跨盘迁移后附件可预览、导出和发布，本地 API 配置可读取，重启前的保存进入新库。磁盘写满或复制中断后仍可打开原库并重试。
+- **本轮修复与验证** 选择目标后在下次启动复制数据，目标先暂存文件并校验大小，成功后更新指针。测试覆盖文章和草稿附件、本地 API 配置、重启前最后一次保存、目标目录发生变化后的重试，以及原盘不可访问后重新连接。用隔离仓库从 `C:` 复制到 `D:` 并重新打开，附件和配置均可读。跨盘后的发布、磁盘写满和突然中断仍待实机验证。 [迁移回归](../windows/internal/store/repo_location_integration_test.go)
 
 ---
 
 ### BUG-006 · 随包 Kubo 命中已知安全通告
 
 - **优先级** P1
-- **状态** 待修复
+- **状态** 已验证候选，待修复。
 - **证据** 对随包的 Kubo `0.38.2` 执行二进制扫描，得到 68 条符号级匹配，包括 WebTransport 内存耗尽通告。公开 MSIX 内的 `ipfs.exe` 与扫描对象的 SHA-256 一致。当前应用依赖检查未覆盖该独立二进制，具体运行配置的暴露面有待核实。 [固定版本脚本](../windows/scripts/prepare-kubo.ps1) · [依赖扫描脚本](../scripts/security-check.ps1) · [Go 安全通告](https://pkg.go.dev/vuln/GO-2026-4485)
 - **建议修复方向** 以官方 Windows x64 的 `0.43.2` 为首个验证候选。固定版本和 SHA-512，刷新许可材料，在发行检查中扫描最终安装包中的 `ipfs.exe`，并记录对默认配置有影响的高危通告的处置结果。 [Kubo 0.43.2](https://github.com/ipfs/kubo/releases/tag/v0.43.2)
 - **验收** 使用旧仓库的隔离副本验证升级、IPNS 密钥和固定内容保留，以及节点启停。发行证据能够对应最终包中的二进制摘要。
+- **候选验证** 2026-11-28 核对官方 Windows x64 归档的 SHA-256 和 SHA-512，解出的 `ipfs.exe` SHA-256 为 `5e58e80850d09a2574291d9b8760f5a841b87c5f0bffebe9f0b146ebf8b6f636`。`govulncheck v1.9.0` 二进制扫描得到 27 条符号级匹配，原先记录的 WebTransport 通告未出现在该候选的结果中。随包版本仍为 `0.38.2`。 [官方候选](https://github.com/ipfs/kubo/releases/tag/v0.43.2)
+- **兼容性** 候选能打开 `0.38.2` 创建的隔离仓库副本，IPNS 密钥标识和递归固定的内容可读取。固定内容的节点控制用例通过，本地网关状态用例请求 DAG-JSON 时收到 HTTP `406`。升级仍需处理网关兼容性、许可核验及剩余通告。 [网关状态用例](../windows/internal/ipfs/status_test.go)
 
 ---
 
 ### BUG-007 · GitHub 的 Windows 质量检查门禁失效
 
 - **优先级** P1
-- **状态** 待修复
+- **状态** 工作流和必需检查已恢复，待合并验证。
 - **证据** 2026-11-27 通过 GitHub API 核对，`Windows checks` 为 `disabled_manually`，当前 `main` 生效规则中没有必需状态检查。仓库里的规则文件仍记录了 `Windows quality checks`。 [规则记录](../.github/rulesets/main.json) · [Windows 工作流](https://github.com/puremixlab/kinpage/actions/workflows/windows-ci.yml)
 - **建议修复方向** 恢复工作流，并在远端启用该任务作为 `main` 的必需检查。保留纯文档与代码改动的检查分流。
 - **验收** 两类 PR 都产生同名检查结果。使用无绕过权限的账号验证检查失败时无法合并。
+- **本轮修复与验证** 恢复工作流后的 `main` 检查发现 Windows 快捷方式测试受 8.3 路径别名影响而失败。已修复路径判断，独立分支和代码 PR 的 `Windows quality checks` 均通过。GitHub 当前将该检查强制用于 `main`，要求分支同步，并保留既有管理规则。纯文档 PR 和无绕过账号的实际合并行为待验收。 [首次运行](https://github.com/puremixlab/kinpage/actions/runs/46091924822) · [代码 PR 的检查](https://github.com/puremixlab/kinpage/actions/runs/46093386328) · [路径修复 PR](https://github.com/puremixlab/kinpage/pull/106)
 
 ---
 
@@ -136,10 +144,11 @@
 ### BUG-009 · .planet 备份再次导出失败
 
 - **优先级** P2
-- **状态** 待修复
+- **状态** 已修复。
 - **证据** 使用真实 Kubo 离线复跑，`TestTaggedBackupRoundTripAfterArticleDeletion` 在二次导出时拒绝此前生成的 `heroImage` 字段。`TestSepiaTimestampedTagPagesKuboBackupRoundTrip` 在重导入并删除文章后无法确认旧标签页归属。 [往返测试](../windows/internal/migration/tags_test.go) · [公开元数据校验](../windows/internal/backup/plain.go)
 - **建议修复方向** 统一导出和重建对 `heroImage` 的规则，接受与已登记图片附件匹配的安全值。保留对未知归档文件的保护，记录原标签页重建失败的具体原因。
 - **验收** 两条离线往返测试通过，修改后的标签页正确更新，无法归属的自定义归档页受到保护。通过后将这些用例纳入相关 PR 和发行候选检查。
+- **本轮修复与验证** 可重新导出由已登记图片生成的封面数据；对归档中手动选择的封面按附件是否还在决定是否保留。无法确认标签页归属时会保留原错误和重建失败原因。使用现有随包 Kubo 离线复跑，两条往返用例均通过。 [备份往返回归](../windows/internal/migration/tags_test.go)
 
 ---
 

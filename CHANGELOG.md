@@ -26,6 +26,10 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 ### Fixed
 
 - Preserve the Kinpage desktop shortcut when changing its icon on Windows installations that use short path aliases.
+- Keep the window responsive while following, editing, or refreshing subscriptions. Show the article list as soon as it is saved and load the site icon in the background, with WebP support and a separate timeout per icon candidate.
+- Allow slow article images to keep downloading while data arrives, and display registered relative images in the article reader and editor preview.
+- Move the data repository on the next startup so recent saves, article and draft attachments, and local integration settings move together.
+- Preserve registered cover images and regenerate recognized tag pages when exporting a previously imported `.planet` backup again.
 
 ## [0.1.0] - 2026-11-26
 
