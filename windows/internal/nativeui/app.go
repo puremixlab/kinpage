@@ -149,11 +149,16 @@ type App struct {
 	badgeZOrder         []string
 	badgeDraggingID     string
 
-	// Background subscription operations.
-	subscriptionContext     context.Context
-	invalidateSubscriptions func()
-	subscriptionsDirty      atomic.Bool
-	subscriptionTask        *subscriptionTask
+	// Background operations.
+	backgroundContext context.Context
+	invalidateWindow  func()
+
+	subscriptionsDirty atomic.Bool
+	subscriptionTask   *subscriptionTask
+	publicationQueue   []sitePublishRequest
+	publication        *sitePublishTask
+	publicationResults map[string]publishModalState
+	updateSettings     updateSettingsState
 
 	// Subscriptions & global search state.
 	selectedSubURL        string
@@ -610,7 +615,7 @@ func (a *App) publishCurrentDraft() {
 	a.editorTagsDirty = false
 	a.editorBuffer.MarkSaved()
 	a.Reload()
-	a.setStatus(a.tf("status.published", a.fallbackTitle(art.Title)))
+	a.setStatus(a.tf("status.articleSavedPending", a.fallbackTitle(art.Title)))
 }
 
 func (a *App) deleteCurrentDraft() {

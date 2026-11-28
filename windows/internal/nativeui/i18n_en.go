@@ -148,6 +148,7 @@ var i18nEn = map[string]string{
 	"toolbar.quickPost":          "Quick Post",
 	"toolbar.siteSettings":       "Site Settings",
 	"toolbar.publishSite":        "Publish Site",
+	"toolbar.sitePublishing":     "Site publish pending",
 	"toolbar.refreshSub":         "Refresh Feed",
 	"toolbar.subActions":         "Subscription Actions",
 	"toolbar.searchPosts":        "Search Articles",
@@ -303,6 +304,34 @@ var i18nEn = map[string]string{
 	"editor.inspirationContinue2": "What happened next? Start with the first thing that changed.",
 	"editor.inspirationContinue3": "What would a curious reader ask here? Try answering in one sentence.",
 
+	// Publication feedback
+	"menu.sitePublishResult":      "Show Last Publish Result",
+	"status.articleSavedPending":  "Saved “%s” for publication",
+	"status.sitePublishing":       "Publishing “%s”…",
+	"status.sitePublishQueued":    "Queued “%s” for publication",
+	"status.sitePublishWarnings":  "Some publish targets for “%s” need attention",
+	"status.sitePublishedPending": "Published “%s”. Newer changes are pending",
+
+	// App updates
+	"update.title":       "App Updates",
+	"update.version":     "Current version %s",
+	"update.noSource":    "Configure a trusted update source to check for updates.",
+	"update.check":       "Check for Updates",
+	"update.configure":   "Update Source",
+	"update.feed":        "HTTPS manifest URL",
+	"update.publicKey":   "Ed25519 public key (Base64)",
+	"update.autoCheck":   "Check on startup",
+	"update.trustHint":   "Enter the manifest URL and public key supplied by the publisher you trust.",
+	"update.checking":    "Checking for updates…",
+	"update.downloading": "Downloading and verifying the installer…",
+	"update.available":   "Version %s is available",
+	"update.current":     "Kinpage is up to date",
+	"update.failed":      "Update check or download failed · %s",
+	"update.download":    "Download Update",
+	"update.downloaded":  "The installer passed verification. Close Kinpage before running it.",
+	"update.reveal":      "Show in File Explorer",
+	"update.save":        "Save Update Source",
+
 	// Status & Error Messages
 	"status.stoppedSpeak":        "Stopped speaking",
 	"status.speakErr":            "Text-to-speech failed: %s",
@@ -317,7 +346,6 @@ var i18nEn = map[string]string{
 	"status.saveDraftErr":        "Failed to save draft: %s",
 	"status.draftSaved":          "Draft saved %s",
 	"status.publishErr":          "Publish failed: %s",
-	"status.published":           "Published: %s",
 	"status.deleteDraftErr":      "Failed to delete draft: %s",
 	"status.draftDeleted":        "Draft deleted",
 	"status.siteCreated":         "Created site: %s",
@@ -553,8 +581,10 @@ var i18nEn = map[string]string{
 	"publishModal.title":             "Publish Details · %s",
 	"publishModal.failed":            "Publish failed: %s",
 	"publishModal.revision":          "Revision: %d",
-	"publishModal.ipnsPending":       "IPNS is still syncing in the background",
-	"publishModal.pinnableWarn":      "Pinnable notice: %s",
+	"publishModal.ipnsPending":       "Newer changes are pending publication",
+	"publishModal.pinnableWarn":      "Publishing service notice · %s",
+	"publishModal.targetDone":        "%s published successfully",
+	"publishModal.targetFailed":      "%s could not publish · %s",
 	"publishModal.telegramWarn":      "Telegram notice: %s",
 
 	// Dialogs: Integrations

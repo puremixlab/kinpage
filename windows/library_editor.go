@@ -30,8 +30,6 @@ func (l *Library) Drafts(siteID string) ([]store.Draft, error) {
 }
 
 func (l *Library) SaveDraft(siteID, draftID, articleID, title, content string) (store.Draft, error) {
-	l.publicMu.Lock()
-	defer l.publicMu.Unlock()
 	s, err := l.open()
 	if err != nil {
 		return store.Draft{}, err
@@ -40,8 +38,6 @@ func (l *Library) SaveDraft(siteID, draftID, articleID, title, content string) (
 }
 
 func (l *Library) SaveDraftWithTags(siteID, draftID, articleID, title, content, tagsJSON string) (store.Draft, error) {
-	l.publicMu.Lock()
-	defer l.publicMu.Unlock()
 	s, err := l.open()
 	if err != nil {
 		return store.Draft{}, err

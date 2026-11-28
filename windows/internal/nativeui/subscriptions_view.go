@@ -47,16 +47,26 @@ func feedItemKey(item feeds.Item) string {
 }
 
 func (a *App) totalTodayCount() int {
-	today := time.Now().Format("2006-01-02")
+	now := time.Now()
 	n := 0
 	for _, s := range a.subscriptions {
 		for _, item := range s.Feed.Items {
-			if strings.HasPrefix(item.Published, today) {
+			if feedDateIsToday(item.Published, now) {
 				n++
 			}
 		}
 	}
 	return n
+}
+
+func feedDateIsToday(raw string, now time.Time) bool {
+	published, ok := parseFeedDate(raw, now.Location())
+	if !ok {
+		return false
+	}
+	year, month, day := now.Date()
+	publishedYear, publishedMonth, publishedDay := published.In(now.Location()).Date()
+	return year == publishedYear && month == publishedMonth && day == publishedDay
 }
 
 func (a *App) totalUnreadCount() int {
@@ -102,6 +112,7 @@ func (a *App) openSubscriptionView(mode viewMode, subURL string) {
 
 func (a *App) visibleSubscriptionItems() []subItemEntry {
 	query := strings.ToLower(strings.TrimSpace(a.subSearchQuery))
+	now := time.Now()
 	var out []subItemEntry
 	for _, s := range a.subscriptions {
 		if a.mode == viewSubscription && s.URL != a.selectedSubURL {
@@ -109,7 +120,7 @@ func (a *App) visibleSubscriptionItems() []subItemEntry {
 		}
 		stitle := subscriptionTitle(s)
 		for _, item := range s.Feed.Items {
-			if a.mode == viewToday && !strings.HasPrefix(item.Published, time.Now().Format("2006-01-02")) {
+			if a.mode == viewToday && !feedDateIsToday(item.Published, now) {
 				continue
 			}
 			if a.mode == viewUnread && item.Read {
@@ -201,6 +212,7 @@ func (a *App) viewSubscriptionWorkspace(c *ui.Context) {
 func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 	pal := a.pal
 	heading := a.t("list.subDefaultHeading")
+	var refreshError string
 	switch a.mode {
 	case viewToday:
 		heading = a.t("nav.today")
@@ -211,6 +223,7 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 	case viewSubscription:
 		if sub := a.currentSubscription(); sub != nil {
 			heading = subscriptionTitle(*sub)
+			refreshError = sub.LastError
 		}
 	}
 
@@ -232,6 +245,11 @@ func (a *App) viewSubscriptionItemsList(c *ui.Context) {
 	ui.Column(c).Fill().MinWidth(240).Background(pal.canvas).Children(func() {
 		// Full-height Column 2 integrated 44px header (macOS navigationTitle + navigationSubtitle + filter menu).
 		a.viewListPaneHeader(c, heading, subtitle, true)
+
+		if refreshError != "" {
+			ui.Text(c, a.tf("status.refreshSubErr", refreshError)).
+				Padding(6, 12, 6, 12).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
+		}
 
 		if a.listSearchOpen {
 			ui.Row(c).Padding(8, 10, 4, 10).Gap(4).AlignItems(ui.Center).Shrink(0).AlignSelf(ui.Stretch).Children(func() {

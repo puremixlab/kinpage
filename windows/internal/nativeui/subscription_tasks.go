@@ -30,16 +30,16 @@ type subscriptionTask struct {
 	done   chan func()
 }
 
-// SetSubscriptionTaskContext wires background subscription requests to the app
-// lifetime and a callback that can request a window redraw from a worker.
-func (a *App) SetSubscriptionTaskContext(ctx context.Context, invalidate func()) {
-	a.subscriptionContext = ctx
-	a.invalidateSubscriptions = invalidate
+// SetBackgroundContext binds background operations to the app lifetime and
+// provides a callback that can request a window redraw from a worker.
+func (a *App) SetBackgroundContext(ctx context.Context, invalidate func()) {
+	a.backgroundContext = ctx
+	a.invalidateWindow = invalidate
 }
 
-func (a *App) subscriptionTaskContext() context.Context {
-	if a.subscriptionContext != nil {
-		return a.subscriptionContext
+func (a *App) taskContext() context.Context {
+	if a.backgroundContext != nil {
+		return a.backgroundContext
 	}
 	return context.Background()
 }
@@ -49,11 +49,11 @@ func (a *App) startSubscriptionTask(kind subscriptionTaskKind, run func(context.
 	if a.backend == nil || a.subscriptionTask != nil {
 		return false
 	}
-	parent := a.subscriptionTaskContext()
+	parent := a.taskContext()
 	ctx, cancel := context.WithCancel(parent)
 	task := &subscriptionTask{kind: kind, cancel: cancel, done: make(chan func(), 1)}
 	a.subscriptionTask = task
-	invalidate := a.invalidateSubscriptions
+	invalidate := a.invalidateWindow
 	go func() {
 		task.done <- run(ctx)
 		if invalidate != nil && parent.Err() == nil {
@@ -97,15 +97,21 @@ func (a *App) loadSubscriptionIcon(load feeds.IconLoader) {
 	if load == nil {
 		return
 	}
-	ctx, invalidate := a.subscriptionTaskContext(), a.invalidateSubscriptions
+	ctx, invalidate := a.taskContext(), a.invalidateWindow
 	go func() {
 		if load(ctx) != "" && ctx.Err() == nil {
-			a.subscriptionsDirty.Store(true)
+			a.MarkSubscriptionsDirty()
 			if invalidate != nil {
 				invalidate()
 			}
 		}
 	}()
+}
+
+// MarkSubscriptionsDirty asks the next frame to read the saved subscriptions.
+// It is safe for callers on a maintenance goroutine.
+func (a *App) MarkSubscriptionsDirty() {
+	a.subscriptionsDirty.Store(true)
 }
 
 func (a *App) refreshSubscription(address string) {

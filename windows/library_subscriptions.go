@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo"
 	"windows/internal/feeds"
@@ -37,7 +38,7 @@ func (l *Library) Follow(address string) (store.Subscription, error) {
 }
 
 func (l *Library) FollowContext(ctx context.Context, address string) (nativeui.SubscriptionUpdate, error) {
-	return l.follow(ctx, address, false)
+	return l.follow(ctx, address, false, time.Time{})
 }
 
 // RefreshSubscription only refreshes an existing subscription. A refresh
@@ -47,10 +48,10 @@ func (l *Library) RefreshSubscription(address string) (store.Subscription, error
 }
 
 func (l *Library) RefreshSubscriptionContext(ctx context.Context, address string) (nativeui.SubscriptionUpdate, error) {
-	return l.follow(ctx, address, true)
+	return l.follow(ctx, address, true, time.Time{})
 }
 
-func (l *Library) follow(ctx context.Context, address string, requireExisting bool) (nativeui.SubscriptionUpdate, error) {
+func (l *Library) follow(ctx context.Context, address string, requireExisting bool, staleBefore time.Time) (nativeui.SubscriptionUpdate, error) {
 	address = strings.TrimSpace(address)
 	s, err := l.open()
 	if err != nil {
@@ -63,7 +64,7 @@ func (l *Library) follow(ctx context.Context, address string, requireExisting bo
 			return nativeui.SubscriptionUpdate{}, err
 		}
 		if requireExisting {
-			if err := requireSubscription(s, address); err != nil {
+			if err := requireSubscription(s, address, staleBefore); err != nil {
 				return nativeui.SubscriptionUpdate{}, err
 			}
 		}
@@ -119,8 +120,11 @@ func (l *Library) follow(ctx context.Context, address string, requireExisting bo
 		return nativeui.SubscriptionUpdate{}, err
 	}
 	if requireExisting {
-		if err := requireSubscription(s, name); err != nil {
+		if err := requireSubscription(s, name, staleBefore); err != nil {
 			return nativeui.SubscriptionUpdate{}, err
+		}
+		if !staleBefore.IsZero() && s.IPFSDisabled() {
+			return nativeui.SubscriptionUpdate{}, errSubscriptionNotDue
 		}
 	}
 	if _, _, err = l.ensureNode(true); err != nil {
@@ -160,17 +164,25 @@ func recordSubscriptionError(ctx context.Context, s *store.Store, address string
 	return err
 }
 
-func requireSubscription(s *store.Store, address string) error {
+var (
+	errSubscriptionMissing = errors.New("订阅不存在")
+	errSubscriptionNotDue  = errors.New("订阅暂不需要自动刷新")
+)
+
+func requireSubscription(s *store.Store, address string, staleBefore time.Time) error {
 	subs, err := s.ListSubscriptions()
 	if err != nil {
 		return err
 	}
 	for _, sub := range subs {
 		if sub.URL == address {
+			if !staleBefore.IsZero() && sub.LastUpdated != nil && sub.LastUpdated.After(staleBefore) {
+				return errSubscriptionNotDue
+			}
 			return nil
 		}
 	}
-	return errors.New("订阅不存在")
+	return errSubscriptionMissing
 }
 
 func isHTTPAddress(address string) bool {

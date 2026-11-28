@@ -13,6 +13,7 @@ import (
 	"windows/internal/siteimage"
 	"windows/internal/store"
 	"windows/internal/templateinstall"
+	"windows/internal/updates"
 )
 
 // DeploymentSummary mirrors the backend's persisted deployment configuration
@@ -49,7 +50,7 @@ type Backend interface {
 	RemovedSites() ([]store.Site, error)
 	RestoreSite(siteID string) (store.Site, error)
 	PermanentlyDeleteSite(siteID string) error
-	PublishSite(siteID string) (publisher.Result, error)
+	PublishSiteContext(ctx context.Context, siteID string) (publisher.Result, error)
 	IPFSStatus() (ipfs.KuboStatus, error)
 	SetIPFSEnabled(enabled bool) error
 	IPFSRepoSize() (int64, error)
@@ -60,6 +61,12 @@ type Backend interface {
 	SetPreventSleep(enabled bool) error
 	DataDir() string
 	MoveDataDir(ctx context.Context) (string, error)
+	UpdateSettings() (updates.SettingsInfo, error)
+	SaveUpdateSettings(feedURL, publicKey string, autoCheck bool) (updates.SettingsInfo, error)
+	CheckUpdatesContext(ctx context.Context) (updates.CheckInfo, error)
+	DownloadUpdateContext(ctx context.Context, version, sha256 string) (string, error)
+	CancelUpdateOperation()
+	RevealDownloadedUpdate() error
 	OfflineMediaUsage() (offline.Usage, error)
 	CleanupOfflineMedia() (offline.Usage, error)
 	PublishedFolders() ([]store.PublishedFolder, error)

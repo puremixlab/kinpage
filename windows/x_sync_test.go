@@ -199,6 +199,27 @@ func TestXAutomaticSyncOnlyNewArticlesAndSkipsPages(t *testing.T) {
 	}
 }
 
+func TestPublicationWithIPNSDisabledStillSyncsX(t *testing.T) {
+	l, site, _, poster := xTestLibrary(t)
+	if _, err := l.UpdateSiteCustomCode(site.ID, `{"publishAsIPNS":false}`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := l.UpdateSiteProfile(site.ID, `{"domain":"example.com"}`); err != nil {
+		t.Fatal(err)
+	}
+	configureTestX(t, l, site.ID, true)
+	if _, err := l.SaveArticle(site.ID, "", "Fresh", "body"); err != nil {
+		t.Fatal(err)
+	}
+	result, err := l.PublishSite(site.ID)
+	if err != nil || result.CID != "" || !result.HasWarnings() || poster.calls != 1 {
+		t.Fatalf("publish result = %#v, sync calls = %d, err = %v", result, poster.calls, err)
+	}
+	if _, err := l.PublishSite(site.ID); err != nil || poster.calls != 1 {
+		t.Fatalf("publish retry repeated the social post: calls = %d, err = %v", poster.calls, err)
+	}
+}
+
 func TestXUncertainDeliverySurvivesRestartAndNeedsExplicitRetry(t *testing.T) {
 	l, site, root, p := xTestLibrary(t)
 	configureTestX(t, l, site.ID, true)

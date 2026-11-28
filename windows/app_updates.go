@@ -27,17 +27,8 @@ var appVersion = func() string {
 	return info.Version
 }()
 
-type UpdateSettingsInfo struct {
-	Settings       updates.Config `json:"settings"`
-	CurrentVersion string         `json:"currentVersion"`
-	Configured     bool           `json:"configured"`
-}
-type UpdateCheckInfo struct {
-	Version   string `json:"version"`
-	SHA256    string `json:"sha256"`
-	Size      int64  `json:"size"`
-	Available bool   `json:"available"`
-}
+type UpdateSettingsInfo = updates.SettingsInfo
+type UpdateCheckInfo = updates.CheckInfo
 
 func (l *Library) UpdateSettings() (UpdateSettingsInfo, error) {
 	l.updateMu.Lock()
@@ -47,7 +38,7 @@ func (l *Library) UpdateSettings() (UpdateSettingsInfo, error) {
 		return UpdateSettingsInfo{}, e
 	}
 	cfg, e := updates.LoadConfig(root)
-	return UpdateSettingsInfo{cfg, appVersion, cfg.FeedURL != ""}, e
+	return UpdateSettingsInfo{Settings: cfg, CurrentVersion: appVersion, Configured: cfg.FeedURL != ""}, e
 }
 func (l *Library) SaveUpdateSettings(feedURL, publicKey string, autoCheck bool) (UpdateSettingsInfo, error) {
 	l.updateMu.Lock()
@@ -55,7 +46,6 @@ func (l *Library) SaveUpdateSettings(feedURL, publicKey string, autoCheck bool) 
 	if l.updateClosing {
 		return UpdateSettingsInfo{}, errors.New("程序正在关闭")
 	}
-	l.invalidateUpdatesLocked()
 	root, e := mygo.App.Path(mygo.PathUserData)
 	if e != nil {
 		return UpdateSettingsInfo{}, e
@@ -64,13 +54,19 @@ func (l *Library) SaveUpdateSettings(feedURL, publicKey string, autoCheck bool) 
 	if e != nil {
 		return UpdateSettingsInfo{}, e
 	}
-	l.checkedUpdate = nil
-	l.updateIdentity = ""
-	l.downloadedUpdate = ""
-	return UpdateSettingsInfo{cfg, appVersion, cfg.FeedURL != ""}, nil
+	l.invalidateUpdatesLocked()
+	return UpdateSettingsInfo{Settings: cfg, CurrentVersion: appVersion, Configured: cfg.FeedURL != ""}, nil
 }
 func (l *Library) CheckUpdates() (UpdateCheckInfo, error) {
+	return l.CheckUpdatesContext(context.Background())
+}
+
+func (l *Library) CheckUpdatesContext(parent context.Context) (UpdateCheckInfo, error) {
 	l.updateMu.Lock()
+	if err := parent.Err(); err != nil {
+		l.updateMu.Unlock()
+		return UpdateCheckInfo{}, err
+	}
 	if l.updateClosing {
 		l.updateMu.Unlock()
 		return UpdateCheckInfo{}, errors.New("程序正在关闭")
@@ -86,7 +82,7 @@ func (l *Library) CheckUpdates() (UpdateCheckInfo, error) {
 		l.updateMu.Unlock()
 		return UpdateCheckInfo{}, e
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(parent)
 	l.updateCancel = cancel
 	generation := l.updateGeneration
 	l.updateWorkers.Add(1)
@@ -100,6 +96,9 @@ func (l *Library) CheckUpdates() (UpdateCheckInfo, error) {
 		return UpdateCheckInfo{}, errors.New("更新检查已取消或设置已改变")
 	}
 	l.updateCancel = nil
+	if err := ctx.Err(); err != nil {
+		return UpdateCheckInfo{}, err
+	}
 	if e != nil {
 		return UpdateCheckInfo{}, e
 	}
@@ -109,10 +108,18 @@ func (l *Library) CheckUpdates() (UpdateCheckInfo, error) {
 	l.checkedUpdate = &r
 	l.updateIdentity = updates.TrustIdentity(cfg)
 	cmp, _ := updates.Compare(r.Version, appVersion)
-	return UpdateCheckInfo{r.Version, r.SHA256, r.Size, cmp > 0}, nil
+	return UpdateCheckInfo{Version: r.Version, SHA256: r.SHA256, Size: r.Size, Available: cmp > 0}, nil
 }
 func (l *Library) DownloadUpdate(version, sha256 string) (resultPath string, resultError error) {
+	return l.DownloadUpdateContext(context.Background(), version, sha256)
+}
+
+func (l *Library) DownloadUpdateContext(parent context.Context, version, sha256 string) (resultPath string, resultError error) {
 	l.updateMu.Lock()
+	if err := parent.Err(); err != nil {
+		l.updateMu.Unlock()
+		return "", err
+	}
 	if l.updateClosing {
 		l.updateMu.Unlock()
 		return "", errors.New("程序正在关闭")
@@ -141,7 +148,7 @@ func (l *Library) DownloadUpdate(version, sha256 string) (resultPath string, res
 	}
 	l.updateGeneration++
 	generation := l.updateGeneration
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(parent)
 	l.updateCancel = cancel
 	l.updateWorkers.Add(1)
 	l.updateMu.Unlock()
@@ -177,6 +184,9 @@ func (l *Library) DownloadUpdate(version, sha256 string) (resultPath string, res
 		return "", errors.New("下载已取消或更新设置已改变")
 	}
 	l.updateCancel = nil
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	l.downloadedUpdate = path
 	return path, nil
 }

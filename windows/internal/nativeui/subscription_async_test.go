@@ -27,7 +27,7 @@ func (b *waitingFollowBackend) FollowContext(ctx context.Context, address string
 func monitorSubscriptionTasks(t *testing.T, app *App, tt *ui.Tester) func() {
 	t.Helper()
 	ready := make(chan struct{}, 1)
-	app.SetSubscriptionTaskContext(t.Context(), func() {
+	app.SetBackgroundContext(t.Context(), func() {
 		select {
 		case ready <- struct{}{}:
 		default:

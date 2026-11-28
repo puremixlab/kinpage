@@ -29,8 +29,12 @@ func (a *App) sidebarSiteContextMenu(site store.Site) func(m *ui.Menu) {
 			a.openSiteSettings(site)
 		}
 		m.Separator()
-		if m.Item(a.t("menu.sitePublish")).Chosen() {
+		if m.Item(a.t("menu.sitePublish")).Disabled(a.publishInProgress(site.ID)).Chosen() {
 			a.triggerPublishSite(site)
+		}
+		if outcome, ok := a.publicationResults[site.ID]; ok && m.Item(a.t("menu.sitePublishResult")).Chosen() {
+			outcome.open = true
+			a.publishModal = outcome
 		}
 		if m.Item(a.t("menu.siteQuickRebuild")).Chosen() {
 			if a.backend != nil {

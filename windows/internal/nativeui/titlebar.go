@@ -188,7 +188,12 @@ func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
 						a.openSiteSettings(*site)
 					}
 					if !a.editing {
-						if toolbarIconBtn(c, "site-publish", lucide.Upload(), a.t("toolbar.publishSite")).Clicked() {
+						label := a.t("toolbar.publishSite")
+						pending := a.publishInProgress(siteID)
+						if pending {
+							label = a.t("toolbar.sitePublishing")
+						}
+						if toolbarIconBtn(c, "site-publish", lucide.Upload(), label).Disabled(pending).Clicked() {
 							a.triggerPublishSite(*site)
 						}
 					}

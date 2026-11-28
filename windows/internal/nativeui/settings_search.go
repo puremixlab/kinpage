@@ -39,6 +39,12 @@ func globalSettingsSearchItems() []settingsSearchItem {
 			keywords: []string{"sleep", "awake", "idle", "休眠", "防休眠", "唤醒", "系统"},
 		},
 		{
+			tab: toolsTabGeneral, targetID: "global-update",
+			groupKey: "settings.groupGeneral", tabKey: "settings.tabGeneral",
+			titleKey: "update.title", summaryKey: "update.check",
+			keywords: []string{"update", "version", "upgrade", "更新", "升级", "升級", "版本"},
+		},
+		{
 			tab: toolsTabDataRepo, targetID: "global-data-repo",
 			groupKey: "settings.groupData", tabKey: "settings.tabDataRepo",
 			titleKey: "settings.dataDirTitle", summaryKey: "settings.dataDirDesc",

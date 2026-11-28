@@ -21,6 +21,7 @@ import (
 	"windows/internal/siteimage"
 	"windows/internal/store"
 	"windows/internal/templateinstall"
+	"windows/internal/updates"
 )
 
 type fakeBackend struct {
@@ -248,7 +249,7 @@ func (f *fakeBackend) PermanentlyDeleteSite(siteID string) error {
 	return nil
 }
 
-func (f *fakeBackend) PublishSite(siteID string) (publisher.Result, error) {
+func (f *fakeBackend) PublishSiteContext(_ context.Context, siteID string) (publisher.Result, error) {
 	return publisher.Result{CID: "bafy-test-cid", IPNS: "k51-test-ipns", Revision: 3}, nil
 }
 
@@ -282,6 +283,29 @@ func (f *fakeBackend) SetPreventSleep(v bool) error { f.preventSleep = v; return
 func (f *fakeBackend) DataDir() string              { return `D:\planet-data` }
 func (f *fakeBackend) MoveDataDir(_ context.Context) (string, error) {
 	return `D:\planet-data-new`, nil
+}
+
+func (f *fakeBackend) UpdateSettings() (updates.SettingsInfo, error) {
+	return updates.SettingsInfo{CurrentVersion: "0.1.0"}, nil
+}
+
+func (f *fakeBackend) SaveUpdateSettings(feedURL, publicKey string, autoCheck bool) (updates.SettingsInfo, error) {
+	cfg, err := updates.ValidateConfig(updates.Config{FeedURL: feedURL, PublicKey: publicKey, AutoCheck: autoCheck})
+	return updates.SettingsInfo{Settings: cfg, CurrentVersion: "0.1.0", Configured: cfg.FeedURL != ""}, err
+}
+
+func (f *fakeBackend) CheckUpdatesContext(context.Context) (updates.CheckInfo, error) {
+	return updates.CheckInfo{}, fmt.Errorf("update source is not configured")
+}
+
+func (f *fakeBackend) DownloadUpdateContext(context.Context, string, string) (string, error) {
+	return "", fmt.Errorf("no checked update")
+}
+
+func (f *fakeBackend) CancelUpdateOperation() {}
+
+func (f *fakeBackend) RevealDownloadedUpdate() error {
+	return fmt.Errorf("no downloaded update")
 }
 
 func (f *fakeBackend) OfflineMediaUsage() (offline.Usage, error) { return f.offlineUsage, nil }

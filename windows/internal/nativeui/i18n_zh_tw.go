@@ -148,6 +148,7 @@ var i18nZhTW = map[string]string{
 	"toolbar.quickPost":          "快速發文",
 	"toolbar.siteSettings":       "站點設定",
 	"toolbar.publishSite":        "發布站點",
+	"toolbar.sitePublishing":     "站點正在等待或執行發布",
 	"toolbar.refreshSub":         "重新整理訂閱",
 	"toolbar.subActions":         "訂閱操作",
 	"toolbar.searchPosts":        "搜尋文章",
@@ -303,6 +304,34 @@ var i18nZhTW = map[string]string{
 	"editor.inspirationContinue2": "接下來發生了什麼？從最先改變的那件事寫起。",
 	"editor.inspirationContinue3": "讀者看到這裡會追問什麼？試著用一句話回答。",
 
+	// Publication feedback
+	"menu.sitePublishResult":      "查看上次發布結果",
+	"status.articleSavedPending":  "已儲存「%s」，待發布",
+	"status.sitePublishing":       "正在發布「%s」…",
+	"status.sitePublishQueued":    "「%s」已加入發布佇列",
+	"status.sitePublishWarnings":  "「%s」的部分發布目標需要檢查",
+	"status.sitePublishedPending": "「%s」已發布，更新的內容仍待發布",
+
+	// App updates
+	"update.title":       "應用程式更新",
+	"update.version":     "目前版本 %s",
+	"update.noSource":    "請先設定可信任的更新來源。",
+	"update.check":       "檢查更新",
+	"update.configure":   "設定更新來源",
+	"update.feed":        "HTTPS 資訊清單位址",
+	"update.publicKey":   "Ed25519 公開金鑰（Base64）",
+	"update.autoCheck":   "啟動時檢查更新",
+	"update.trustHint":   "請填入你信任的發行者提供的資訊清單位址與公開金鑰。",
+	"update.checking":    "正在檢查更新…",
+	"update.downloading": "正在下載並驗證安裝程式…",
+	"update.available":   "可更新到 %s",
+	"update.current":     "目前已是最新版本",
+	"update.failed":      "更新操作失敗 · %s",
+	"update.download":    "下載更新",
+	"update.downloaded":  "安裝程式已通過驗證。執行前請結束鄰頁。",
+	"update.reveal":      "在檔案總管中顯示",
+	"update.save":        "儲存更新來源",
+
 	// Status & Error Messages
 	"status.stoppedSpeak":        "已停止朗讀",
 	"status.speakErr":            "語音朗讀失敗：%s",
@@ -317,7 +346,6 @@ var i18nZhTW = map[string]string{
 	"status.saveDraftErr":        "儲存草稿失敗：%s",
 	"status.draftSaved":          "草稿已儲存 %s",
 	"status.publishErr":          "發布失敗：%s",
-	"status.published":           "已發布：%s",
 	"status.deleteDraftErr":      "刪除草稿失敗：%s",
 	"status.draftDeleted":        "草稿已刪除",
 	"status.siteCreated":         "已建立站點：%s",
@@ -553,8 +581,10 @@ var i18nZhTW = map[string]string{
 	"publishModal.title":             "發布詳情 · %s",
 	"publishModal.failed":            "發布失敗：%s",
 	"publishModal.revision":          "版本修訂號: %d",
-	"publishModal.ipnsPending":       "IPNS 仍在背景同步中",
-	"publishModal.pinnableWarn":      "Pinnable 提示：%s",
+	"publishModal.ipnsPending":       "有更新的內容待發布",
+	"publishModal.pinnableWarn":      "發布服務提示 · %s",
+	"publishModal.targetDone":        "%s 發布完成",
+	"publishModal.targetFailed":      "%s 發布未完成 · %s",
 	"publishModal.telegramWarn":      "Telegram 提示：%s",
 
 	// Dialogs: Integrations

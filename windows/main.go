@@ -111,7 +111,16 @@ func main() {
 			Content:        ui.View(nativeApp.View),
 		}
 		win := mygo.NewWindow(opts)
-		nativeApp.SetSubscriptionTaskContext(maintenanceCtx, win.Invalidate)
+		nativeApp.SetBackgroundContext(maintenanceCtx, win.Invalidate)
+		nativeApp.CheckUpdatesOnStartup()
+		maintenance.Add(1)
+		go func() {
+			defer maintenance.Done()
+			library.maintainSubscriptions(maintenanceCtx, func() {
+				nativeApp.MarkSubscriptionsDirty()
+				win.Invalidate()
+			})
+		}()
 		appIconPNG := nativeApp.AppIcon().PNG()
 		if err := win.SetIcon(appIconPNG); err != nil {
 			log.Printf("window icon unavailable: %v", err)
@@ -143,15 +152,40 @@ func main() {
 		var quitting atomic.Bool
 		var closing atomic.Bool
 
-		quitApp := func() {
-			if !closing.CompareAndSwap(false, true) {
+		finishQuit := func() {
+			if !quitting.CompareAndSwap(false, true) {
 				return
 			}
-			go func() {
-				defer closing.Store(false)
-				if library.ActivePublishCount() > 0 {
-					showMainWindow()
-					title, msg, detail, cancelBtn, quitBtn := trayQuitConfirmStrings(nativeApp.Locale())
+			cancelMaintenance()
+			mygo.RunOnMain(func() {
+				if tray != nil {
+					tray.Destroy()
+					tray = nil
+				}
+				nativeApp.Close()
+				if !win.IsDestroyed() {
+					win.Destroy()
+				}
+				mygo.App.Quit()
+			})
+		}
+
+		quitApp := func() {
+			if quitting.Load() || !closing.CompareAndSwap(false, true) {
+				return
+			}
+			win.Update(func() {
+				showMainWindow()
+				requestEditorExit := func() {
+					closing.Store(false)
+					nativeApp.RequestExit(func() { go finishQuit() })
+				}
+				if library.ActivePublishCount() == 0 && !nativeApp.HasPendingPublications() {
+					requestEditorExit()
+					return
+				}
+				title, msg, detail, cancelBtn, quitBtn := trayQuitConfirmStrings(nativeApp.Locale())
+				go func() {
 					result, err := mygo.Dialog.Message(mygo.MessageOptions{
 						Parent:        win,
 						Type:          mygo.MessageQuestion,
@@ -163,23 +197,12 @@ func main() {
 						CancelButton:  0,
 					})
 					if err != nil || result.Button != 1 {
+						closing.Store(false)
 						return
 					}
-				}
-				quitting.Store(true)
-				cancelMaintenance()
-				mygo.RunOnMain(func() {
-					if tray != nil {
-						tray.Destroy()
-						tray = nil
-					}
-				})
-				nativeApp.Close()
-				if !win.IsDestroyed() {
-					win.Destroy()
-				}
-				mygo.App.Quit()
-			}()
+					win.Update(requestEditorExit)
+				}()
+			})
 		}
 
 		buildTrayMenu := func(loc nativeui.Locale) *mygo.Menu {
@@ -261,24 +284,7 @@ func main() {
 				win.Hide()
 				return
 			}
-			// Fallback when system tray is unavailable: confirm and exit.
-			if !closing.CompareAndSwap(false, true) {
-				return
-			}
-			go func() {
-				defer closing.Store(false)
-				detail := "尚未保存的文章更改将会丢失。"
-				if library.ActivePublishCount() > 0 {
-					detail = "当前正在进行 IPNS 发布，强制关闭可能导致发布中断或站点无法解析。"
-				}
-				result, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: win, Type: mygo.MessageQuestion, Title: "关闭邻页", Message: "确定关闭窗口？", Detail: detail, Buttons: []string{"取消", "关闭"}, DefaultButton: 0, CancelButton: 0})
-				if err == nil && result.Button == 1 {
-					quitting.Store(true)
-					cancelMaintenance()
-					nativeApp.Close()
-					win.Destroy()
-				}
-			}()
+			quitApp()
 		})
 	})
 	if err := mygo.App.Run(); err != nil {

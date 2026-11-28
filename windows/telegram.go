@@ -138,11 +138,11 @@ func (l *Library) RetryTelegram(siteID string) (int, error) {
 	return services.SyncTelegram(root, siteID, posts, true, l.telegramClient())
 }
 
-// Called only with the captured snapshot after successful IPNS publication.
+// Sync the captured snapshot when Telegram is configured for the site.
 func (l *Library) syncPublishedTelegram(root string, site store.Site, articles []store.Article, raw json.RawMessage) string {
 	cfg, err := services.LoadTelegramConfig(root, site.ID)
 	if err != nil {
-		return "站点已发布，但无法读取 Telegram 配置：" + err.Error()
+		return "无法读取 Telegram 配置：" + err.Error()
 	}
 	if cfg.Token == "" {
 		return ""
@@ -152,7 +152,7 @@ func (l *Library) syncPublishedTelegram(root string, site store.Site, articles [
 		_, err = services.SyncTelegram(root, site.ID, posts, false, l.telegramClient())
 	}
 	if err != nil {
-		return "站点已发布，但 Telegram 同步未完成：" + err.Error()
+		return "Telegram 同步未完成：" + err.Error()
 	}
 	return ""
 }

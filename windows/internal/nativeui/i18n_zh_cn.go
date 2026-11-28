@@ -148,6 +148,7 @@ var i18nZhCN = map[string]string{
 	"toolbar.quickPost":          "快捷发文",
 	"toolbar.siteSettings":       "站点设置",
 	"toolbar.publishSite":        "发布站点",
+	"toolbar.sitePublishing":     "站点正在等待或执行发布",
 	"toolbar.refreshSub":         "刷新订阅",
 	"toolbar.subActions":         "订阅操作",
 	"toolbar.searchPosts":        "搜索文章",
@@ -303,6 +304,34 @@ var i18nZhCN = map[string]string{
 	"editor.inspirationContinue2": "接下来发生了什么？从最先改变的那件事写起。",
 	"editor.inspirationContinue3": "读者看到这里会追问什么？试着用一句话回答。",
 
+	// Publication feedback
+	"menu.sitePublishResult":      "查看上次发布结果",
+	"status.articleSavedPending":  "已保存「%s」，待发布",
+	"status.sitePublishing":       "正在发布「%s」…",
+	"status.sitePublishQueued":    "「%s」已加入发布队列",
+	"status.sitePublishWarnings":  "「%s」的部分发布目标需要检查",
+	"status.sitePublishedPending": "「%s」已发布，更新的内容仍待发布",
+
+	// App updates
+	"update.title":       "应用更新",
+	"update.version":     "当前版本 %s",
+	"update.noSource":    "请先配置可信更新源。",
+	"update.check":       "检查更新",
+	"update.configure":   "配置更新源",
+	"update.feed":        "HTTPS 清单地址",
+	"update.publicKey":   "Ed25519 公钥（Base64）",
+	"update.autoCheck":   "启动时检查更新",
+	"update.trustHint":   "请填入你信任的发布者提供的清单地址和公钥。",
+	"update.checking":    "正在检查更新…",
+	"update.downloading": "正在下载并验证安装包…",
+	"update.available":   "可更新到 %s",
+	"update.current":     "当前已是最新版本",
+	"update.failed":      "更新操作失败 · %s",
+	"update.download":    "下载更新",
+	"update.downloaded":  "安装包已通过校验。运行前请退出邻页。",
+	"update.reveal":      "在资源管理器中显示",
+	"update.save":        "保存更新源",
+
 	// Status & Error Messages
 	"status.stoppedSpeak":        "已停止朗读",
 	"status.speakErr":            "语音朗读失败：%s",
@@ -317,7 +346,6 @@ var i18nZhCN = map[string]string{
 	"status.saveDraftErr":        "保存草稿失败：%s",
 	"status.draftSaved":          "草稿已保存 %s",
 	"status.publishErr":          "发布失败：%s",
-	"status.published":           "已发布：%s",
 	"status.deleteDraftErr":      "删除草稿失败：%s",
 	"status.draftDeleted":        "草稿已删除",
 	"status.siteCreated":         "已创建站点：%s",
@@ -553,8 +581,10 @@ var i18nZhCN = map[string]string{
 	"publishModal.title":             "发布详情 · %s",
 	"publishModal.failed":            "发布失败：%s",
 	"publishModal.revision":          "版本修订号: %d",
-	"publishModal.ipnsPending":       "IPNS 仍在后台同步中",
-	"publishModal.pinnableWarn":      "Pinnable 提示：%s",
+	"publishModal.ipnsPending":       "有更新的内容待发布",
+	"publishModal.pinnableWarn":      "发布服务提示 · %s",
+	"publishModal.targetDone":        "%s 发布完成",
+	"publishModal.targetFailed":      "%s 发布未完成 · %s",
 	"publishModal.telegramWarn":      "Telegram 提示：%s",
 
 	// Dialogs: Integrations

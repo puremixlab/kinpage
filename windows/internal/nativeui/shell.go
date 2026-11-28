@@ -19,6 +19,8 @@ func (a *App) View(c *ui.Context) {
 		a.reloadSubscriptions()
 	}
 	a.finishSubscriptionTask()
+	a.finishSitePublication()
+	a.finishUpdateOperation()
 	if a.editorInspiration.phase != inspirationClosed &&
 		(!a.editing || a.mode != viewSite || a.editorBuffer.Version() != a.editorInspiration.bufferVersion) {
 		a.editorInspiration.phase = inspirationClosed

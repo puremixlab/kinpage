@@ -13,9 +13,13 @@ import (
 )
 
 func (c *Client) Add(dir string) (string, error) {
+	return c.AddContext(context.Background(), dir)
+}
+
+func (c *Client) AddContext(ctx context.Context, dir string) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.run("add", "-Qr", dir)
+	return c.runContext(ctx, 3*time.Minute, "add", "-Qr", dir)
 }
 
 // Read fetches a bounded public file without using an HTTP gateway.

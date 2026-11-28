@@ -636,21 +636,6 @@ func (a *App) saveSiteSettings() {
 	a.setStatus(a.t("status.siteSettingsSaved"))
 }
 
-func (a *App) triggerPublishSite(site store.Site) {
-	res, err := a.backend.PublishSite(site.ID)
-	a.publishModal = publishModalState{
-		open:     true,
-		siteName: a.fallbackTitle(site.Name),
-		result:   res,
-	}
-	if err != nil {
-		a.publishModal.err = err.Error()
-		return
-	}
-	a.Reload()
-	a.setStatus(a.tf("status.sitePublished", a.fallbackTitle(site.Name)))
-}
-
 func (a *App) viewPublishModal(c *ui.Context) {
 	pal := a.pal
 	pm := &a.publishModal
@@ -664,11 +649,24 @@ func (a *App) viewPublishModal(c *ui.Context) {
 			ui.Text(c, a.tf("publishModal.failed", pm.err)).Font(macPlanetFont).FontSize(13).TextColor(pal.danger)
 		} else {
 			ui.Column(c).Padding(12).Gap(6).Background(pal.subtle).Border(0.5, pal.line).Radius(6).AlignSelf(ui.Stretch).Children(func() {
-				ui.Text(c, "CID: "+pm.result.CID).Font(macPlanetFont).FontSize(12).TextColor(pal.ink)
+				if pm.result.CID != "" {
+					ui.Text(c, "CID: "+pm.result.CID).Font(macPlanetFont).FontSize(12).TextColor(pal.ink)
+				}
 				if pm.result.IPNS != "" {
 					ui.Text(c, "IPNS: "+pm.result.IPNS).Font(macPlanetFont).FontSize(12).TextColor(pal.ink)
 				}
 				ui.Text(c, a.tf("publishModal.revision", pm.result.Revision)).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+				for _, target := range pm.result.Deployments {
+					if target.Error != "" {
+						ui.Text(c, a.tf("publishModal.targetFailed", target.Target, target.Error)).Font(macPlanetFont).FontSize(12).TextColor(pal.amber)
+					} else {
+						label := a.tf("publishModal.targetDone", target.Target)
+						if target.URL != "" {
+							label += " · " + target.URL
+						}
+						ui.Text(c, label).Font(macPlanetFont).FontSize(12).TextColor(pal.ink)
+					}
+				}
 				if pm.result.Pending {
 					ui.Text(c, a.t("publishModal.ipnsPending")).Font(macPlanetFont).FontSize(12).TextColor(pal.amber)
 				}

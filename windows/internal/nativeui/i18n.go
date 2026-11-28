@@ -176,23 +176,32 @@ func (a *App) formatReaderDate(t time.Time) string {
 }
 
 func (a *App) formatFeedDate(raw string) string {
+	if date, ok := parseFeedDate(raw, time.Local); ok {
+		return a.formatRelativeDate(date)
+	}
+	return strings.TrimSpace(raw)
+}
+
+func parseFeedDate(raw string, location *time.Location) (time.Time, bool) {
 	s := strings.TrimSpace(raw)
 	if s == "" {
-		return ""
+		return time.Time{}, false
 	}
 	for _, layout := range []string{
 		time.RFC3339,
 		time.RFC1123Z,
 		time.RFC1123,
+		time.RFC822Z,
+		time.RFC822,
 		"2006-01-02 15:04:05",
 		"2006-01-02",
 		"2006/01/02",
 	} {
-		if t, err := time.Parse(layout, s); err == nil {
-			return a.formatRelativeDate(t)
+		if t, err := time.ParseInLocation(layout, s, location); err == nil {
+			return t, true
 		}
 	}
-	return s
+	return time.Time{}, false
 }
 
 func (a *App) formatMastheadDate(t time.Time) string {
