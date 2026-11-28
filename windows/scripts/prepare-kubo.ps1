@@ -49,14 +49,19 @@ try {
     $binary = Join-Path $staging 'ipfs.exe'
     # Keep the Kubo recipe independent of the app's GOFLAGS and workspace.
     $buildEnvironment = @{
-        GOTOOLCHAIN = $goVersion; GOENV = 'off'; GOWORK = 'off'; GOFLAGS = ''; GOEXPERIMENT = ''
+        GOTOOLCHAIN = $goVersion; GOENV = 'off'; GOWORK = 'off'; GOFLAGS = [NullString]::Value; GOEXPERIMENT = [NullString]::Value
         GOOS = 'windows'; GOARCH = 'amd64'; GOAMD64 = 'v1'; CGO_ENABLED = '0'
         # Apply the module lock patch in the extracted tree, including when the
         # staging directory sits under a Git working tree.
-        GIT_CEILING_DIRECTORIES = $cache; GIT_DIR = ''; GIT_WORK_TREE = ''
+        GIT_CEILING_DIRECTORIES = $cache; GIT_DIR = [NullString]::Value; GIT_WORK_TREE = [NullString]::Value
     }
     $previous = @{}
-    foreach ($name in $buildEnvironment.Keys) { $previous[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+    foreach ($name in $buildEnvironment.Keys) {
+        $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+        # A typed null removes the variable. Modern PowerShell can preserve an
+        # empty string, which Git treats differently from an unset GIT_DIR.
+        $previous[$name] = if ($null -eq $value) { [NullString]::Value } else { $value }
+    }
     Push-Location -LiteralPath $staging
     try {
         foreach ($name in $buildEnvironment.Keys) { [Environment]::SetEnvironmentVariable($name, $buildEnvironment[$name], 'Process') }

@@ -127,7 +127,7 @@
 - **新包复扫** 2026-11-28 用 Go `1.27.4` 和固定的依赖补丁构建 Kubo `0.43.2`。NSIS 与 MSIX 的十项共有文件通过摘要核对，两份包中提取的 `ipfs.exe` SHA-256 均为 `ba75778d566239e1b0f068d6fdd8fd5490b5bba7306c507e33079881e5099e22`。针对这份二进制的 `govulncheck v1.9.0` 仅匹配 `GO-2024-3218`。242 个依赖模块的许可材料已绑定同一摘要，缺项为零。 [构建脚本](../windows/scripts/prepare-kubo.ps1) · [依赖补丁](../windows/scripts/release-audit/kubo-dependencies.patch)
   - NSIS SHA-256 `771fdee21d9163c67b0df86ecc12ba3a280c7833dddc9e5bc8d237fda1e0915b`
   - MSIX SHA-256 `9bdb986732e5c4afc9b51593feae8f20d39ba25d68359dbafdc62a37812ca9df`
-- **兼容性复核** 默认配置、离线网关读取、节点启停、固定内容、Planet 关注及两项备份往返均通过。带补丁的 Kubo 从 `0.38.2` 隔离仓库副本读取到了相同的 IPNS 密钥与递归固定记录，也能读取前一构建创建的 Pebble 仓库及其固定内容。 [网关状态用例](../windows/internal/ipfs/status_test.go)
+- **兼容性复核** 默认配置、离线网关读取、节点启停、固定内容、Planet 关注及两项备份往返均通过。带补丁的 Kubo 从 `0.38.2` 隔离仓库副本读取到了相同的 IPNS 密钥与递归固定记录，也能读取前一构建创建的 Pebble 仓库及其固定内容。PowerShell 7.6 在 Git 工作区之外重建得到同一摘要，启用文件追踪导出器的本地版本检查也通过。 [网关状态用例](../windows/internal/ipfs/status_test.go)
 
 ---
 
