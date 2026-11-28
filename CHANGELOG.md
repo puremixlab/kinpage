@@ -30,6 +30,15 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 - Allow slow article images to keep downloading while data arrives, and display registered relative images in the article reader and editor preview.
 - Move the data repository on the next startup so recent saves, article and draft attachments, and local integration settings move together.
 - Preserve registered cover images and regenerate recognized tag pages when exporting a previously imported `.planet` backup again.
+- Save editor articles with a pending-publication status. Queue site publication in the background and keep newer content pending when an earlier revision finishes.
+- Prompt to save or discard unsaved draft changes when quitting from the tray or closing a window without a tray.
+- Refresh stale subscriptions at startup and every 15 minutes while running. Keep cached articles during outages and use the local calendar day for Today.
+- Restore Check for Updates in General settings, with an optional startup check against a configured trusted source and verified installer downloads.
+- Remove the installation's own desktop shortcut during NSIS uninstall while preserving shortcuts to other programs or with custom icons.
+
+### Security
+
+- Upgrade bundled Kubo to 0.43.2 and record package-linked binary vulnerability scan evidence during installer verification.
 
 ## [0.1.0] - 2026-11-26
 
