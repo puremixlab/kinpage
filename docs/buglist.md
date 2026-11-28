@@ -12,7 +12,7 @@
 | BUG-004 | P1 | 已修复，待实机复核 | 新关注和手动刷新在界面线程等待网络，窗口卡住 |
 | BUG-005 | P1 | 已修复，已验证跨盘复制 | 迁移数据仓库遗漏文章和草稿附件 |
 | BUG-006 | P1 | 已升级，剩余通告待处置 | 随包分发的 Kubo 命中已知安全通告 |
-| BUG-007 | P1 | 已恢复，待合并验证 | GitHub 的 Windows 质量检查和 main 合并门禁失效 |
+| BUG-007 | P1 | 已恢复，代码 PR 检查通过 | GitHub 的 Windows 质量检查和 main 合并门禁失效 |
 | BUG-008 | P1 | 已标注，待签名发行 | 正式发布的 v0.1.0 安装包未签名 |
 | BUG-009 | P2 | 已修复 | .planet 备份重新导入后可能无法再次导出 |
 | BUG-010 | P2 | 已修复 | 编辑器显示已发布，站点仍待手动发布 |
@@ -20,7 +20,7 @@
 | BUG-012 | P2 | 已修复 | 托盘退出会丢弃未保存编辑 |
 | BUG-013 | P2 | 已修复 | 订阅缺少自动刷新，“今天”漏掉常见 RSS 日期 |
 | BUG-014 | P2 | 已修复 | 文档中的检查更新缺少桌面入口 |
-| BUG-015 | P3 | 已修复，待原生卸载验收 | NSIS 卸载留下应用创建的桌面快捷方式 |
+| BUG-015 | P3 | 已修复，原生卸载验收通过 | NSIS 卸载留下应用创建的桌面快捷方式 |
 
 ---
 
@@ -105,6 +105,7 @@
 - **建议修复方向** 在下次启动、业务模块打开仓库前执行迁移。用统一清单复制持久数据，在目标卷暂存和校验，最后切换仓库指针。
 - **验收** 跨盘迁移后附件可预览、导出和发布，本地 API 配置可读取，重启前的保存进入新库。磁盘写满或复制中断后仍可打开原库并重试。
 - **本轮修复与验证** 选择目标后在下次启动复制数据，目标先暂存文件并校验大小，成功后更新指针。测试覆盖文章和草稿附件、本地 API 配置、重启前最后一次保存、目标目录发生变化后的重试，以及原盘不可访问后重新连接。用隔离仓库从 `C:` 复制到 `D:` 并重新打开，附件和配置均可读。跨盘后的发布、磁盘写满和突然中断仍待实机验证。 [迁移回归](../windows/internal/store/repo_location_integration_test.go)
+- **Windows 路径复核** CI 的临时目录采用 8.3 路径，而迁移逻辑保存规范长路径。断言已改为核对目录身份，三个相关用例都通过了 8.3 临时目录复测。 [CI 检查](https://github.com/puremixlab/kinpage/actions/runs/46100214525)
 
 ---
 
@@ -117,17 +118,19 @@
 - **验收** 使用旧仓库的隔离副本验证升级、IPNS 密钥和固定内容保留，以及节点启停。发行证据能够对应最终包中的二进制摘要。
 - **兼容性** `0.43.2` 能打开 `0.38.2` 创建的隔离仓库副本，IPNS 密钥标识和递归固定的内容均可读取。网关遵循当前规范，对编码不匹配的 DAG-JSON 请求可返回 HTTP `406`。回归用例改为检查应用实际读取的本地 HTML，已通过网关读取、节点启停、固定、Planet 关注和两条备份往返。 [路径网关规范](https://specs.ipfs.tech/http-gateways/path-gateway/) · [网关状态用例](../windows/internal/ipfs/status_test.go)
 - **本轮修复与验证** 构建固定官方 Windows x64 Kubo `0.43.2` 和归档 SHA-512，241 个模块均已收集到许可材料。对构建出的 NSIS 包内 `ipfs.exe` 执行 `govulncheck v1.9.0`，文件 SHA-256 为 `5e58e80850d09a2574291d9b8760f5a841b87c5f0bffebe9f0b146ebf8b6f636`。符号级匹配从 68 项降到 27 项，原先记录的 WebTransport 通告已从扫描结果中消失。扫描证据绑定安装包和 Kubo 文件摘要，剩余通告的默认配置影响仍待核实。 [Kubo 0.43.2](https://github.com/ipfs/kubo/releases/tag/v0.43.2) · [安装包审计](../windows/docs/release-audit.md)
+- **重编译复核** 使用 Go `1.27.4` 从同一版官方源码重编译 Windows x64 候选，沿用上游模块锁定。重扫消除了 22 项 Go 标准库匹配，剩余 5 项涉及 DHT、gRPC、压缩库和 OpenTelemetry。候选通过本地网关读取、节点控制、Planet 关注和两条备份往返。DHT 通告目前没有可用的修复版本。当前安装包对应的扫描记录仍为 27 项。 [Go 版本记录](https://go.dev/doc/devel/release) · [DHT 通告](https://pkg.go.dev/vuln/GO-2024-3218)
 
 ---
 
 ### BUG-007 · GitHub 的 Windows 质量检查门禁失效
 
 - **优先级** P1
-- **状态** 工作流和必需检查已恢复，待合并验证。
+- **状态** 工作流和必需检查已恢复，代码 PR 检查通过。
 - **证据** 2026-11-27 通过 GitHub API 核对，`Windows checks` 为 `disabled_manually`，当前 `main` 生效规则中没有必需状态检查。仓库里的规则文件仍记录了 `Windows quality checks`。 [规则记录](../.github/rulesets/main.json) · [Windows 工作流](https://github.com/puremixlab/kinpage/actions/workflows/windows-ci.yml)
 - **建议修复方向** 恢复工作流，并在远端启用该任务作为 `main` 的必需检查。保留纯文档与代码改动的检查分流。
 - **验收** 两类 PR 都产生同名检查结果。使用无绕过权限的账号验证检查失败时无法合并。
 - **本轮修复与验证** 恢复工作流后的 `main` 检查发现 Windows 快捷方式测试受 8.3 路径别名影响而失败。已修复路径判断，独立分支和代码 PR 的 `Windows quality checks` 均通过。GitHub 当前将该检查强制用于 `main`，要求分支同步，并保留既有管理规则。纯文档 PR 和无绕过账号的实际合并行为待验收。 [首次运行](https://github.com/puremixlab/kinpage/actions/runs/46091924822) · [代码 PR 的检查](https://github.com/puremixlab/kinpage/actions/runs/46093386328) · [路径修复 PR](https://github.com/puremixlab/kinpage/pull/106)
+- **复核** 修复 PR 的 `Windows quality checks` 已通过，GitHub API 显示该检查仍是 `main` 的合并门禁。 [修复 PR 的检查](https://github.com/puremixlab/kinpage/actions/runs/46100214525)
 
 ---
 
@@ -205,17 +208,19 @@
 - **建议修复方向** 接入手动检查。用户配置可信源后，按开关执行启动检查，沿用现有签名与 SHA-256 校验。
 - **验收** 覆盖未配置、离线、清单签名无效、下载文件哈希不符和合法更新。
 - **本轮修复与验证** 通用设置提供「检查更新」、可信源配置、启动检查开关及校验后的下载入口。手动检查和下载在后台执行。离屏回归覆盖未配置入口及启动检查开关，既有后端用例覆盖签名、回滚和摘要校验。 [界面回归](../windows/internal/nativeui/update_entry_test.go) · [更新协议回归](../windows/internal/updates/updates_test.go)
+- **安装包下载复核** 使用回环 TLS 服务、临时 Ed25519 签名清单和真实构建的 NSIS 安装包，完成下载及磁盘摘要复核。 [安装包下载用例](../windows/internal/updates/updates_test.go)
 
 ---
 
 ### BUG-015 · NSIS 卸载留下桌面快捷方式
 
 - **优先级** P3
-- **状态** 已修复，待原生卸载验收。
+- **状态** 已修复，隔离 Windows 原生卸载验收通过。
 - **根因** 应用可创建桌面 `Kinpage.lnk`，NSIS 卸载只处理开始菜单快捷方式。 [桌面快捷方式](../windows/internal/desktopshortcut/shortcut_windows.go) · [卸载逻辑](../windows/scripts/release-audit/safe-installer.nsi)
 - **建议修复方向** 卸载时核对链接归属和目标，清理应用创建并指向本次安装的桌面链接。
 - **验收** 由本次安装创建的桌面链接被移除，同名外部链接和用户数据得到保留。
 - **本轮修复与验证** NSIS 验证安装归属后，检查桌面快捷方式的目标程序和应用管理的图标，并核对原链接字节后移除。真实 Windows COM 回归覆盖归属当前安装的快捷方式、指向其他程序的同名链接，以及用户自行配置图标的同目标链接。隔离 Windows 安装验收脚本也覆盖了拥有和外部链接两种情况。 [快捷方式回归](../windows/internal/desktopshortcut/uninstall_windows_test.go) · [原生验收脚本](../windows/scripts/test-installer-native.ps1)
+- **原生验收** 2026-11-28 的隔离 Windows 工作流通过七项场景。实际运行 NSIS 卸载后，本次安装创建的桌面快捷方式已删除，同名外部链接和用户数据的摘要一致。工作流保存了受测安装包、静态审计和 Kubo 二进制扫描。 [原生验收记录](https://github.com/puremixlab/kinpage/actions/runs/46100211329)
 
 ## 建议实施顺序
 
