@@ -1,6 +1,7 @@
 package nativeui
 
 import (
+	"context"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -147,6 +148,12 @@ type App struct {
 	badgeDragOffsets    map[string]*ui.Point
 	badgeZOrder         []string
 	badgeDraggingID     string
+
+	// Background subscription operations.
+	subscriptionContext     context.Context
+	invalidateSubscriptions func()
+	subscriptionsDirty      atomic.Bool
+	subscriptionTask        *subscriptionTask
 
 	// Subscriptions & global search state.
 	selectedSubURL        string
@@ -330,9 +337,7 @@ func (a *App) Reload() {
 	} else {
 		a.sites = sites
 	}
-	if subs, err := a.backend.Subscriptions(); err == nil {
-		a.subscriptions = subs
-	}
+	a.reloadSubscriptions()
 	if st, err := a.backend.IPFSStatus(); err == nil {
 		a.ipfsModal.status = st
 	}

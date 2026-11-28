@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,6 +29,7 @@ type fakeBackend struct {
 	articles      []store.Article
 	drafts        []store.Draft
 	activity      []store.DailyActivity
+	subsMu        sync.Mutex
 	subscriptions []store.Subscription
 	folders       []store.PublishedFolder
 	ipfsStatus    ipfs.KuboStatus
@@ -667,6 +669,8 @@ func (f *fakeBackend) SetArticleStar(siteID, articleID string, starred bool, sta
 }
 
 func (f *fakeBackend) SetSubscriptionStar(address, key string, starred bool, starType int) error {
+	f.subsMu.Lock()
+	defer f.subsMu.Unlock()
 	for i := range f.subscriptions {
 		if f.subscriptions[i].URL == address {
 			for j := range f.subscriptions[i].Feed.Items {
@@ -751,6 +755,8 @@ func (f *fakeBackend) CompressDraftVideo(siteID, draftID, _, _ string) (store.Dr
 }
 
 func (f *fakeBackend) Subscriptions() ([]store.Subscription, error) {
+	f.subsMu.Lock()
+	defer f.subsMu.Unlock()
 	out := make([]store.Subscription, len(f.subscriptions))
 	for i, s := range f.subscriptions {
 		s.Feed.Items = append([]feeds.Item(nil), s.Feed.Items...)
@@ -759,7 +765,16 @@ func (f *fakeBackend) Subscriptions() ([]store.Subscription, error) {
 	return out, nil
 }
 
-func (f *fakeBackend) Follow(address string) (store.Subscription, error) {
+func (f *fakeBackend) ReadMarkdownAttachment(siteID, articleID, draftID, name string) ([]byte, string, error) {
+	return nil, "", fmt.Errorf("attachment not found")
+}
+
+func (f *fakeBackend) FollowContext(ctx context.Context, address string) (SubscriptionUpdate, error) {
+	f.subsMu.Lock()
+	defer f.subsMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return SubscriptionUpdate{}, err
+	}
 	sub := store.Subscription{
 		URL: address,
 		Feed: feeds.Feed{
@@ -772,30 +787,42 @@ func (f *fakeBackend) Follow(address string) (store.Subscription, error) {
 		},
 	}
 	f.subscriptions = append(f.subscriptions, sub)
-	return sub, nil
+	return SubscriptionUpdate{Subscription: sub}, nil
 }
 
-func (f *fakeBackend) RefreshSubscription(address string) (store.Subscription, error) {
+func (f *fakeBackend) RefreshSubscriptionContext(ctx context.Context, address string) (SubscriptionUpdate, error) {
+	f.subsMu.Lock()
+	defer f.subsMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return SubscriptionUpdate{}, err
+	}
 	for _, s := range f.subscriptions {
 		if s.URL == address {
-			return s, nil
+			return SubscriptionUpdate{Subscription: s}, nil
 		}
 	}
-	return store.Subscription{}, fmt.Errorf("subscription not found")
+	return SubscriptionUpdate{}, fmt.Errorf("subscription not found")
 }
 
-func (f *fakeBackend) UpdateSubscription(oldAddress, newAddress, customTitle string) (store.Subscription, error) {
+func (f *fakeBackend) UpdateSubscriptionContext(ctx context.Context, oldAddress, newAddress, customTitle string) (SubscriptionUpdate, error) {
+	f.subsMu.Lock()
+	defer f.subsMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return SubscriptionUpdate{}, err
+	}
 	for i := range f.subscriptions {
 		if f.subscriptions[i].URL == oldAddress {
 			f.subscriptions[i].URL = newAddress
 			f.subscriptions[i].CustomTitle = customTitle
-			return f.subscriptions[i], nil
+			return SubscriptionUpdate{Subscription: f.subscriptions[i]}, nil
 		}
 	}
-	return store.Subscription{}, fmt.Errorf("subscription not found")
+	return SubscriptionUpdate{}, fmt.Errorf("subscription not found")
 }
 
 func (f *fakeBackend) Unfollow(address string) error {
+	f.subsMu.Lock()
+	defer f.subsMu.Unlock()
 	for i := range f.subscriptions {
 		if f.subscriptions[i].URL == address {
 			f.subscriptions = append(f.subscriptions[:i], f.subscriptions[i+1:]...)
@@ -806,6 +833,8 @@ func (f *fakeBackend) Unfollow(address string) error {
 }
 
 func (f *fakeBackend) StarSubscription(address, key string, starred bool) error {
+	f.subsMu.Lock()
+	defer f.subsMu.Unlock()
 	for i := range f.subscriptions {
 		if f.subscriptions[i].URL != address {
 			continue
@@ -821,6 +850,8 @@ func (f *fakeBackend) StarSubscription(address, key string, starred bool) error 
 }
 
 func (f *fakeBackend) SetSubscriptionRead(address, key string, read bool) error {
+	f.subsMu.Lock()
+	defer f.subsMu.Unlock()
 	for i := range f.subscriptions {
 		if f.subscriptions[i].URL != address {
 			continue
@@ -836,6 +867,8 @@ func (f *fakeBackend) SetSubscriptionRead(address, key string, read bool) error 
 }
 
 func (f *fakeBackend) MarkSubscriptionRead(address string) error {
+	f.subsMu.Lock()
+	defer f.subsMu.Unlock()
 	for i := range f.subscriptions {
 		if f.subscriptions[i].URL != address {
 			continue
@@ -858,7 +891,8 @@ func (f *fakeBackend) SearchArticles(query string) ([]store.SearchResult, error)
 			})
 		}
 	}
-	for _, s := range f.subscriptions {
+	subs, _ := f.Subscriptions()
+	for _, s := range subs {
 		for _, item := range s.Feed.Items {
 			if strings.Contains(strings.ToLower(item.Title+" "+item.Content), q) {
 				out = append(out, store.SearchResult{

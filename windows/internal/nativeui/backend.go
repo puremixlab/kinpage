@@ -124,9 +124,10 @@ type Backend interface {
 	QuickPost(siteID, title, content, attachmentName, attachmentBase64 string) (store.Article, error)
 	PickQuickPostAttachment(ctx context.Context) (string, string, error)
 	Subscriptions() ([]store.Subscription, error)
-	Follow(address string) (store.Subscription, error)
-	RefreshSubscription(address string) (store.Subscription, error)
-	UpdateSubscription(oldAddress, newAddress, customTitle string) (store.Subscription, error)
+	ReadMarkdownAttachment(siteID, articleID, draftID, name string) ([]byte, string, error)
+	FollowContext(ctx context.Context, address string) (SubscriptionUpdate, error)
+	RefreshSubscriptionContext(ctx context.Context, address string) (SubscriptionUpdate, error)
+	UpdateSubscriptionContext(ctx context.Context, oldAddress, newAddress, customTitle string) (SubscriptionUpdate, error)
 	Unfollow(address string) error
 	StarSubscription(address, key string, starred bool) error
 	SetSubscriptionStar(address, key string, starred bool, starType int) error

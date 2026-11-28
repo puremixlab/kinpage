@@ -1,12 +1,14 @@
 package nativeui
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/lobehub/lobe-mygo/pkg/display"
 	"github.com/lobehub/lobe-mygo/pkg/lucide"
+	"windows/internal/feeds"
 	"windows/internal/store"
 )
 
@@ -24,23 +26,35 @@ var featuredPlanetAddresses = []string{
 }
 
 func (a *App) followFeaturedPlanets() {
-	if a.backend == nil {
-		return
-	}
-	followed := 0
-	var lastErr error
-	for _, addr := range featuredPlanetAddresses {
-		if _, err := a.backend.Follow(addr); err != nil {
-			lastErr = err
-		} else {
-			followed++
+	backend := a.backend
+	if a.startSubscriptionTask(followFeaturedTask, func(ctx context.Context) func() {
+		followed := 0
+		var lastErr error
+		var icons []feeds.IconLoader
+		for _, addr := range featuredPlanetAddresses {
+			if ctx.Err() != nil {
+				break
+			}
+			if update, err := backend.FollowContext(ctx, addr); err != nil {
+				lastErr = err
+			} else {
+				followed++
+				icons = append(icons, update.FinishIcon)
+			}
 		}
-	}
-	a.Reload()
-	if followed > 0 {
-		a.setStatus(a.tf("status.followedFeatured", followed))
-	} else if lastErr != nil {
-		a.setError(a.tf("status.followFeaturedErr", lastErr.Error()))
+		return func() {
+			a.reloadSubscriptions()
+			for _, load := range icons {
+				a.loadSubscriptionIcon(load)
+			}
+			if followed > 0 {
+				a.setStatus(a.tf("status.followedFeatured", followed))
+			} else if lastErr != nil {
+				a.setError(a.tf("status.followFeaturedErr", lastErr.Error()))
+			}
+		}
+	}) {
+		a.setStatus(a.t("status.followingFeatured"))
 	}
 }
 

@@ -41,6 +41,9 @@ func (c *Client) runTimeout(timeout time.Duration, args ...string) (string, erro
 func (c *Client) runContext(parent context.Context, timeout time.Duration, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	// Never let the Kubo CLI infer a daemon from a mutable repository api file.
 	temporary, err := c.ensureCommandDaemon()
 	if err != nil {
@@ -58,6 +61,9 @@ func (c *Client) runContext(parent context.Context, timeout time.Duration, args 
 	cmd := exec.CommandContext(ctx, c.executable, args...)
 	c.configure(cmd)
 	out, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		return "", ctx.Err()
+	}
 	if err != nil {
 		return "", fmt.Errorf("Kubo: %s: %w", strings.TrimSpace(string(out)), err)
 	}

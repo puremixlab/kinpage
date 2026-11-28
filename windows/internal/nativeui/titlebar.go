@@ -199,12 +199,7 @@ func (a *App) viewDetailToolbar(c *ui.Context, showBottomBorder bool) {
 					subURL := sub.URL
 					ui.Box(c).Width(1).Height(16).MarginX(4).Background(pal.line)
 					if toolbarIconBtn(c, "sub-refresh", lucide.RefreshCw(), a.t("toolbar.refreshSub")).Clicked() {
-						if _, err := a.backend.RefreshSubscription(subURL); err != nil {
-							a.setError(a.tf("status.refreshSubErr", err.Error()))
-						} else {
-							a.Reload()
-							a.setStatus(a.t("status.refreshedSub"))
-						}
+						a.refreshSubscription(subURL)
 					}
 					toolbarIconBtn(c, "sub-more", lucide.Info(), a.t("toolbar.subActions")).Menu(func(m *ui.Menu) {
 						if m.Item(a.t("menu.subMarkAllRead")).Chosen() {

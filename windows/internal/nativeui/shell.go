@@ -15,6 +15,10 @@ func (a *App) View(c *ui.Context) {
 	if !a.loaded || a.externalDirty.Swap(false) {
 		a.Reload()
 	}
+	if a.subscriptionsDirty.Swap(false) {
+		a.reloadSubscriptions()
+	}
+	a.finishSubscriptionTask()
 	if a.editorInspiration.phase != inspirationClosed &&
 		(!a.editing || a.mode != viewSite || a.editorBuffer.Version() != a.editorInspiration.bufferVersion) {
 		a.editorInspiration.phase = inspirationClosed

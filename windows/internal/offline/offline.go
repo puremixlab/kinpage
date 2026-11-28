@@ -204,6 +204,13 @@ func Pin(root, source string, feed feeds.Feed) (feeds.Feed, string, error) {
 }
 
 func PinWithPrevious(root, source string, feed, previous feeds.Feed) (feeds.Feed, string, error) {
+	return PinWithPreviousContext(context.Background(), root, source, feed, previous)
+}
+
+func PinWithPreviousContext(ctx context.Context, root, source string, feed, previous feeds.Feed) (feeds.Feed, string, error) {
+	if err := ctx.Err(); err != nil {
+		return feeds.Feed{}, "", err
+	}
 	old := map[string]feeds.OfflineAsset{}
 	for _, item := range previous.Items {
 		for address, asset := range item.OfflineMedia {
@@ -235,6 +242,9 @@ func PinWithPrevious(root, source string, feed, previous feeds.Feed) (feeds.Feed
 		return allowedURL(source, req.URL.String())
 	}}
 	for i := range feed.Items {
+		if err := ctx.Err(); err != nil {
+			return feeds.Feed{}, "", err
+		}
 		item := &feed.Items[i]
 		item.OfflineBase = baseFor(source, *item)
 		item.OfflineMedia = map[string]feeds.OfflineAsset{}
@@ -253,7 +263,7 @@ func PinWithPrevious(root, source string, feed, previous feeds.Feed) (feeds.Feed
 			if err = allowedURL(source, entry.url); err != nil {
 				return feeds.Feed{}, "", err
 			}
-			req, err := http.NewRequest("GET", entry.url, nil)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, entry.url, nil)
 			if err != nil {
 				return feeds.Feed{}, "", err
 			}
@@ -379,6 +389,9 @@ func PinWithPrevious(root, source string, feed, previous feeds.Feed) (feeds.Feed
 		}
 	}
 	_ = os.Remove(dir) // Only removes an empty snapshot when every file was reused.
+	if err := ctx.Err(); err != nil {
+		return feeds.Feed{}, "", err
+	}
 	success = true
 	return feed, snapshot, nil
 }

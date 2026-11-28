@@ -2,6 +2,7 @@ package follow
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"image"
@@ -19,9 +20,15 @@ type fakeNode struct {
 	pinned   string
 }
 
-func (n *fakeNode) Resolve(name string) (string, error)   { n.resolved = name; return "bafytest", nil }
-func (n *fakeNode) Read(cid, path string) ([]byte, error) { return n.data, nil }
-func (n *fakeNode) Pin(cid string) error                  { n.pinned = cid; return nil }
+func (n *fakeNode) ResolveContext(_ context.Context, name string) (string, error) {
+	n.resolved = name
+	return "bafytest", nil
+}
+func (n *fakeNode) ReadContext(context.Context, string, string) ([]byte, error) { return n.data, nil }
+func (n *fakeNode) PinContext(_ context.Context, cid string) error {
+	n.pinned = cid
+	return nil
+}
 func TestFollowIPNSReadsPlanetAndPinsContent(t *testing.T) {
 	node := &fakeNode{data: []byte(`{"id":"11111111-1111-4111-8111-111111111111","name":"Test Planet","about":"About","articles":[{"id":"22222222-2222-4222-8222-222222222222","link":"/22222222-2222-4222-8222-222222222222/","title":"Post","content":"**Hello**","created":1}]}`)}
 	address := "planet://k51abcdefghijk"
@@ -98,8 +105,10 @@ type pathNode struct {
 	readPaths       []string
 }
 
-func (n *pathNode) Resolve(string) (string, error) { return "bafytest/folder/site", nil }
-func (n *pathNode) Read(cid, path string) ([]byte, error) {
+func (n *pathNode) ResolveContext(context.Context, string) (string, error) {
+	return "bafytest/folder/site", nil
+}
+func (n *pathNode) ReadContext(_ context.Context, cid, path string) ([]byte, error) {
 	n.readCID = cid
 	n.readPaths = append(n.readPaths, path)
 	if n.files != nil {
@@ -110,7 +119,7 @@ func (n *pathNode) Read(cid, path string) ([]byte, error) {
 	}
 	return n.data, nil
 }
-func (n *pathNode) Pin(cid string) error { n.pinned = cid; return nil }
+func (n *pathNode) PinContext(_ context.Context, cid string) error { n.pinned = cid; return nil }
 
 func TestFollowReadsPlanetAvatarAndFaviconFallback(t *testing.T) {
 	var pngBuf bytes.Buffer

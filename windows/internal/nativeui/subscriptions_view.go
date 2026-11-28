@@ -1,6 +1,7 @@
 package nativeui
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -181,7 +182,7 @@ func (a *App) selectSubItem(subURL, itemKey string) {
 	a.subReaderScroll.Y = 0
 	if cur, ok := a.currentSubItem(); ok && !cur.item.Read && a.backend != nil {
 		if err := a.backend.SetSubscriptionRead(subURL, itemKey, true); err == nil {
-			a.Reload()
+			a.reloadSubscriptions()
 		}
 	}
 }
@@ -374,7 +375,7 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 							HeaderMultiple:        0.65,
 							MarginMultiple:        1.2,
 							FullFeaturedCodeBlock: true,
-							LoadImage:             a.markdownImageLoader(baseURL, ""),
+							LoadImage:             a.markdownImageLoader(baseURL, nil),
 						})
 					}
 				})
@@ -385,73 +386,127 @@ func (a *App) viewSubscriptionReader(c *ui.Context) {
 
 func (a *App) viewFollowModal(c *ui.Context) {
 	pal := a.pal
+	pending := a.subscriptionTaskIs(followTask)
+	primary := a.t("dialog.follow.primary")
+	if pending {
+		primary = ""
+	}
 	if macSheet(c, &a.followModalOpen, macSheetProps{
 		Title:        a.t("dialog.follow.title"),
 		Width:        440,
-		PrimaryText:  a.t("dialog.follow.primary"),
+		PrimaryText:  primary,
 		CancelText:   a.t("common.cancel"),
 		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
 		ui.Text(c, a.t("dialog.follow.hint")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
-		if ui.TextInput(c.Key("follow-addr"), &a.followAddress).Placeholder(a.t("dialog.follow.placeholder")).Label(a.t("dialog.follow.label")).AutoFocus().AlignSelf(ui.Stretch).Submitted() {
+		if ui.TextInput(c.Key("follow-addr"), &a.followAddress).Placeholder(a.t("dialog.follow.placeholder")).Label(a.t("dialog.follow.label")).AutoFocus().AlignSelf(ui.Stretch).Disabled(pending).Submitted() {
 			a.submitFollow()
 		}
-		if a.followErr != "" {
+		if pending {
+			ui.Text(c, a.t("dialog.subFetching")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+		} else if a.followErr != "" {
 			ui.Text(c, a.followErr).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
 		}
 	}) {
 		a.submitFollow()
 	}
+	if pending && !a.followModalOpen {
+		a.cancelSubscriptionTask()
+	}
 }
 
 func (a *App) submitFollow() {
+	if !a.followModalOpen || a.subscriptionTaskIs(followTask) {
+		return
+	}
 	addr := strings.TrimSpace(a.followAddress)
 	if addr == "" {
 		a.followErr = a.t("dialog.follow.addrRequired")
 		return
 	}
-	sub, err := a.backend.Follow(addr)
-	if err != nil {
-		a.followErr = err.Error()
-		return
+	backend := a.backend
+	if a.startSubscriptionTask(followTask, func(ctx context.Context) func() {
+		update, err := backend.FollowContext(ctx, addr)
+		return func() {
+			if err != nil {
+				a.followErr = err.Error()
+				return
+			}
+			a.followModalOpen = false
+			a.reloadSubscriptions()
+			sub := update.Subscription
+			a.openSubscriptionView(viewSubscription, sub.URL)
+			a.setStatus(a.tf("status.followed", subscriptionTitle(sub)))
+			a.loadSubscriptionIcon(update.FinishIcon)
+		}
+	}) {
+		a.followErr = ""
+	} else {
+		a.followErr = a.t("status.subscriptionBusy")
 	}
-	a.followModalOpen = false
-	a.followErr = ""
-	a.Reload()
-	a.openSubscriptionView(viewSubscription, sub.URL)
-	a.setStatus(a.tf("status.followed", subscriptionTitle(sub)))
 }
 
 func (a *App) viewEditSubscriptionModal(c *ui.Context) {
 	pal := a.pal
+	pending := a.subscriptionTaskIs(editSubscriptionTask)
+	primary := a.t("dialog.editSub.primary")
+	if pending {
+		primary = ""
+	}
 	if macSheet(c, &a.editSubOpen, macSheetProps{
 		Title:        a.t("dialog.editSub.title"),
 		Width:        460,
-		PrimaryText:  a.t("dialog.editSub.primary"),
+		PrimaryText:  primary,
 		CancelText:   a.t("common.cancel"),
 		CloseTooltip: a.t("common.close"),
 	}, pal, func() {
 		macInsetCard(c, pal, func() {
 			macField(c, a.t("dialog.editSub.addrField"), "", pal, func() {
-				ui.TextInput(c.Key("edit-sub-url"), &a.editSubNewURL).Label(a.t("dialog.editSub.addrField")).AlignSelf(ui.Stretch)
+				ui.TextInput(c.Key("edit-sub-url"), &a.editSubNewURL).Label(a.t("dialog.editSub.addrField")).AlignSelf(ui.Stretch).Disabled(pending)
 			})
 			macField(c, a.t("dialog.editSub.customTitleField"), "", pal, func() {
-				ui.TextInput(c.Key("edit-sub-title"), &a.editSubTitle).Placeholder(a.t("dialog.editSub.customTitlePlaceholder")).Label(a.t("dialog.editSub.customTitleField")).AlignSelf(ui.Stretch)
+				ui.TextInput(c.Key("edit-sub-title"), &a.editSubTitle).Placeholder(a.t("dialog.editSub.customTitlePlaceholder")).Label(a.t("dialog.editSub.customTitleField")).AlignSelf(ui.Stretch).Disabled(pending)
 			})
 		})
-		if a.editSubErr != "" {
+		if pending {
+			ui.Text(c, a.t("dialog.subFetching")).Font(macPlanetFont).FontSize(12).TextColor(pal.muted)
+		} else if a.editSubErr != "" {
 			ui.Text(c, a.editSubErr).Font(macPlanetFont).FontSize(12).TextColor(pal.danger)
 		}
 	}) {
-		sub, err := a.backend.UpdateSubscription(a.editSubOldURL, strings.TrimSpace(a.editSubNewURL), strings.TrimSpace(a.editSubTitle))
-		if err != nil {
-			a.editSubErr = err.Error()
-			return
+		a.submitSubscriptionEdit()
+	}
+	if pending && !a.editSubOpen {
+		a.cancelSubscriptionTask()
+	}
+}
+
+func (a *App) submitSubscriptionEdit() {
+	if !a.editSubOpen || a.subscriptionTaskIs(editSubscriptionTask) {
+		return
+	}
+	oldURL, newURL, title := a.editSubOldURL, strings.TrimSpace(a.editSubNewURL), strings.TrimSpace(a.editSubTitle)
+	backend := a.backend
+	if a.startSubscriptionTask(editSubscriptionTask, func(ctx context.Context) func() {
+		update, err := backend.UpdateSubscriptionContext(ctx, oldURL, newURL, title)
+		return func() {
+			if err != nil {
+				a.editSubErr = err.Error()
+				return
+			}
+			a.editSubOpen = false
+			a.reloadSubscriptions()
+			sub := update.Subscription
+			if sub.URL != oldURL && a.mode == viewSubscription && a.selectedSubURL == oldURL {
+				a.openSubscriptionView(viewSubscription, sub.URL)
+			}
+			a.setStatus(a.tf("status.subUpdated", subscriptionTitle(sub)))
+			a.loadSubscriptionIcon(update.FinishIcon)
 		}
-		a.editSubOpen = false
-		a.selectedSubURL = sub.URL
-		a.Reload()
-		a.setStatus(a.tf("status.subUpdated", subscriptionTitle(sub)))
+	}) {
+		a.editSubErr = ""
+	} else {
+		a.editSubErr = a.t("status.subscriptionBusy")
 	}
 }
 
@@ -461,16 +516,7 @@ func (a *App) viewUnfollowDialog(c *ui.Context) {
 		a.tf("dialog.unfollow.message", a.fallbackTitle(a.unfollowTitle)),
 		a.t("common.cancel"), a.t("dialog.unfollow.confirm"), true, a.pal) {
 		if a.backend != nil && a.unfollowURL != "" {
-			if err := a.backend.Unfollow(a.unfollowURL); err != nil {
-				a.setError(a.tf("status.unfollowErr", err.Error()))
-			} else {
-				if a.selectedSubURL == a.unfollowURL {
-					a.selectedSubURL = ""
-					a.mode = viewOverview
-				}
-				a.Reload()
-				a.setStatus(a.t("status.unfollowed"))
-			}
+			a.unfollowSubscription(a.unfollowURL)
 		}
 		a.unfollowURL = ""
 		a.unfollowTitle = ""

@@ -115,13 +115,14 @@ func (a *App) viewMarkdownPreview(c *ui.Context, title, content string, scroll *
 					Description: a.t("editor.previewEmptyDesc"),
 				})
 			} else {
-				lobemd.Markdown(c, content, lobemd.MarkdownProps{
+				key := "editor-markdown-" + a.selectedSiteID + "/" + a.activeArticleID + "/" + a.activeDraftID + "/" + strings.Join(a.editorAttachments, "/")
+				lobemd.Markdown(c.Key(key), content, lobemd.MarkdownProps{
 					FontSize:              15,
 					LineHeight:            1.8,
 					HeaderMultiple:        0.65,
 					MarginMultiple:        1.2,
 					FullFeaturedCodeBlock: true,
-					LoadImage:             a.markdownImageLoader("", ""),
+					LoadImage:             a.markdownAttachmentLoader(a.selectedSiteID, a.activeArticleID, a.activeDraftID),
 				})
 			}
 		})

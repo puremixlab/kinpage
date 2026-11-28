@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"github.com/egoist/mygo"
 	"windows/internal/feeds"
 	"windows/internal/follow"
+	"windows/internal/nativeui"
 	"windows/internal/offline"
 	"windows/internal/preview"
 	"windows/internal/store"
@@ -31,37 +33,47 @@ func (l *Library) Subscriptions() ([]store.Subscription, error) {
 
 // Follow adds or refreshes either a web feed or a Planet/IPNS/ENS site.
 func (l *Library) Follow(address string) (store.Subscription, error) {
-	return l.follow(address, false)
+	return completeSubscription(l.FollowContext(context.Background(), address))
+}
+
+func (l *Library) FollowContext(ctx context.Context, address string) (nativeui.SubscriptionUpdate, error) {
+	return l.follow(ctx, address, false)
 }
 
 // RefreshSubscription only refreshes an existing subscription. A refresh
 // queued before removal must not recreate the removed subscription.
 func (l *Library) RefreshSubscription(address string) (store.Subscription, error) {
-	return l.follow(address, true)
+	return completeSubscription(l.RefreshSubscriptionContext(context.Background(), address))
 }
 
-func (l *Library) follow(address string, requireExisting bool) (store.Subscription, error) {
+func (l *Library) RefreshSubscriptionContext(ctx context.Context, address string) (nativeui.SubscriptionUpdate, error) {
+	return l.follow(ctx, address, true)
+}
+
+func (l *Library) follow(ctx context.Context, address string, requireExisting bool) (nativeui.SubscriptionUpdate, error) {
 	address = strings.TrimSpace(address)
 	s, err := l.open()
 	if err != nil {
-		return store.Subscription{}, err
+		return nativeui.SubscriptionUpdate{}, err
 	}
-	if strings.HasPrefix(strings.ToLower(address), "http://") || strings.HasPrefix(strings.ToLower(address), "https://") {
+	if isHTTPAddress(address) {
 		l.feedMu.Lock()
 		defer l.feedMu.Unlock()
+		if err := ctx.Err(); err != nil {
+			return nativeui.SubscriptionUpdate{}, err
+		}
 		if requireExisting {
 			if err := requireSubscription(s, address); err != nil {
-				return store.Subscription{}, err
+				return nativeui.SubscriptionUpdate{}, err
 			}
 		}
-		feed, err := feeds.Fetch(address)
+		feed, loadIcon, err := feeds.FetchContent(ctx, address)
 		if err != nil {
-			_ = s.SetSubscriptionError(address, err.Error())
-			return store.Subscription{}, err
+			return nativeui.SubscriptionUpdate{}, recordSubscriptionError(ctx, s, address, err)
 		}
 		subs, e := s.ListSubscriptions()
 		if e != nil {
-			return store.Subscription{}, e
+			return nativeui.SubscriptionUpdate{}, e
 		}
 		pinned := false
 		var previous feeds.Feed
@@ -75,40 +87,49 @@ func (l *Library) follow(address string, requireExisting bool) (store.Subscripti
 		if pinned {
 			root, e := mygo.App.Path(mygo.PathUserData)
 			if e != nil {
-				return store.Subscription{}, e
+				return nativeui.SubscriptionUpdate{}, e
 			}
-			saved, snapshot, e := offline.PinWithPrevious(root, address, feed, previous)
+			saved, snapshot, e := offline.PinWithPreviousContext(ctx, root, address, feed, previous)
 			if e != nil {
-				_ = s.SetSubscriptionError(address, e.Error())
-				return store.Subscription{}, e
+				return nativeui.SubscriptionUpdate{}, recordSubscriptionError(ctx, s, address, e)
 			}
-			result, e := s.SaveOfflineSubscription(address, saved, snapshot)
-			if e != nil {
+			if err := ctx.Err(); err != nil {
+				_ = offline.Discard(root, snapshot)
+				return nativeui.SubscriptionUpdate{}, err
+			}
+			result, err := s.SaveOfflineSubscription(address, saved, snapshot)
+			if err != nil {
 				_ = offline.Discard(root, snapshot)
 			}
-			return result, e
+			return subscriptionUpdate(s, result, loadIcon), err
 		}
-		return s.SaveSubscription(address, feed)
+		if err := ctx.Err(); err != nil {
+			return nativeui.SubscriptionUpdate{}, err
+		}
+		sub, err := s.SaveSubscription(address, feed)
+		return subscriptionUpdate(s, sub, loadIcon), err
 	}
 	name, err := follow.Normalize(address)
 	if err != nil {
-		return store.Subscription{}, err
+		return nativeui.SubscriptionUpdate{}, err
 	}
 	l.publicMu.Lock()
 	defer l.publicMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return nativeui.SubscriptionUpdate{}, err
+	}
 	if requireExisting {
 		if err := requireSubscription(s, name); err != nil {
-			return store.Subscription{}, err
+			return nativeui.SubscriptionUpdate{}, err
 		}
 	}
 	if _, _, err = l.ensureNode(true); err != nil {
-		_ = s.SetSubscriptionError(name, err.Error())
-		return store.Subscription{}, err
+		return nativeui.SubscriptionUpdate{}, recordSubscriptionError(ctx, s, name, err)
 	}
 	pinned := false
 	subs, err := s.ListSubscriptions()
 	if err != nil {
-		return store.Subscription{}, err
+		return nativeui.SubscriptionUpdate{}, err
 	}
 	for _, sub := range subs {
 		if sub.URL == name && sub.PinnedCID != "" {
@@ -116,16 +137,27 @@ func (l *Library) follow(address string, requireExisting bool) (store.Subscripti
 			break
 		}
 	}
-	result, err := follow.Fetch(l.node, name, pinned)
+	result, err := follow.FetchContent(ctx, l.node, name, pinned)
 	if err != nil {
-		_ = s.SetSubscriptionError(name, err.Error())
-		return store.Subscription{}, err
+		return nativeui.SubscriptionUpdate{}, recordSubscriptionError(ctx, s, name, err)
+	}
+	if err := ctx.Err(); err != nil {
+		return nativeui.SubscriptionUpdate{}, err
 	}
 	pinnedCID := ""
 	if pinned {
 		pinnedCID = result.CID
 	}
-	return s.SavePlanetSubscription(name, result.Feed, result.CID, pinnedCID)
+	sub, err := s.SavePlanetSubscription(name, result.Feed, result.CID, pinnedCID)
+	return subscriptionUpdate(s, sub, result.LoadIcon), err
+}
+
+func recordSubscriptionError(ctx context.Context, s *store.Store, address string, err error) error {
+	if cancelled := ctx.Err(); cancelled != nil {
+		return cancelled
+	}
+	_ = s.SetSubscriptionError(address, err.Error())
+	return err
 }
 
 func requireSubscription(s *store.Store, address string) error {
@@ -148,19 +180,23 @@ func isHTTPAddress(address string) bool {
 
 // UpdateSubscription edits an existing subscription's display name and/or address.
 func (l *Library) UpdateSubscription(oldAddress, newAddress, customTitle string) (store.Subscription, error) {
+	return completeSubscription(l.UpdateSubscriptionContext(context.Background(), oldAddress, newAddress, customTitle))
+}
+
+func (l *Library) UpdateSubscriptionContext(ctx context.Context, oldAddress, newAddress, customTitle string) (nativeui.SubscriptionUpdate, error) {
 	oldAddress = strings.TrimSpace(oldAddress)
 	newAddress = strings.TrimSpace(newAddress)
 	if oldAddress == "" {
-		return store.Subscription{}, errors.New("订阅不存在")
+		return nativeui.SubscriptionUpdate{}, errors.New("订阅不存在")
 	}
 	if newAddress == "" {
-		return store.Subscription{}, errors.New("请输入订阅地址")
+		return nativeui.SubscriptionUpdate{}, errors.New("请输入订阅地址")
 	}
 	oldIsHTTP := isHTTPAddress(oldAddress)
 	if !oldIsHTTP {
 		normalized, err := follow.Normalize(oldAddress)
 		if err != nil {
-			return store.Subscription{}, err
+			return nativeui.SubscriptionUpdate{}, err
 		}
 		oldAddress = normalized
 	}
@@ -168,13 +204,13 @@ func (l *Library) UpdateSubscription(oldAddress, newAddress, customTitle string)
 	if !newIsHTTP {
 		normalized, err := follow.Normalize(newAddress)
 		if err != nil {
-			return store.Subscription{}, err
+			return nativeui.SubscriptionUpdate{}, err
 		}
 		newAddress = normalized
 	}
 	s, err := l.open()
 	if err != nil {
-		return store.Subscription{}, err
+		return nativeui.SubscriptionUpdate{}, err
 	}
 	if newAddress == oldAddress {
 		if oldIsHTTP {
@@ -184,7 +220,11 @@ func (l *Library) UpdateSubscription(oldAddress, newAddress, customTitle string)
 			l.publicMu.Lock()
 			defer l.publicMu.Unlock()
 		}
-		return s.UpdateSubscriptionTitle(oldAddress, customTitle)
+		if err := ctx.Err(); err != nil {
+			return nativeui.SubscriptionUpdate{}, err
+		}
+		sub, err := s.UpdateSubscriptionTitle(oldAddress, customTitle)
+		return nativeui.SubscriptionUpdate{Subscription: sub}, err
 	}
 	if !oldIsHTTP || !newIsHTTP {
 		l.publicMu.Lock()
@@ -194,36 +234,77 @@ func (l *Library) UpdateSubscription(oldAddress, newAddress, customTitle string)
 		l.feedMu.Lock()
 		defer l.feedMu.Unlock()
 	}
+	if err := ctx.Err(); err != nil {
+		return nativeui.SubscriptionUpdate{}, err
+	}
 	subs, err := s.ListSubscriptions()
 	if err != nil {
-		return store.Subscription{}, err
+		return nativeui.SubscriptionUpdate{}, err
 	}
 	found := false
 	for _, sub := range subs {
 		if sub.URL == oldAddress {
 			found = true
 		} else if sub.URL == newAddress {
-			return store.Subscription{}, errors.New("该订阅地址已存在")
+			return nativeui.SubscriptionUpdate{}, errors.New("该订阅地址已存在")
 		}
 	}
 	if !found {
-		return store.Subscription{}, errors.New("订阅不存在")
+		return nativeui.SubscriptionUpdate{}, errors.New("订阅不存在")
 	}
 	if newIsHTTP {
-		feed, err := feeds.Fetch(newAddress)
+		feed, loadIcon, err := feeds.FetchContent(ctx, newAddress)
 		if err != nil {
-			return store.Subscription{}, err
+			return nativeui.SubscriptionUpdate{}, err
 		}
-		return s.ReplaceSubscription(oldAddress, newAddress, feed, "", "", customTitle)
+		if err := ctx.Err(); err != nil {
+			return nativeui.SubscriptionUpdate{}, err
+		}
+		sub, err := s.ReplaceSubscription(oldAddress, newAddress, feed, "", "", customTitle)
+		return subscriptionUpdate(s, sub, loadIcon), err
 	}
 	if _, _, err = l.ensureNode(true); err != nil {
-		return store.Subscription{}, err
+		return nativeui.SubscriptionUpdate{}, err
 	}
-	result, err := follow.Fetch(l.node, newAddress, false)
+	result, err := follow.FetchContent(ctx, l.node, newAddress, false)
 	if err != nil {
-		return store.Subscription{}, err
+		return nativeui.SubscriptionUpdate{}, err
 	}
-	return s.ReplaceSubscription(oldAddress, newAddress, result.Feed, result.CID, "", customTitle)
+	if err := ctx.Err(); err != nil {
+		return nativeui.SubscriptionUpdate{}, err
+	}
+	sub, err := s.ReplaceSubscription(oldAddress, newAddress, result.Feed, result.CID, "", customTitle)
+	return subscriptionUpdate(s, sub, result.LoadIcon), err
+}
+
+func subscriptionUpdate(s *store.Store, sub store.Subscription, loadIcon feeds.IconLoader) nativeui.SubscriptionUpdate {
+	update := nativeui.SubscriptionUpdate{Subscription: sub}
+	if loadIcon == nil || sub.LastUpdated == nil {
+		return update
+	}
+	updatedAt := *sub.LastUpdated
+	update.FinishIcon = func(ctx context.Context) string {
+		icon := loadIcon(ctx)
+		if icon == "" || ctx.Err() != nil {
+			return ""
+		}
+		changed, err := s.SetSubscriptionIcon(sub.URL, updatedAt, icon)
+		if err != nil || !changed {
+			return ""
+		}
+		return icon
+	}
+	return update
+}
+
+func completeSubscription(update nativeui.SubscriptionUpdate, err error) (store.Subscription, error) {
+	sub := update.Subscription
+	if err == nil && update.FinishIcon != nil {
+		if icon := update.FinishIcon(context.Background()); icon != "" {
+			sub.Feed.IconPNG = icon
+		}
+	}
+	return sub, err
 }
 
 // Unfollow removes the subscription and its saved item state. Shared IPFS pins

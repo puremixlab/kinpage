@@ -14,6 +14,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	_ "golang.org/x/image/webp"
 )
 
 // CircleCropPNG returns a square circular-masked PNG with transparent corners.

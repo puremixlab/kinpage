@@ -1215,6 +1215,24 @@ func TestPreviewArticleUsesOnlyItsRegisteredImages(t *testing.T) {
 	if _, err = lib.PreviewArticle("other", post.ID, "![image](photo.png)"); err == nil {
 		t.Fatal("cross-site preview accepted")
 	}
+	draft, err := lib.SaveDraft(site.ID, "", post.ID, "Draft", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, draftID := range []string{"", draft.ID} {
+		if data, mime, err := lib.ReadMarkdownAttachment(site.ID, post.ID, draftID, "photo.png"); err != nil || mime != "image/png" || len(data) == 0 {
+			t.Fatalf("registered image in draft %q: mime=%q data=%d err=%v", draftID, mime, len(data), err)
+		}
+		if _, _, err := lib.ReadMarkdownAttachment(site.ID, post.ID, draftID, "unregistered.png"); err == nil {
+			t.Fatal("unregistered attachment accepted")
+		}
+	}
+	if _, err := lib.SetDraftExistingAttachmentRemoved(site.ID, draft.ID, "photo.png", true); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := lib.ReadMarkdownAttachment(site.ID, post.ID, draft.ID, "photo.png"); err == nil {
+		t.Fatal("removed attachment remained visible in the draft")
+	}
 }
 
 func TestUnsavedPreviewDoesNotPermitEmbeddedDataImages(t *testing.T) {

@@ -286,6 +286,28 @@ func (s *Store) SetSubscriptionError(address, message string) error {
 	return errors.New("订阅不存在")
 }
 
+// SetSubscriptionIcon saves a late icon only for the feed revision that supplied it.
+func (s *Store) SetSubscriptionIcon(address string, updatedAt time.Time, icon string) (bool, error) {
+	if _, _, err := siteimage.DecodePNG(icon); err != nil {
+		return false, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, sub := range s.data.Subscriptions {
+		if sub.URL != address || sub.LastUpdated == nil || !sub.LastUpdated.Equal(updatedAt) || sub.Feed.IconPNG == icon {
+			continue
+		}
+		next := s.data
+		next.Subscriptions = append([]Subscription{}, s.data.Subscriptions...)
+		next.Subscriptions[i].Feed.IconPNG = icon
+		if err := s.write(next); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 // SetSubscriptionStarred persists the state without replacing refreshed content.
 func (s *Store) SetSubscriptionStarred(address, key string, starred bool) error {
 	return s.SetSubscriptionStar(address, key, starred, StarTypeDefault)

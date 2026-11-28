@@ -111,6 +111,7 @@ func main() {
 			Content:        ui.View(nativeApp.View),
 		}
 		win := mygo.NewWindow(opts)
+		nativeApp.SetSubscriptionTaskContext(maintenanceCtx, win.Invalidate)
 		appIconPNG := nativeApp.AppIcon().PNG()
 		if err := win.SetIcon(appIconPNG); err != nil {
 			log.Printf("window icon unavailable: %v", err)
@@ -166,6 +167,7 @@ func main() {
 					}
 				}
 				quitting.Store(true)
+				cancelMaintenance()
 				mygo.RunOnMain(func() {
 					if tray != nil {
 						tray.Destroy()
@@ -272,6 +274,7 @@ func main() {
 				result, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: win, Type: mygo.MessageQuestion, Title: "关闭邻页", Message: "确定关闭窗口？", Detail: detail, Buttons: []string{"取消", "关闭"}, DefaultButton: 0, CancelButton: 0})
 				if err == nil && result.Button == 1 {
 					quitting.Store(true)
+					cancelMaintenance()
 					nativeApp.Close()
 					win.Destroy()
 				}

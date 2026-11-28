@@ -14,6 +14,7 @@ func TestNativeUISubscriptionsFollowStarEditAndUnfollow(t *testing.T) {
 	backend := &fakeBackend{}
 	app := New(backend)
 	tt := ui.NewTester(app.View, 1280, 860)
+	complete := monitorSubscriptionTasks(t, app, tt)
 	tt.Frame()
 
 	// Follow a new subscription via bottom-left Settings popover.
@@ -28,6 +29,7 @@ func TestNativeUISubscriptionsFollowStarEditAndUnfollow(t *testing.T) {
 	if err := tt.Click("关注"); err != nil {
 		t.Fatalf("failed to submit follow modal: %v", err)
 	}
+	complete()
 	if len(backend.subscriptions) != 1 || app.mode != viewSubscription {
 		t.Fatalf("expected subscription followed and active, subs=%d mode=%v", len(backend.subscriptions), app.mode)
 	}
@@ -57,6 +59,7 @@ func TestNativeUISubscriptionsFollowStarEditAndUnfollow(t *testing.T) {
 	if err := tt.Click("保存订阅"); err != nil {
 		t.Fatalf("failed to save subscription edit: %v", err)
 	}
+	complete()
 	if backend.subscriptions[0].CustomTitle != "精选技术周刊" {
 		t.Fatalf("expected custom title updated, got %q", backend.subscriptions[0].CustomTitle)
 	}
@@ -74,6 +77,7 @@ func TestNativeUISubscriptionsFollowStarEditAndUnfollow(t *testing.T) {
 	if err := tt.Click("取消关注"); err != nil {
 		t.Fatalf("failed to confirm unfollow: %v", err)
 	}
+	complete()
 	if len(backend.subscriptions) != 0 {
 		t.Fatalf("expected 0 subscriptions after unfollow, got %d", len(backend.subscriptions))
 	}

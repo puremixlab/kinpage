@@ -28,7 +28,9 @@ const (
 	maxPageFetchBytes = 1 << 20
 	maxIconAttempts   = 8
 	maxIconCandidates = 6
-	iconFetchTimeout  = 6 * time.Second
+	iconFetchTimeout  = 90 * time.Second
+	iconCandidateTime = 55 * time.Second
+	iconPageTimeout   = 6 * time.Second
 	iconHostDNSBudget = 3 * time.Second
 )
 
@@ -209,8 +211,14 @@ func isSVGURL(u *url.URL, rawType string) bool {
 	return strings.EqualFold(path.Ext(u.Path), ".svg")
 }
 
-func fetchSiteIcon(sourceURL, feedURL *url.URL, siteLink string, feedIcons, pageIcons []*url.URL) string {
-	ctx, cancel := context.WithTimeout(context.Background(), iconFetchTimeout)
+func siteIconLoader(sourceURL, feedURL *url.URL, siteLink string, feedIcons, pageIcons []*url.URL) IconLoader {
+	return func(ctx context.Context) string {
+		return fetchSiteIcon(ctx, sourceURL, feedURL, siteLink, feedIcons, pageIcons, iconCandidateTime)
+	}
+}
+
+func fetchSiteIcon(parent context.Context, sourceURL, feedURL *url.URL, siteLink string, feedIcons, pageIcons []*url.URL, candidateTime time.Duration) string {
+	ctx, cancel := context.WithTimeout(parent, iconFetchTimeout)
 	defer cancel()
 	allowedHosts := map[string]bool{}
 	if sourceURL != nil {
@@ -219,15 +227,21 @@ func fetchSiteIcon(sourceURL, feedURL *url.URL, siteLink string, feedIcons, page
 	if feedURL != nil {
 		allowedHosts[strings.ToLower(feedURL.Hostname())] = true
 	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	protocols := &http.Protocols{}
+	protocols.SetHTTP1(true)
+	transport.Protocols = protocols
+	transport.ResponseHeaderTimeout = 12 * time.Second
 	client := &http.Client{
-		Timeout: iconFetchTimeout,
+		Transport: transport,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {
 				return errors.New("too many icon redirects")
 			}
-			return allowedIconURL(ctx, allowedHosts, req.URL)
+			return allowedIconURL(req.Context(), allowedHosts, req.URL)
 		},
 	}
+	defer transport.CloseIdleConnections()
 
 	seen := map[string]bool{}
 	attempts := 0
@@ -245,7 +259,9 @@ func fetchSiteIcon(sourceURL, feedURL *url.URL, siteLink string, feedIcons, page
 				continue
 			}
 			attempts++
-			data, err := fetchBounded(ctx, client, target, maxIconFetchBytes)
+			candidateCtx, cancel := context.WithTimeout(ctx, candidateTime)
+			data, err := fetchBounded(candidateCtx, client, target, maxIconFetchBytes)
+			cancel()
 			if err != nil {
 				continue
 			}
@@ -289,7 +305,10 @@ func fetchSiteIcon(sourceURL, feedURL *url.URL, siteLink string, feedIcons, page
 			if err := allowedIconURL(ctx, allowedHosts, candidate); err != nil {
 				continue
 			}
-			if doc, err := fetchHTMLPage(ctx, client, candidate); err == nil && doc.isHTML {
+			pageCtx, cancel := context.WithTimeout(ctx, iconPageTimeout)
+			doc, err := fetchHTMLPage(pageCtx, client, candidate)
+			cancel()
+			if err == nil && doc.isHTML {
 				if !htmlMatched {
 					homepage = doc.url
 					htmlMatched = true
