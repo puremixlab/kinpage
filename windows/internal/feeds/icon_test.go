@@ -75,6 +75,26 @@ func TestSiteIconTriesFaviconAfterAvatarTimesOut(t *testing.T) {
 	}
 }
 
+func TestIconTransportNegotiatesHTTP1WithHTTP2CapableServer(t *testing.T) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, r.Proto)
+	}))
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	defer server.Close()
+	transport := newIconHTTPTransport()
+	defer transport.CloseIdleConnections()
+	transport.TLSClientConfig.RootCAs = server.Client().Transport.(*http.Transport).TLSClientConfig.RootCAs
+	source, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := fetchBounded(t.Context(), &http.Client{Transport: transport}, source, 100)
+	if err != nil || string(data) != "HTTP/1.1" {
+		t.Fatalf("expected HTTP/1.1 response, got %q: %v", data, err)
+	}
+}
+
 func TestFetchExtractsIconFromFeedMetadata(t *testing.T) {
 	icon := testPNG(t, 32, color.NRGBA{R: 20, G: 140, B: 220, A: 255})
 	cases := []struct {

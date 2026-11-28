@@ -3,6 +3,7 @@ package feeds
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"io"
 	"mime"
@@ -217,6 +218,20 @@ func siteIconLoader(sourceURL, feedURL *url.URL, siteLink string, feedIcons, pag
 	}
 }
 
+func newIconHTTPTransport() *http.Transport {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	protocols := &http.Protocols{}
+	protocols.SetHTTP1(true)
+	transport.Protocols = protocols
+	transport.ResponseHeaderTimeout = 12 * time.Second
+	if transport.TLSClientConfig == nil {
+		transport.TLSClientConfig = &tls.Config{}
+	}
+	// Clone can inherit the default transport's HTTP/2 ALPN list.
+	transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
+	return transport
+}
+
 func fetchSiteIcon(parent context.Context, sourceURL, feedURL *url.URL, siteLink string, feedIcons, pageIcons []*url.URL, candidateTime time.Duration) string {
 	ctx, cancel := context.WithTimeout(parent, iconFetchTimeout)
 	defer cancel()
@@ -227,11 +242,7 @@ func fetchSiteIcon(parent context.Context, sourceURL, feedURL *url.URL, siteLink
 	if feedURL != nil {
 		allowedHosts[strings.ToLower(feedURL.Hostname())] = true
 	}
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	protocols := &http.Protocols{}
-	protocols.SetHTTP1(true)
-	transport.Protocols = protocols
-	transport.ResponseHeaderTimeout = 12 * time.Second
+	transport := newIconHTTPTransport()
 	client := &http.Client{
 		Transport: transport,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -412,7 +423,10 @@ func fetchBounded(ctx context.Context, client *http.Client, u *url.URL, limit in
 		return nil, errors.New("icon request failed")
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
-	if err != nil || int64(len(body)) > limit {
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(body)) > limit {
 		return nil, errors.New("icon response too large")
 	}
 	return body, nil
