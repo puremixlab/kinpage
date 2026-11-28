@@ -112,10 +112,10 @@
 | --- | --- | --- | --- |
 | **[Kinpage v0.1.0](https://github.com/puremixlab/kinpage/releases/tag/v0.1.0)** | Windows x64 | Windows 10/11 + WebView2 Runtime | [Release page](https://github.com/puremixlab/kinpage/releases) (MSIX / NSIS installer, SHA-256, source archive) |
 
-Install via Microsoft Store (MSIX) or extract/install the Windows x64 setup into an empty directory, then launch **Kinpage** from the Start menu. See [MSIX Packaging Guide](windows/docs/msix-packaging.md) for Store and sideloading builds.
+Download the Windows x64 installation files from the Release page. See the [MSIX Packaging Guide](windows/docs/msix-packaging.md) for Store builds and sideloading.
 
 > [!NOTE]
-> **Unsigned release candidate.** Windows SmartScreen may prompt when running the installer — verify the published SHA-256 checksum on the release page before installing. Native desktop GUI, IME, cross-version upgrade, and macOS `.planet` round-trip compatibility remain under verification. See [known limitations](windows/README.md#尚未完成与待验证) and the [rc.1 acceptance scope](docs/acceptance-0.0.1-rc.1.md).
+> **The published v0.1.0 NSIS and MSIX files are unsigned.** Compare the downloaded files with the published SHA-256 checksums to verify file integrity. A signed stable release still requires a verified publisher and native Windows acceptance. See the [stable release requirements](docs/releasing.md).
 
 > [!WARNING]
 > Exported `.planet` backups contain **unencrypted IPNS private keys**. Keep backup archives private and stored safely.
