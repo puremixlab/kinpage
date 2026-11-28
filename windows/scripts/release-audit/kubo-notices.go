@@ -1,7 +1,7 @@
 //go:build ignore
 
 // Command kubo-notices collects root license files and narrowly reviewed
-// supplemental evidence for modules recorded in an official Kubo binary.
+// supplemental evidence for modules recorded in the bundled Kubo binary.
 // Collection is not legal clearance; other licensing obligations remain.
 package main
 
@@ -47,10 +47,10 @@ type supplement struct {
 	binarySHA256                  string
 }
 
-// client/LICENSE.md only covers the p2p-forge client used by this exact official
-// Windows/amd64 Kubo 0.43.2 binary. A different build needs a new package-scope
+// client/LICENSE.md only covers the p2p-forge client used by this exact
+// Windows/amd64 Kubo 0.43.2 source build. A different build needs a new package-scope
 // review even if it contains the same module version.
-const reviewedKuboSHA256 = "5e58e80850d09a2574291d9b8760f5a841b87c5f0bffebe9f0b146ebf8b6f636"
+const reviewedKuboSHA256 = "8e32d809240b0a6fe46cf4aad40d28aa80d592b76cfac01024b3c14ac83dde93"
 
 var supplements = map[string]supplement{
 	"github.com/ipfs/bbloom": {
@@ -66,7 +66,7 @@ var supplements = map[string]supplement{
 		version: "v0.10.1", sum: "h1:P7n1zcxIscEmB0/pucJXBrLof+waNqozE2ehoEXiwN4=",
 		revision: "1743bb9549758e26bf22ddb2876f2e3d457780ea", binarySHA256: reviewedKuboSHA256,
 		scope: "Scope: p2p-forge/client only; not a license conclusion for the server packages. " +
-			"Reviewed Kubo Windows/amd64 CGO_ENABLED=0 dependency graph (go list -mod=readonly -deps ./cmd/ipfs) includes only this package from p2p-forge. " +
+			"Reviewed Kubo 0.43.2 source build with Go 1.27.4 (Windows/amd64, CGO_ENABLED=0, go list -mod=readonly -deps ./cmd/ipfs) includes only the client package from p2p-forge. " +
 			"Kubo imports it in core/node/libp2p/{transport,addrs}.go and config/autotls.go: " +
 			"https://github.com/ipfs/kubo/tree/6be1da369a4706377b06e39bbe698d03b5f3e0b5 . " +
 			"The client does not import other packages in this module. " +

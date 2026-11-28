@@ -355,7 +355,7 @@ bun run build
 
 原 `build/windows-amd64/` 会移至 `build/.previous-<ID>/` 保存。终端会打印两个输出路径；目录同步失败时独立发行目录仍会保留。
 
-构建脚本从 Kubo 官方 GitHub release 下载固定版本 0.38.2 并核验 SHA-512，构建时将程序及许可证放入安装包。
+构建脚本下载 Kubo 0.43.2 的官方源码归档，核验 SHA-512 后用 Go 1.27.4 重编译。安装包收录经 SHA-256 核验的 Windows x64 二进制和同一源码版本的许可材料。
 
 `bun run release:prepare -BundleDir <独立发行目录>` 只生成本地草稿材料，正式发布要求见 [发布流程](../docs/releasing.md) 与 [原生 Windows 验收模板](../docs/release-acceptance-template.md)。如需打包面向 Microsoft Store 的 `.msix`，可先完成 `bun run build`，再执行 `bun run build:msix`，详见 [MSIX 打包说明](docs/msix-packaging.md)。
 

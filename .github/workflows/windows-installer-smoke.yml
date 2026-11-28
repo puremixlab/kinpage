@@ -47,8 +47,15 @@ jobs:
           $taskHash = (Get-FileHash -LiteralPath $taskInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
           $taskEvidence = Join-Path $PWD 'build/native-smoke-evidence'
           & scripts/test-installer-native.ps1 -Installer $taskInstaller -ExpectedSHA256 $taskHash -ExpectedVersion $taskVersion -EvidenceDir $taskEvidence
-          $taskAudit = & scripts/audit-release.ps1 -BundleDir (Join-Path $PWD 'build/windows-amd64') -KuboScanPath (Join-Path $taskEvidence 'kubo-security.json')
-          [IO.File]::WriteAllText((Join-Path $PWD 'build/native-smoke-evidence/audit.json'), ($taskAudit -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
+      - name: Build MSIX and scan packaged Kubo
+        run: |
+          $taskBundle = Join-Path $PWD 'build/windows-amd64'
+          $taskVersion = (Get-Content release.json -Raw -Encoding UTF8 | ConvertFrom-Json).version
+          $taskMsix = Join-Path $taskBundle "kinpage-$taskVersion-x64.msix"
+          $taskEvidence = Join-Path $PWD 'build/native-smoke-evidence'
+          & scripts/build-msix.ps1 -PayloadDir $taskBundle -OutputFile $taskMsix
+          $taskAudit = & scripts/audit-release.ps1 -BundleDir $taskBundle -MsixPath $taskMsix -KuboScanPath (Join-Path $taskEvidence 'kubo-security.json')
+          [IO.File]::WriteAllText((Join-Path $taskEvidence 'audit.json'), ($taskAudit -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
       - name: Preserve failed build for diagnosis
         if: failure() && steps.build.outcome == 'failure'
         run: |
@@ -67,7 +74,7 @@ jobs:
               }
             }
           }
-      - name: Retain evidence and tested installer
+      - name: Retain evidence and tested packages
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:

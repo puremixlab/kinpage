@@ -11,7 +11,7 @@
 | BUG-003 | P2 | 已修复 | 自己文章阅读页与编辑器预览页无法渲染相对路径本地附件图 |
 | BUG-004 | P1 | 已修复，待实机复核 | 新关注和手动刷新在界面线程等待网络，窗口卡住 |
 | BUG-005 | P1 | 已修复，已验证跨盘复制 | 迁移数据仓库遗漏文章和草稿附件 |
-| BUG-006 | P1 | 已升级，剩余通告待处置 | 随包分发的 Kubo 命中已知安全通告 |
+| BUG-006 | P1 | 已随包重编译，余 5 项待处置 | 随包分发的 Kubo 命中已知安全通告 |
 | BUG-007 | P1 | 已恢复，代码 PR 检查通过 | GitHub 的 Windows 质量检查和 main 合并门禁失效 |
 | BUG-008 | P1 | 已标注，待签名发行 | 正式发布的 v0.1.0 安装包未签名 |
 | BUG-009 | P2 | 已修复 | .planet 备份重新导入后可能无法再次导出 |
@@ -112,13 +112,14 @@
 ### BUG-006 · 随包 Kubo 命中已知安全通告
 
 - **优先级** P1
-- **状态** 构建已升级到 0.43.2，剩余通告仍待处置。
-- **证据** 对随包的 Kubo `0.38.2` 执行二进制扫描，得到 68 条符号级匹配，包括 WebTransport 内存耗尽通告。公开 MSIX 内的 `ipfs.exe` 与扫描对象的 SHA-256 一致。当前应用依赖检查未覆盖该独立二进制，具体运行配置的暴露面有待核实。 [固定版本脚本](../windows/scripts/prepare-kubo.ps1) · [依赖扫描脚本](../scripts/security-check.ps1) · [Go 安全通告](https://pkg.go.dev/vuln/GO-2026-4485)
-- **建议修复方向** 以官方 Windows x64 的 `0.43.2` 为首个验证候选。固定版本和 SHA-512，刷新许可材料，在发行检查中扫描最终安装包中的 `ipfs.exe`，并记录对默认配置有影响的高危通告的处置结果。 [Kubo 0.43.2](https://github.com/ipfs/kubo/releases/tag/v0.43.2)
-- **验收** 使用旧仓库的隔离副本验证升级、IPNS 密钥和固定内容保留，以及节点启停。发行证据能够对应最终包中的二进制摘要。
-- **兼容性** `0.43.2` 能打开 `0.38.2` 创建的隔离仓库副本，IPNS 密钥标识和递归固定的内容均可读取。网关遵循当前规范，对编码不匹配的 DAG-JSON 请求可返回 HTTP `406`。回归用例改为检查应用实际读取的本地 HTML，已通过网关读取、节点启停、固定、Planet 关注和两条备份往返。 [路径网关规范](https://specs.ipfs.tech/http-gateways/path-gateway/) · [网关状态用例](../windows/internal/ipfs/status_test.go)
-- **本轮修复与验证** 构建固定官方 Windows x64 Kubo `0.43.2` 和归档 SHA-512，241 个模块均已收集到许可材料。对构建出的 NSIS 包内 `ipfs.exe` 执行 `govulncheck v1.9.0`，文件 SHA-256 为 `5e58e80850d09a2574291d9b8760f5a841b87c5f0bffebe9f0b146ebf8b6f636`。符号级匹配从 68 项降到 27 项，原先记录的 WebTransport 通告已从扫描结果中消失。扫描证据绑定安装包和 Kubo 文件摘要，剩余通告的默认配置影响仍待核实。 [Kubo 0.43.2](https://github.com/ipfs/kubo/releases/tag/v0.43.2) · [安装包审计](../windows/docs/release-audit.md)
-- **重编译复核** 使用 Go `1.27.4` 从同一版官方源码重编译 Windows x64 候选，沿用上游模块锁定。重扫消除了 22 项 Go 标准库匹配，剩余 5 项涉及 DHT、gRPC、压缩库和 OpenTelemetry。候选通过本地网关读取、节点控制、Planet 关注和两条备份往返。DHT 通告目前没有可用的修复版本。当前安装包对应的扫描记录仍为 27 项。 [Go 版本记录](https://go.dev/doc/devel/release) · [DHT 通告](https://pkg.go.dev/vuln/GO-2024-3218)
+- **状态** NSIS 和 MSIX 构建已接入 Go `1.27.4` 重编译的 Kubo `0.43.2`，剩余五项第三方依赖通告待处置。
+- **历史对照** Kubo `0.38.2` 包内二进制扫描命中 68 项符号级匹配。官方 Windows x64 `0.43.2` 二进制使用 Go `1.26.5`，命中 27 项，原有 WebTransport 通告已从结果中消失。 [Kubo 0.43.2](https://github.com/ipfs/kubo/releases/tag/v0.43.2) · [Go 安全通告](https://pkg.go.dev/vuln/GO-2026-4485)
+- **随包构建** 构建脚本固定官方源码归档 SHA-512、Go 工具链和编译目标，沿用上游模块锁定。重编译后验证 `ipfs.exe` 的 SHA-256 为 `8e32d809240b0a6fe46cf4aad40d28aa80d592b76cfac01024b3c14ac83dde93`。241 个模块的许可记录已绑定该摘要，未出现许可材料缺项。 [构建脚本](../windows/scripts/prepare-kubo.ps1) · [安装包审计](../windows/docs/release-audit.md)
+- **包内扫描** 2026-11-28 的本地构建通过 NSIS 和 MSIX 十项共有文件摘要核对。`govulncheck v1.9.0` 扫描两个包内字节一致的 Kubo，确认 22 项 Go 标准库匹配已消除，剩余 5 项。证据记录两份测试包和 `ipfs.exe` 的 SHA-256。 [Go 版本记录](https://go.dev/doc/devel/release)
+  - NSIS SHA-256 `9d1a6ebf04ec0f5ac03a165b114da02f64cc0a4917aaaeb4829d2deb8ad4c10d`
+  - MSIX SHA-256 `b380e007e587d14b4832b786273a578f010ca8fee4716db47789b4e8f8f49a29`
+- **兼容性复核** 重编译的 Kubo 能打开 `0.38.2` 创建的隔离仓库副本，IPNS 密钥标识和递归固定记录均一致。离线网关读取、节点启停、固定内容、Planet 关注和两项备份往返通过。安装包审计也能拒绝 `ipfs.exe` 字节被改动的 MSIX 测试包。 [网关状态用例](../windows/internal/ipfs/status_test.go) · [包内容回归](../windows/scripts/test-release-audit.ps1)
+- **剩余通告** 扫描匹配 `GO-2024-3218`（DHT）、`GO-2026-6443`（gRPC）、`GO-2026-6865`（压缩库）和 `GO-2026-6974`、`GO-2026-6975`（OpenTelemetry）。仍需评估默认配置的可达性。DHT 通告尚无已知修复版本。 [DHT 通告](https://pkg.go.dev/vuln/GO-2024-3218)
 
 ---
 

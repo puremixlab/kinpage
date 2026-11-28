@@ -1,41 +1,75 @@
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Security/Microsoft.PowerShell.Security.psd1') -Force -ErrorAction Stop
 $projectRoot = [System.IO.Directory]::GetParent($PSScriptRoot).FullName
 $cache = [System.IO.Path]::Combine($projectRoot, '.mygo', 'kubo')
 $version = '0.43.2'
-$archiveName = 'kubo_v' + $version + '_windows-amd64.zip'
+$goVersion = 'go1.27.4'
+$archiveName = "kubo-v$version-source.tar.gz"
 $archive = [System.IO.Path]::Combine($cache, $archiveName)
 $destination = [System.IO.Path]::Combine($projectRoot, 'resources', 'windows-amd64')
-$expected = 'febadad25f817686c9edaffd74d7efea0333f6354fb910d8fc8f1949c4f968ad143a5e146a091c519ecbbd1cdf2b77ca008315419c54810e9acab753db8572e5'
+$sourceSHA512 = 'bfc6918ee74bd34345456a43ffe238f1abe194e656289bff3807042a1cedb6ac0ca36e3f815f444f015a886506bda4690cb127394810b338a7e771db5f02e9ff'
+$binarySHA256 = '8e32d809240b0a6fe46cf4aad40d28aa80d592b76cfac01024b3c14ac83dde93'
 [System.IO.Directory]::CreateDirectory($cache) | Out-Null
 [System.IO.Directory]::CreateDirectory($destination) | Out-Null
-function Get-KuboArchiveSHA512([string]$path) {
-    $stream = [System.IO.File]::OpenRead($path)
-    $sha = [System.Security.Cryptography.SHA512]::Create()
-    try { return [System.BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
-    finally { $sha.Dispose(); $stream.Dispose() }
+
+function Assert-KuboSourceChecksum([string]$Path) {
+    if ((Get-FileHash -LiteralPath $Path -Algorithm SHA512).Hash -ine $sourceSHA512) {
+        throw "Kubo source archive SHA-512 mismatch: $Path"
+    }
 }
+
 if (-not [System.IO.File]::Exists($archive)) {
     $pending = Join-Path $cache ($archiveName + '.' + [Guid]::NewGuid().ToString('N') + '.partial')
     try {
-        & curl.exe -fL --retry 2 -o $pending "https://github.com/ipfs/kubo/releases/download/v$version/$archiveName"
-        if ($LASTEXITCODE -ne 0) { throw 'Kubo download failed.' }
-        if ((Get-KuboArchiveSHA512 $pending) -cne $expected) { throw 'Kubo archive checksum mismatch.' }
-        if (-not [System.IO.File]::Exists($archive)) { [System.IO.File]::Move($pending, $archive) }
-    } finally {
-        if ([System.IO.File]::Exists($pending)) { [System.IO.File]::Delete($pending) }
+        & curl.exe -fsSL --retry 2 -o $pending "https://github.com/ipfs/kubo/releases/download/v$version/kubo-source.tar.gz"
+        if ($LASTEXITCODE -ne 0) { throw 'Kubo source download failed.' }
+        Assert-KuboSourceChecksum $pending
+        try { [System.IO.File]::Move($pending, $archive) }
+        catch [System.IO.IOException] { if (-not [System.IO.File]::Exists($archive)) { throw } }
+    } finally { [System.IO.File]::Delete($pending) }
+}
+Assert-KuboSourceChecksum $archive
+
+function Publish-KuboFile([string]$Source, [string]$Name, [string]$SHA256) {
+    $target = Join-Path $destination $Name
+    if ([System.IO.File]::Exists($target) -and (Get-FileHash -LiteralPath $target).Hash -ieq $SHA256) { return }
+    try { [System.IO.File]::Move($Source, $target) }
+    catch [System.IO.IOException] {
+        if (-not [System.IO.File]::Exists($target)) { throw }
+        [System.IO.File]::Replace($Source, $target, [NullString]::Value)
     }
 }
-$actual = Get-KuboArchiveSHA512 $archive
-if ($actual -ne $expected) { throw 'Kubo archive checksum mismatch.' }
-[System.Reflection.Assembly]::Load('System.IO.Compression.FileSystem, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089') | Out-Null
-$zip = [System.IO.Compression.ZipFile]::OpenRead($archive)
+
+$staging = [System.IO.Path]::GetFullPath((Join-Path $cache ('source-' + [Guid]::NewGuid().ToString('N'))))
+if ([System.IO.Path]::GetDirectoryName($staging) -cne $cache) { throw 'Invalid Kubo staging path.' }
+[System.IO.Directory]::CreateDirectory($staging) | Out-Null
 try {
-    foreach ($name in @('ipfs.exe', 'LICENSE', 'LICENSE-APACHE', 'LICENSE-MIT')) {
-        $entry = $zip.GetEntry("kubo/$name")
-        if ($null -eq $entry) { throw "Missing Kubo archive entry: $name" }
-        $targetName = if ($name -eq 'ipfs.exe') { $name } else { "kubo-$name.txt" }
-        $target = [System.IO.Path]::Combine($destination, $targetName)
-        $inputStream = $entry.Open()
-        try { $outputStream = [System.IO.File]::Create($target); try { $inputStream.CopyTo($outputStream) } finally { $outputStream.Dispose() } } finally { $inputStream.Dispose() }
+    & tar.exe -xzf $archive -C $staging
+    if ($LASTEXITCODE -ne 0) { throw 'Kubo source extraction failed.' }
+    $binary = Join-Path $staging 'ipfs.exe'
+    # Keep the Kubo recipe independent of the app's GOFLAGS and workspace.
+    $buildEnvironment = @{
+        GOTOOLCHAIN = $goVersion; GOENV = 'off'; GOWORK = 'off'; GOFLAGS = ''; GOEXPERIMENT = ''
+        GOOS = 'windows'; GOARCH = 'amd64'; GOAMD64 = 'v1'; CGO_ENABLED = '0'
     }
-} finally { $zip.Dispose() }
+    $previous = @{}
+    foreach ($name in $buildEnvironment.Keys) { $previous[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+    Push-Location -LiteralPath $staging
+    try {
+        foreach ($name in $buildEnvironment.Keys) { [Environment]::SetEnvironmentVariable($name, $buildEnvironment[$name], 'Process') }
+        & go build -mod=readonly -trimpath -buildvcs=false -o $binary ./cmd/ipfs
+        if ($LASTEXITCODE -ne 0) { throw "Kubo v$version build with $goVersion failed." }
+    } finally {
+        foreach ($name in $previous.Keys) { [Environment]::SetEnvironmentVariable($name, $previous[$name], 'Process') }
+        Pop-Location
+    }
+    $actual = (Get-FileHash -LiteralPath $binary -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($actual -cne $binarySHA256) { throw "Rebuilt Kubo SHA-256 differs from the reviewed binary: $actual" }
+
+    foreach ($name in @('LICENSE', 'LICENSE-APACHE', 'LICENSE-MIT')) {
+        $license = Join-Path $staging "cmd/ipfs/dist/$name"
+        Publish-KuboFile $license "kubo-$name.txt" (Get-FileHash -LiteralPath $license).Hash
+    }
+    Publish-KuboFile $binary 'ipfs.exe' $binarySHA256
+    Write-Host "Prepared Kubo v$version from source with $goVersion (SHA-256 $binarySHA256)."
+} finally { [System.IO.Directory]::Delete($staging, $true) }

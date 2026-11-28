@@ -38,7 +38,7 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 ### Security
 
-- Upgrade bundled Kubo to 0.43.2 and record package-linked binary vulnerability scan evidence during installer verification.
+- Build bundled Kubo 0.43.2 from pinned upstream source with Go 1.27.4. Match the Kubo binary and its license materials across NSIS and MSIX, and link the vulnerability scan to both package hashes.
 
 ## [0.1.0] - 2026-11-26
 

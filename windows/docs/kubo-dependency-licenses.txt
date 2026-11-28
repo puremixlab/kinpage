@@ -1,5 +1,5 @@
-Kubo v0.43.2 linked Go module license evidence (go1.26.5)
-Binary SHA-256: 5e58e80850d09a2574291d9b8760f5a841b87c5f0bffebe9f0b146ebf8b6f636
+Kubo (devel) linked Go module license evidence (go1.27.4)
+Binary SHA-256: 8e32d809240b0a6fe46cf4aad40d28aa80d592b76cfac01024b3c14ac83dde93
 Root license texts and exact-identity supplemental evidence; collection is not distribution approval. Other nested licensing, source/relinking and non-Go obligations still require independent review.
 
 ========================================================================
@@ -8480,7 +8480,7 @@ github.com/ipshipyard/p2p-forge v0.10.1 h1:P7n1zcxIscEmB0/pucJXBrLof+waNqozE2eho
 
 --- Supplemental collection evidence ---
 Missing-root-file collection gap only; this does not approve distribution or settle other license obligations.
-Scope: p2p-forge/client only; not a license conclusion for the server packages. Reviewed Kubo Windows/amd64 CGO_ENABLED=0 dependency graph (go list -mod=readonly -deps ./cmd/ipfs) includes only this package from p2p-forge. Kubo imports it in core/node/libp2p/{transport,addrs}.go and config/autotls.go: https://github.com/ipfs/kubo/tree/6be1da369a4706377b06e39bbe698d03b5f3e0b5 . The client does not import other packages in this module. Reviewed binary SHA-256: 5e58e80850d09a2574291d9b8760f5a841b87c5f0bffebe9f0b146ebf8b6f636
+Scope: p2p-forge/client only; not a license conclusion for the server packages. Reviewed Kubo 0.43.2 source build with Go 1.27.4 (Windows/amd64, CGO_ENABLED=0, go list -mod=readonly -deps ./cmd/ipfs) includes only the client package from p2p-forge. Kubo imports it in core/node/libp2p/{transport,addrs}.go and config/autotls.go: https://github.com/ipfs/kubo/tree/6be1da369a4706377b06e39bbe698d03b5f3e0b5 . The client does not import other packages in this module. Reviewed binary SHA-256: 8e32d809240b0a6fe46cf4aad40d28aa80d592b76cfac01024b3c14ac83dde93
 
 --- client/LICENSE.md ---
 Source: https://github.com/ipshipyard/p2p-forge/blob/1743bb9549758e26bf22ddb2876f2e3d457780ea/client/LICENSE.md
