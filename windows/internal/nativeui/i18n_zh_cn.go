@@ -326,7 +326,7 @@ var i18nZhCN = map[string]string{
 	"status.preventSleepOff":     "已关闭防休眠",
 	"status.desktopPetError":     "无法显示桌面宠物：%s",
 	"status.moveDataDirErr":      "迁移数据目录失败：%s",
-	"status.moveDataDirDone":     "已迁移至 %s，重启邻页后生效",
+	"status.moveDataDirDone":     "将在下次启动邻页时迁移至 %s",
 	"status.dataRefreshed":       "已刷新数据",
 	"status.languageSwitched":    "界面语言已切换为 %s",
 	"status.importArtErr":        "导入文章失败：%s",

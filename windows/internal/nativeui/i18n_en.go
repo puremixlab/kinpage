@@ -326,7 +326,7 @@ var i18nEn = map[string]string{
 	"status.preventSleepOff":     "Sleep prevention disabled",
 	"status.desktopPetError":     "Could not show the desktop pet: %s",
 	"status.moveDataDirErr":      "Failed to move data directory: %s",
-	"status.moveDataDirDone":     "Moved to %s. Restart Kinpage to apply.",
+	"status.moveDataDirDone":     "Kinpage will move the repository to %s the next time it starts.",
 	"status.dataRefreshed":       "Data refreshed",
 	"status.languageSwitched":    "Language switched to %s",
 	"status.importArtErr":        "Failed to import article: %s",

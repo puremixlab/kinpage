@@ -48,11 +48,6 @@ func main() {
 		mygo.App.SetPath(mygo.PathUserData, filepath.Join(path, "development"))
 	}
 	defaultUserDataDir, _ := mygo.App.Path(mygo.PathUserData)
-	if defaultUserDataDir != "" {
-		if resolved := store.ResolveDataDir(defaultUserDataDir); resolved != "" && resolved != defaultUserDataDir {
-			mygo.App.SetPath(mygo.PathUserData, resolved)
-		}
-	}
 	if !mygo.App.RequestSingleInstanceLock() {
 		return
 	}
@@ -62,6 +57,19 @@ func main() {
 		log.Fatal(err)
 	}
 	defer releaseUpdateLock()
+	if defaultUserDataDir != "" {
+		resolved, err := store.ApplyScheduledDataDirMigration(defaultUserDataDir)
+		if err != nil {
+			if resolved == "" {
+				showStartupError(err)
+				return
+			}
+			showStartupError(fmt.Errorf("无法应用数据仓库位置，当前使用 %s：%w", resolved, err))
+		}
+		if resolved != defaultUserDataDir {
+			mygo.App.SetPath(mygo.PathUserData, resolved)
+		}
+	}
 	library := &Library{defaultDataDir: defaultUserDataDir}
 	maintenanceCtx, cancelMaintenance := context.WithCancel(context.Background())
 	var maintenance sync.WaitGroup
