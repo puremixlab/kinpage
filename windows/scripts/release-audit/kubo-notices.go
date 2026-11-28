@@ -50,7 +50,7 @@ type supplement struct {
 // client/LICENSE.md only covers the p2p-forge client used by this exact
 // Windows/amd64 Kubo 0.43.2 source build. A different build needs a new package-scope
 // review even if it contains the same module version.
-const reviewedKuboSHA256 = "8e32d809240b0a6fe46cf4aad40d28aa80d592b76cfac01024b3c14ac83dde93"
+const reviewedKuboSHA256 = "ba75778d566239e1b0f068d6fdd8fd5490b5bba7306c507e33079881e5099e22"
 
 var supplements = map[string]supplement{
 	"github.com/ipfs/bbloom": {
@@ -66,7 +66,7 @@ var supplements = map[string]supplement{
 		version: "v0.10.1", sum: "h1:P7n1zcxIscEmB0/pucJXBrLof+waNqozE2ehoEXiwN4=",
 		revision: "1743bb9549758e26bf22ddb2876f2e3d457780ea", binarySHA256: reviewedKuboSHA256,
 		scope: "Scope: p2p-forge/client only; not a license conclusion for the server packages. " +
-			"Reviewed Kubo 0.43.2 source build with Go 1.27.4 (Windows/amd64, CGO_ENABLED=0, go list -mod=readonly -deps ./cmd/ipfs) includes only the client package from p2p-forge. " +
+			"Reviewed Kubo 0.43.2 build with the Kinpage dependency patch and Go 1.27.4 (Windows/amd64, CGO_ENABLED=0, go list -mod=readonly -deps ./cmd/ipfs) includes only the client package from p2p-forge. " +
 			"Kubo imports it in core/node/libp2p/{transport,addrs}.go and config/autotls.go: " +
 			"https://github.com/ipfs/kubo/tree/6be1da369a4706377b06e39bbe698d03b5f3e0b5 . " +
 			"The client does not import other packages in this module. " +

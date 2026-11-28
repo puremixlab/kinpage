@@ -36,7 +36,7 @@ bunx mygo build -platform windows/amd64 -skip-build-command -skip-installer -o .
 
 `-mod=vendor` 使 Go 使用包内 `windows/vendor/` 源码。不要在修改后运行 `go mod vendor`，该命令会从模块缓存重建 vendor 并覆盖修改。增加新的依赖或包时，应先更新依赖及 vendor，再进行所需修改。Go vendoring 的范围和行为见 [Go Modules Reference](https://go.dev/ref/mod#go-mod-vendor)。
 
-Kubo 作为独立程序使用官方源码归档中的模块锁定和脚本指定的 Go 工具链。准备脚本会在编译 Kubo 时临时移除应用的 `GOFLAGS`，验证产物 SHA-256 后放入 Windows 资源目录。首次准备需要下载源码归档和模块缓存中缺少的依赖。 [Kubo 构建脚本](../windows/scripts/prepare-kubo.ps1)
+Kubo 作为独立程序使用脚本指定的 Go 工具链。准备脚本验证官方源码归档，在解压目录中对上游 `go.mod` 和 `go.sum` 应用仓库内的固定安全更新。编译时临时移除应用的 `GOFLAGS`，并以只读模块模式构建，验证产物 SHA-256 后放入 Windows 资源目录。首次准备需要下载源码归档和模块缓存中缺少的依赖。 [Kubo 构建脚本](../windows/scripts/prepare-kubo.ps1) · [依赖补丁](../windows/scripts/release-audit/kubo-dependencies.patch)
 
 ## 修改 go-ethereum 并重新链接
 

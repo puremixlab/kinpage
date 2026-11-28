@@ -1,3 +1,5 @@
 * text=auto eol=lf
 *.bat text eol=crlf
 *.cmd text eol=crlf
+# A unified-diff context marker precedes the tabs in the upstream go.mod.
+windows/scripts/release-audit/kubo-dependencies.patch whitespace=-space-before-tab

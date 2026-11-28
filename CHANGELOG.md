@@ -39,6 +39,7 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 ### Security
 
 - Build bundled Kubo 0.43.2 from pinned upstream source with Go 1.27.4. Match the Kubo binary and its license materials across NSIS and MSIX, and link the vulnerability scan to both package hashes.
+- Update the bundled Kubo build to gRPC 1.83.2, klauspost/compress 1.20.2, and OpenTelemetry 1.47.0 for four upstream advisory fixes.
 
 ## [0.1.0] - 2026-11-26
 
