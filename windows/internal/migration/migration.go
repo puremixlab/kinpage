@@ -244,7 +244,8 @@ func (m *Manager) Export(siteID, parent string) (string, error) {
 				return "", err
 			}
 			defer os.RemoveAll(originalPages)
-			if err := renderOriginalTagPages(filepath.Join(m.root, "imports", siteID), originalPages, raw, filepath.Join(m.root, "templates", site.TemplateID), ""); err != nil {
+			originalRenderErr := renderOriginalTagPages(filepath.Join(m.root, "imports", siteID), originalPages, raw, filepath.Join(m.root, "templates", site.TemplateID), "")
+			if originalRenderErr != nil {
 				originalPages = ""
 			}
 			var originalInfo struct {
@@ -261,11 +262,15 @@ func (m *Manager) Export(siteID, parent string) (string, error) {
 					}
 					defer os.RemoveAll(markedPages)
 					if err := renderOriginalTagPages(filepath.Join(m.root, "imports", siteID), markedPages, raw, filepath.Join(m.root, "templates", site.TemplateID), marker); err != nil {
+						originalRenderErr = err
 						markedPages = ""
 					}
 				}
 			}
 			if err := removeObsoleteImportedFiles(stage, raw, articles, generated, originalPages, markedPages, marker); err != nil {
+				if originalRenderErr != nil {
+					return "", fmt.Errorf("%w（原标签页重建失败：%v）", err, originalRenderErr)
+				}
 				return "", err
 			}
 			for _, article := range articles {
@@ -497,7 +502,7 @@ func mergeArticleMetadata(oldPath, newPath, id string) error {
 		}
 	}
 	// Generated optional fields must replace old values even when omitted.
-	for _, key := range []string{"slug", "tags", "attachments", "audioFilename", "videoFilename", "audioDuration", "audioByteLength", "hasAudio", "hasVideo"} {
+	for _, key := range []string{"slug", "tags", "attachments", "audioFilename", "videoFilename", "audioDuration", "audioByteLength", "hasAudio", "hasVideo", "heroImage"} {
 		delete(old, key)
 	}
 	for key, value := range newer {
