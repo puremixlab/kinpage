@@ -11,7 +11,7 @@
 | BUG-003 | P2 | 已修复 | 自己文章阅读页与编辑器预览页无法渲染相对路径本地附件图 |
 | BUG-004 | P1 | 已修复，待实机复核 | 新关注和手动刷新在界面线程等待网络，窗口卡住 |
 | BUG-005 | P1 | 已修复，已验证跨盘复制 | 迁移数据仓库遗漏文章和草稿附件 |
-| BUG-006 | P1 | 已升级修复 4 项，余 1 项 DHT 通告 | 随包分发的 Kubo 命中已知安全通告 |
+| BUG-006 | P1 | 已升级修复 4 项，剩余 DHT 通告已加缓解 | 随包分发的 Kubo 命中已知安全通告 |
 | BUG-007 | P1 | 已恢复，代码 PR 检查通过 | GitHub 的 Windows 质量检查和 main 合并门禁失效 |
 | BUG-008 | P1 | 已标注，待签名发行 | 正式发布的 v0.1.0 安装包未签名 |
 | BUG-009 | P2 | 已修复 | .planet 备份重新导入后可能无法再次导出 |
@@ -112,13 +112,13 @@
 ### BUG-006 · 随包 Kubo 命中已知安全通告
 
 - **优先级** P1
-- **状态** 已升级修复 4 项。默认联网模式的 DHT 客户端仍受 `GO-2024-3218` 影响，上游暂无已知修复版本。
+- **状态** 已升级修复 4 项。默认主网配置已增加委托读取路径，缓解 `GO-2024-3218` 对内容发现和 IPNS 解析的影响。DHT 仍承担内容公告和 IPNS 发布，Go 通告暂无已知修复版本。 [Go 通告](https://pkg.go.dev/vuln/GO-2024-3218)
 - **历史对照** 包内符号级匹配在 Kubo `0.38.2` 时为 68 项，官方 Windows x64 `0.43.2` 时为 27 项，使用 Go `1.27.4` 重编译时为 5 项。本轮依赖升级后的两个包只剩 1 项。 [Kubo 0.43.2](https://github.com/ipfs/kubo/releases/tag/v0.43.2) · [安装包审计](../windows/docs/release-audit.md)
 - **默认配置取证** 在隔离目录调用 Kinpage 的真实 Kubo 初始化入口，确认 `Routing.Type=autoclient`，RPC 和网关仅监听 IPv4 回环地址，libp2p 网关和流挂载关闭，存储采用 FlatFS/LevelDB。根据固定源码和 Windows x64 的包依赖图判断各分支的可达性。 [Kinpage 节点配置](../windows/internal/ipfs/daemon.go) · [Kubo 默认存储](https://github.com/ipfs/kubo/blob/v0.43.2/config/init.go#L122-L132)
 
 | 通告 | 升级前在默认配置下的影响 | 本轮处置 |
 | --- | --- | --- |
-| `GO-2024-3218` | **联网时受影响。** `autoclient` 仍启用 DHT 客户端，DHT 路由受干扰时可能影响内容发现。 | `go-libp2p-kad-dht v0.42.2` 仍有匹配，上游暂无已知修复版本。 [Go 通告](https://pkg.go.dev/vuln/GO-2024-3218) · [Kubo 路由](https://github.com/ipfs/kubo/blob/v0.43.2/cmd/ipfs/kubo/daemon.go#L489-L501) |
+| `GO-2024-3218` | **默认联网时受影响。** `autoclient` 会查询 DHT。路由受干扰时，可能找不到 CID 的提供者或 IPNS 记录。 | 保留 DHT，增加一条委托读取路径。`go-libp2p-kad-dht v0.42.2` 仍有匹配。 [Go 通告](https://pkg.go.dev/vuln/GO-2024-3218) · [Kubo 路由](https://github.com/ipfs/kubo/blob/v0.43.2/cmd/ipfs/kubo/daemon.go#L489-L501) |
 | `GO-2026-6443` | 默认配置不运行 gRPC xDS 服务端。实际编译图也未链接 xDS 服务端包，gRPC 主要由 OTLP 导出客户端及其依赖引入。 | gRPC `1.83.1 → 1.83.2`，复扫无匹配。 [Go 通告](https://pkg.go.dev/vuln/GO-2026-6443) |
 | `GO-2026-6865` | 默认 FlatFS/LevelDB 不走该 zstd 路径。实际编译图中的 zstd 由可选的 Pebble 数据存储引入。 | `klauspost/compress 1.20.1 → 1.20.2`，复扫无匹配。 [Go 通告](https://pkg.go.dev/vuln/GO-2026-6865) |
 | `GO-2026-6974` | 默认未配置追踪导出器，Kubo 使用空操作 TracerProvider。相关 SDK 路径与启用追踪及属性长度限制的配置有关。 | OpenTelemetry 的 SDK 和 Trace 升到 `1.47.0`，复扫无匹配。 [Go 通告](https://pkg.go.dev/vuln/GO-2026-6974) · [Kubo 追踪设置](https://github.com/ipfs/kubo/blob/v0.43.2/tracing/tracing.go#L33-L61) |
@@ -128,6 +128,9 @@
   - NSIS SHA-256 `771fdee21d9163c67b0df86ecc12ba3a280c7833dddc9e5bc8d237fda1e0915b`
   - MSIX SHA-256 `9bdb986732e5c4afc9b51593feae8f20d39ba25d68359dbafdc62a37812ca9df`
 - **兼容性复核** 默认配置、离线网关读取、节点启停、固定内容、Planet 关注及两项备份往返均通过。带补丁的 Kubo 从 `0.38.2` 隔离仓库副本读取到了相同的 IPNS 密钥与递归固定记录，也能读取前一构建创建的 Pebble 仓库及其固定内容。PowerShell 7.6 在 Git 工作区之外重建得到同一摘要，启用文件追踪导出器的本地版本检查也通过。 [网关状态用例](../windows/internal/ipfs/status_test.go)
+- **DHT 缓解** Kubo 的 `autoclient` 自动展开委托列表后，只包含 IPNI 的 CID 提供者查询。Kinpage 在默认主网仓库初始化和再次启动节点时，补充 IPFS Foundation 的 `delegated-ipfs.dev` 提供者和 IPNS 只读端点，与 DHT 并行查询。已有自定义路由、关闭 AutoConf 或使用私有网络的仓库沿用各自的配置。Kubo 验证委托返回的 IPNS 记录签名，IPFS 数据仍按 CID 校验。 [Kinpage 配置](../windows/internal/ipfs/daemon.go) · [Kubo AutoConf](https://conf.ipfs-mainnet.org/autoconf.json) · [IPFS 公共委托路由](https://docs.ipfs.tech/concepts/public-utilities/#delegated-routing) · [委托路由规范](https://specs.ipfs.tech/routing/http-routing-v1/#ipns-api)
+- **联网验证** 用随包 Kubo `0.43.2` 在四个回环节点上验证，连续通过 5 次。委托路由返回 HTTP 503 时，发布仍能写入 DHT，独立读取端找到 CID 的提供者、解析 IPNS 并读取文件。另一独立读取端在没有 DHT 引导节点的情况下，通过委托端点找到提供者、解析同一条签名记录并读取同一份内容。离线网关、子路径解析、固定内容、Planet 订阅及 `bun run check` 均通过。公网端点用官方示例 CID 返回了提供者结果。所查询的公开示例 IPNS 名称没有返回签名记录，签名记录读写由上述隔离环境验证。 [联网回归](../windows/internal/ipfs/routing_integration_test.go) · [离线回归](../windows/internal/ipfs/ipfs_test.go)
+- **剩余风险** 委托服务也使用公开 DHT，仍可能与本机同时查不到记录。默认委托查询的 CID 和 IPNS 名称会发送给这个公共服务。可配置自己的路由或关闭委托读取。DHT 的内容公告和 IPNS 发布仍受原通告影响。2026-11-28 核对随包 Kubo 的摘要并用 `govulncheck v1.9.0` 再次扫描，仍仅匹配 `GO-2024-3218`，保留跟踪。 [节点设置说明](../windows/README.md#节点状态与本地网关)
 
 ---
 

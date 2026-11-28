@@ -40,6 +40,7 @@ User-facing changes are recorded here. Release entries use `MAJOR.MINOR.PATCH` w
 
 - Build bundled Kubo 0.43.2 from pinned upstream source with Go 1.27.4. Match the Kubo binary and its license materials across NSIS and MSIX, and link the vulnerability scan to both package hashes.
 - Update the bundled Kubo build to gRPC 1.83.2, klauspost/compress 1.20.2, and OpenTelemetry 1.47.0 for four upstream advisory fixes.
+- Query the IPFS Foundation's delegated read endpoint alongside the DHT for CID providers and signed IPNS records on the default mainnet profile. Keep provider announcements and IPNS publishing on the DHT.
 
 ## [0.1.0] - 2026-11-26
 

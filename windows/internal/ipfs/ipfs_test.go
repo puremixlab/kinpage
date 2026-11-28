@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -99,7 +100,7 @@ func TestInitEnablesIPv4AndIPv6TCPAndQUICListeners(t *testing.T) {
 	}
 }
 
-func TestApplyLowPowerDefaultsAndPreservesOverrides(t *testing.T) {
+func TestApplyKuboDefaultsPreservesLowPowerOverrides(t *testing.T) {
 	raw := `{
 		"AutoNAT": {},
 		"Routing": {"Type": "auto", "DelegatedRouters": ["auto"]},
@@ -110,7 +111,7 @@ func TestApplyLowPowerDefaultsAndPreservesOverrides(t *testing.T) {
 	if err := json.Unmarshal([]byte(raw), &config); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyLowPowerDefaults(config); err != nil {
+	if err := applyKuboDefaults(config, t.TempDir()); err != nil {
 		t.Fatal(err)
 	}
 	merged, err := json.Marshal(config)
@@ -171,7 +172,7 @@ func TestApplyLowPowerDefaultsAndPreservesOverrides(t *testing.T) {
 	if err := json.Unmarshal([]byte(overrideRaw), &override); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyLowPowerDefaults(override); err != nil {
+	if err := applyKuboDefaults(override, t.TempDir()); err != nil {
 		t.Fatal(err)
 	}
 	mergedOverride, err := json.Marshal(override)
@@ -200,6 +201,74 @@ func TestApplyLowPowerDefaultsAndPreservesOverrides(t *testing.T) {
 	}
 	if gotOverride.AutoNAT.ServiceMode != "enabled" || gotOverride.Routing.Type != "custom" || gotOverride.Swarm.ConnMgr.HighWater != 120 || gotOverride.Swarm.ConnMgr.LowWater != 20 || !gotOverride.Swarm.RelayService.Enabled {
 		t.Fatalf("explicit overrides were overwritten: %+v", gotOverride)
+	}
+}
+
+func TestApplyKuboDefaultsAddsReadRoutesOnlyToDefaultMainnetRouting(t *testing.T) {
+	const stockRouting = `{"Type":"autoclient","DelegatedRouters":["auto"]}`
+	const stockBootstrap = `["auto"]`
+	const publisherConfig = `{"DelegatedPublishers":["auto"]}`
+	stockRouters := []string{"auto"}
+	defaultRouters := []string{
+		"auto",
+		"https://delegated-ipfs.dev/routing/v1/providers",
+		"https://delegated-ipfs.dev/routing/v1/ipns",
+	}
+	cases := []struct {
+		name, routing, bootstrap, autoConf string
+		swarmKey, forcePrivate             bool
+		want                               []string
+	}{
+		{name: "fresh", routing: `{"DelegatedRouters":["auto"]}`, bootstrap: stockBootstrap, want: defaultRouters},
+		{name: "existing autoclient", routing: stockRouting, bootstrap: stockBootstrap, want: defaultRouters},
+		{name: "auto routing", routing: `{"Type":"auto","DelegatedRouters":["auto"]}`, bootstrap: stockBootstrap, want: defaultRouters},
+		{name: "explicit mainnet", routing: stockRouting, bootstrap: stockBootstrap, autoConf: `{"Enabled":true,"URL":"https://conf.ipfs-mainnet.org/autoconf.json"}`, want: defaultRouters},
+		{name: "DHT only", routing: `{"Type":"dhtclient","DelegatedRouters":["auto"]}`, bootstrap: stockBootstrap, want: stockRouters},
+		{name: "custom router", routing: `{"Type":"autoclient","DelegatedRouters":["auto","https://router.example/routing/v1/providers"]}`, bootstrap: stockBootstrap, want: []string{"auto", "https://router.example/routing/v1/providers"}},
+		{name: "delegation disabled", routing: `{"Type":"autoclient","DelegatedRouters":[]}`, bootstrap: stockBootstrap, want: []string{}},
+		{name: "delegation unset", routing: `{"Type":"autoclient"}`, bootstrap: stockBootstrap},
+		{name: "custom bootstrap", routing: stockRouting, bootstrap: `["/dnsaddr/bootstrap.example"]`, want: stockRouters},
+		{name: "AutoConf disabled", routing: stockRouting, bootstrap: stockBootstrap, autoConf: `{"Enabled":false}`, want: stockRouters},
+		{name: "custom AutoConf", routing: stockRouting, bootstrap: stockBootstrap, autoConf: `{"URL":"https://conf.example/autoconf.json"}`, want: stockRouters},
+		{name: "private swarm", routing: stockRouting, bootstrap: stockBootstrap, swarmKey: true, want: stockRouters},
+		{name: "force private swarm", routing: stockRouting, bootstrap: stockBootstrap, forcePrivate: true, want: stockRouters},
+	}
+	t.Setenv("LIBP2P_FORCE_PNET", "")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := t.TempDir()
+			if tc.swarmKey {
+				if err := os.WriteFile(filepath.Join(repo, "swarm.key"), nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.forcePrivate {
+				t.Setenv("LIBP2P_FORCE_PNET", "1")
+			}
+			config := map[string]json.RawMessage{
+				"Routing":   json.RawMessage(tc.routing),
+				"Bootstrap": json.RawMessage(tc.bootstrap),
+				"Ipns":      json.RawMessage(publisherConfig),
+			}
+			if tc.autoConf != "" {
+				config["AutoConf"] = json.RawMessage(tc.autoConf)
+			}
+			for range 2 {
+				if err := applyKuboDefaults(config, repo); err != nil {
+					t.Fatal(err)
+				}
+				var routing struct{ DelegatedRouters []string }
+				if err := json.Unmarshal(config["Routing"], &routing); err != nil {
+					t.Fatal(err)
+				}
+				if (routing.DelegatedRouters == nil) != (tc.want == nil) || !slices.Equal(routing.DelegatedRouters, tc.want) {
+					t.Fatalf("delegated routers = %#v, want %#v", routing.DelegatedRouters, tc.want)
+				}
+			}
+			if string(config["Bootstrap"]) != tc.bootstrap || string(config["Ipns"]) != publisherConfig {
+				t.Fatal("bootstrap or publisher configuration changed")
+			}
+		})
 	}
 }
 

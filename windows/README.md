@@ -136,6 +136,8 @@
 
 节点运行时可打开当前站点，或输入 `ipfs://`、`ipns://`、`/ipfs/`、`/ipns/` 资源通过本地网关访问；网关端口可能随节点重启改变。发布或其他操作占用节点时可稍后刷新。
 
+默认主网节点并行通过 DHT 和 IPFS Foundation 的 `delegated-ipfs.dev` 查询 CID 提供者和 IPNS 记录。委托服务会收到所查询的 CID 和 IPNS 名称，内容公告和 IPNS 发布继续走 DHT。要自定义委托读取，可在节点停止时编辑 Kubo 仓库配置的 `Routing.DelegatedRouters`。设为 `[]` 可关闭全部委托读取，设为 `["https://cid.contact/routing/v1/providers"]` 可只通过 IPNI 查询提供者。 [IPFS 公共委托路由](https://docs.ipfs.tech/concepts/public-utilities/#delegated-routing)
+
 IPFS 面板还显示仓库大小，并可在确认后清理未固定的数据；已固定内容会保留，未固定的离线数据可能被删除。
 
 ### 导出静态网页
