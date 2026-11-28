@@ -45,8 +45,9 @@ jobs:
           $taskVersion = (Get-Content release.json -Raw -Encoding UTF8 | ConvertFrom-Json).version
           $taskInstaller = Join-Path $PWD "build/windows-amd64/kinpage-safe-setup-$taskVersion-amd64.exe"
           $taskHash = (Get-FileHash -LiteralPath $taskInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
-          & scripts/test-installer-native.ps1 -Installer $taskInstaller -ExpectedSHA256 $taskHash -ExpectedVersion $taskVersion -EvidenceDir (Join-Path $PWD 'build/native-smoke-evidence')
-          $taskAudit = & scripts/audit-release.ps1 -BundleDir (Join-Path $PWD 'build/windows-amd64')
+          $taskEvidence = Join-Path $PWD 'build/native-smoke-evidence'
+          & scripts/test-installer-native.ps1 -Installer $taskInstaller -ExpectedSHA256 $taskHash -ExpectedVersion $taskVersion -EvidenceDir $taskEvidence
+          $taskAudit = & scripts/audit-release.ps1 -BundleDir (Join-Path $PWD 'build/windows-amd64') -KuboScanPath (Join-Path $taskEvidence 'kubo-security.json')
           [IO.File]::WriteAllText((Join-Path $PWD 'build/native-smoke-evidence/audit.json'), ($taskAudit -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
       - name: Preserve failed build for diagnosis
         if: failure() && steps.build.outcome == 'failure'

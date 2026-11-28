@@ -1,18 +1,31 @@
 $ErrorActionPreference = 'Stop'
 $projectRoot = [System.IO.Directory]::GetParent($PSScriptRoot).FullName
 $cache = [System.IO.Path]::Combine($projectRoot, '.mygo', 'kubo')
-$archive = [System.IO.Path]::Combine($cache, 'kubo.zip')
+$version = '0.43.2'
+$archiveName = 'kubo_v' + $version + '_windows-amd64.zip'
+$archive = [System.IO.Path]::Combine($cache, $archiveName)
 $destination = [System.IO.Path]::Combine($projectRoot, 'resources', 'windows-amd64')
-$expected = '8ada6ced4c11eb7b2f7ef3c38f2ce596efbcf411c5a0ba6c1e50f6c59f81fcc0881a0325e3add6c4462a71a477b2f02a931ab24bc7d43a98b42e402e603a4f2f'
+$expected = 'febadad25f817686c9edaffd74d7efea0333f6354fb910d8fc8f1949c4f968ad143a5e146a091c519ecbbd1cdf2b77ca008315419c54810e9acab753db8572e5'
 [System.IO.Directory]::CreateDirectory($cache) | Out-Null
 [System.IO.Directory]::CreateDirectory($destination) | Out-Null
-if (-not [System.IO.File]::Exists($archive)) {
-    & curl.exe -fL --retry 2 -o $archive 'https://github.com/ipfs/kubo/releases/download/v0.38.2/kubo_v0.38.2_windows-amd64.zip'
-    if ($LASTEXITCODE -ne 0) { throw 'Kubo download failed.' }
+function Get-KuboArchiveSHA512([string]$path) {
+    $stream = [System.IO.File]::OpenRead($path)
+    $sha = [System.Security.Cryptography.SHA512]::Create()
+    try { return [System.BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+    finally { $sha.Dispose(); $stream.Dispose() }
 }
-$stream = [System.IO.File]::OpenRead($archive)
-try { $sha = [System.Security.Cryptography.SHA512]::Create(); try { $digest = $sha.ComputeHash($stream) } finally { $sha.Dispose() } } finally { $stream.Dispose() }
-$actual = [System.BitConverter]::ToString($digest).Replace('-', '').ToLowerInvariant()
+if (-not [System.IO.File]::Exists($archive)) {
+    $pending = Join-Path $cache ($archiveName + '.' + [Guid]::NewGuid().ToString('N') + '.partial')
+    try {
+        & curl.exe -fL --retry 2 -o $pending "https://github.com/ipfs/kubo/releases/download/v$version/$archiveName"
+        if ($LASTEXITCODE -ne 0) { throw 'Kubo download failed.' }
+        if ((Get-KuboArchiveSHA512 $pending) -cne $expected) { throw 'Kubo archive checksum mismatch.' }
+        if (-not [System.IO.File]::Exists($archive)) { [System.IO.File]::Move($pending, $archive) }
+    } finally {
+        if ([System.IO.File]::Exists($pending)) { [System.IO.File]::Delete($pending) }
+    }
+}
+$actual = Get-KuboArchiveSHA512 $archive
 if ($actual -ne $expected) { throw 'Kubo archive checksum mismatch.' }
 [System.Reflection.Assembly]::Load('System.IO.Compression.FileSystem, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089') | Out-Null
 $zip = [System.IO.Compression.ZipFile]::OpenRead($archive)

@@ -23,7 +23,7 @@ bun run security:check
 bun run build
 ```
 
-`security:check` 在本机查询在线漏洞库；网络失败也会使检查失败。它检查 Bun 锁文件和 Go 源码中的可达漏洞，不覆盖打包的 Kubo 二进制和原版模板静态资源。第三方组件的版本、许可和安全情况仍需单独审查。
+`security:check` 在本机查询在线漏洞库，网络失败会使检查失败。它检查 Bun 锁文件和 Go 源码中的可达漏洞。对最终 NSIS 包另行运行安装包审计的 `-KuboScanPath` 选项。结果同时记录包和内含 Kubo 的 SHA-256，用于核对对应通告。第三方组件的版本、许可、默认配置所受影响及原版模板资源仍需单独审查。 [安装包审计](../windows/docs/release-audit.md)
 
 构建会打印独立发行目录，使用该目录准备草稿材料：
 

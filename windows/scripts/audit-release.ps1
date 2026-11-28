@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$BundleDir,
     [string]$InstallerName = '',
-    [string]$SevenZip = 'C:\Program Files\7-Zip\7z.exe'
+    [string]$SevenZip = 'C:\Program Files\7-Zip\7z.exe',
+    [string]$KuboScanPath = ''
 )
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Utility/Microsoft.PowerShell.Utility.psd1') -Force -ErrorAction Stop
@@ -58,12 +59,40 @@ $signatures = @('Kinpage.exe', $installerName, 'ipfs.exe') | ForEach-Object {
     [pscustomobject]@{ file = $_; status = [string]$result.Status }
 }
 $manualReviews = @([System.IO.File]::ReadLines((Join-Path $bundle 'KUBO-DEPENDENCY-LICENSES.txt')) | Where-Object { $_ -like 'REQUIRES MANUAL REVIEW:*' }).Count
-[pscustomobject]@{
+$installerHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $installer).Hash.ToLowerInvariant()
+$audit = [ordered]@{
     installer = $installerName
-    installerSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $installer).Hash.ToLowerInvariant()
+    installerSha256 = $installerHash
     payload = $results
     generatedUninstaller = $generatedUninstaller
     signatures = $signatures
     kuboModulesRequiringManualLicenseReview = $manualReviews
     note = 'Payload equality does not prove install/uninstall safety, Windows execution, or license compliance.'
-} | ConvertTo-Json -Depth 6
+}
+
+if ($KuboScanPath) {
+    $kubo = Join-Path $bundle 'ipfs.exe'
+    $kuboHash = ($results | Where-Object { $_.file -eq 'ipfs.exe' }).sha256
+    $scanPath = [System.IO.Path]::GetFullPath($KuboScanPath)
+    if (Test-Path -LiteralPath $scanPath) { throw "Refusing to overwrite Kubo scan evidence: $scanPath" }
+    $findings = & go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -mode=binary -format=json $kubo
+    if ($LASTEXITCODE -ne 0 -or -not $findings) { throw 'Kubo vulnerability scan did not complete.' }
+    if ((Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash -ine $installerHash -or
+        (Get-FileHash -LiteralPath $kubo -Algorithm SHA256).Hash -ine $kuboHash) {
+        throw 'Installer or verified Kubo payload changed during the vulnerability scan.'
+    }
+    $evidence = [ordered]@{
+        scanner = 'govulncheck v1.9.0'
+        scannedAt = [DateTime]::UtcNow.ToString('o')
+        installerSha256 = $installerHash
+        kuboSha256 = $kuboHash
+        report = $findings -join "`n"
+    } | ConvertTo-Json -Depth 4
+    $stream = [System.IO.File]::Open($scanPath, [System.IO.FileMode]::CreateNew)
+    try {
+        $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($evidence + "`n")
+        $stream.Write($bytes, 0, $bytes.Length)
+    } finally { $stream.Dispose() }
+    $audit['kuboSecurityEvidence'] = $scanPath
+}
+$audit | ConvertTo-Json -Depth 6
